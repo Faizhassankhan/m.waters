@@ -7,7 +7,7 @@ import { Invoice } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Droplet, Share2, Loader2 } from "lucide-react";
+import { Share2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -91,7 +91,15 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <CardTitle className="font-headline text-3xl flex items-baseline">
-                        M<Droplet className="h-2 w-2 mx-px" />Waters
+                        M
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-2 w-2 mx-px inline-block align-baseline"
+                          style={{ fill: 'hsl(var(--primary-foreground))' }}
+                        >
+                          <path d="M12 2c-5.523 0-10 4.477-10 10 0 5.523 10 12 10 12s10-6.477 10-12c0-5.523-4.477-10-10-10z" />
+                        </svg>
+                        Waters
                     </CardTitle>
                 </div>
                 <div className="text-right">
