@@ -91,7 +91,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <CardTitle className="font-headline text-3xl flex items-baseline">
-                        M<Droplet className="h-4 w-4 mx-px" />Waters
+                        M<Droplet className="h-2 w-2 mx-px" />Waters
                     </CardTitle>
                 </div>
                 <div className="text-right">
