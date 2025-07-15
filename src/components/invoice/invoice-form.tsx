@@ -42,7 +42,7 @@ const formSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof formSchema>;
 
-const BOTTLE_PRICE = 150; // Price per bottle
+const DEFAULT_BOTTLE_PRICE = 150; // Price per bottle if not set for user
 
 const months = Array.from({ length: 12 }, (_, i) => {
     const d = new Date();
@@ -136,7 +136,8 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
         setDeliveriesForInvoice(userDeliveries);
 
         const totalBottles = userDeliveries.reduce((sum, d) => sum + d.bottles, 0);
-        const totalAmount = totalBottles * BOTTLE_PRICE;
+        const bottlePrice = selectedUser.bottlePrice || DEFAULT_BOTTLE_PRICE;
+        const totalAmount = totalBottles * bottlePrice;
         form.setValue("amount", totalAmount, { shouldValidate: true });
     } else {
         setDeliveriesForInvoice([]);
@@ -255,7 +256,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
               <FormControl>
                 <Input type="number" placeholder="e.g., 5000" {...field} readOnly={deliveriesForInvoice.length > 0} />
               </FormControl>
-              {deliveriesForInvoice.length > 0 && <FormDescription>Amount auto-calculated from deliveries.</FormDescription>}
+              {deliveriesForInvoice.length > 0 && <FormDescription>Amount auto-calculated from deliveries ({selectedUser?.bottlePrice || DEFAULT_BOTTLE_PRICE} PKR/bottle).</FormDescription>}
               <FormMessage />
             </FormItem>
           )}

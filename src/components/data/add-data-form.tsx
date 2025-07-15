@@ -49,8 +49,7 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
   }, [initialName, form]);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const month = format(new Date(values.date), "MMMM");
-    addUserData({ ...values, month });
+    addUserData(values);
     toast({
       title: "Success",
       description: `Data for ${values.name} has been saved.`,

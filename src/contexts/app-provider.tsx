@@ -11,13 +11,13 @@ interface AppContextType {
   users: UserData[];
   addUserData: (data: {
     name: string;
-    month: string;
     date: string;
     bottles: number;
   }) => void;
   updateUserDelivery: (userName: string, deliveryId: string, newDate: string) => void;
   deleteUserDelivery: (userName: string, deliveryId: string) => void;
   removeDuplicateDeliveries: (userName: string) => void;
+  updateUserBottlePrice: (userName: string, newPrice: number) => void;
   invoices: Invoice[];
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt">) => Invoice;
   deleteInvoice: (invoiceId: string) => void;
@@ -32,6 +32,7 @@ export const AppContext = createContext<AppContextType>({
   updateUserDelivery: () => {},
   deleteUserDelivery: () => {},
   removeDuplicateDeliveries: () => {},
+  updateUserBottlePrice: () => {},
   invoices: [],
   addInvoice: () => ({} as Invoice),
   deleteInvoice: () => {},
@@ -40,6 +41,7 @@ export const AppContext = createContext<AppContextType>({
 const MOCK_USERS: UserData[] = [
   {
     name: "John Doe",
+    bottlePrice: 150,
     deliveries: [
       { id: "1", month: "January", date: "2024-01-15", bottles: 10 },
       { id: "2", month: "January", date: "2024-01-25", bottles: 12 },
@@ -48,6 +50,7 @@ const MOCK_USERS: UserData[] = [
   },
   {
     name: "Jane Smith",
+    bottlePrice: 160,
     deliveries: [
         { id: "4", month: "January", date: "2024-01-20", bottles: 5 },
     ],
@@ -108,17 +111,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(false);
   };
 
-  const addUserData = (data: { name: string; month: string; date: string; bottles: number; }) => {
+  const addUserData = (data: { name: string; date: string; bottles: number; }) => {
+    const month = new Date(data.date).toLocaleString('default', { month: 'long' });
     setUsers((prevUsers) => {
       const newUsers = JSON.parse(JSON.stringify(prevUsers));
       const userIndex = newUsers.findIndex((u: UserData) => u.name.toLowerCase() === data.name.toLowerCase());
-      const newDelivery: Delivery = { id: new Date().toISOString(), ...data };
+      const newDelivery: Delivery = { id: new Date().toISOString(), ...data, month };
 
       if (userIndex > -1) {
         newUsers[userIndex].deliveries.push(newDelivery);
         newUsers[userIndex].deliveries.sort((a: Delivery, b: Delivery) => new Date(a.date).getTime() - new Date(b.date).getTime());
       } else {
-        newUsers.push({ name: data.name, deliveries: [newDelivery] });
+        newUsers.push({ name: data.name, deliveries: [newDelivery], bottlePrice: 150 });
       }
       return newUsers;
     });
@@ -179,6 +183,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateUserBottlePrice = (userName: string, newPrice: number) => {
+    setUsers(prevUsers => {
+      return prevUsers.map(user => {
+        if (user.name === userName) {
+          return { ...user, bottlePrice: newPrice };
+        }
+        return user;
+      });
+    });
+  };
+
   const addInvoice = (invoiceData: Omit<Invoice, "id" | "createdAt">) => {
       const newInvoice: Invoice = {
         ...invoiceData,
@@ -202,6 +217,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateUserDelivery,
     deleteUserDelivery,
     removeDuplicateDeliveries,
+    updateUserBottlePrice,
     invoices,
     addInvoice,
     deleteInvoice

@@ -8,6 +8,7 @@ export interface Delivery {
 export interface UserData {
   name: string;
   deliveries: Delivery[];
+  bottlePrice?: number;
 }
 
 export interface Invoice {
