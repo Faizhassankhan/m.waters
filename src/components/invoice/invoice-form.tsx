@@ -108,7 +108,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     setLoading(true);
     try {
         const newInvoice = await addInvoice({ ...values, deliveries: deliveriesForInvoice });
-        if(newInvoice){
+        if (newInvoice) {
             onInvoiceCreated(newInvoice);
             toast({
                 title: "Invoice Created",
@@ -246,5 +246,3 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     </Form>
   );
 }
-
-    

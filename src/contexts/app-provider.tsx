@@ -19,7 +19,7 @@ interface AppContextType {
   removeDuplicateDeliveries: (userName: string) => Promise<void>;
   updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
   invoices: Invoice[];
-  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | null>;
+  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   refreshData: () => Promise<void>;
 }
@@ -36,7 +36,7 @@ export const AppContext = createContext<AppContextType>({
   removeDuplicateDeliveries: async () => {},
   updateUserBottlePrice: async () => {},
   invoices: [],
-  addInvoice: async () => null,
+  addInvoice: async () => undefined,
   deleteInvoice: async () => {},
   refreshData: async () => {},
 });
@@ -214,11 +214,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await fetchAllData();
   };
 
-  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId">): Promise<Invoice | null> => {
+  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId">): Promise<Invoice | undefined> => {
     const userToInvoice = users.find(u => u.name.toLowerCase() === invoiceData.name.toLowerCase());
     if (!userToInvoice) {
         console.error("Cannot create invoice for non-existent user.");
-        return null;
+        return;
     }
 
     const { data, error } = await supabase
@@ -235,9 +235,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (error) throw error;
     
+    // We need to refresh data to get the new invoice included in lists.
     await fetchAllData();
-
-    return {
+    
+    // Construct the full invoice object to return for immediate preview
+    const newInvoice: Invoice = {
         id: data.id,
         userId: data.user_id,
         name: userToInvoice.name,
@@ -248,6 +250,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         month: data.month,
         deliveries: invoiceData.deliveries || []
     };
+
+    return newInvoice;
   }
   
   const deleteInvoice = async (invoiceId: string) => {
