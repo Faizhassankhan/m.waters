@@ -164,10 +164,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (user.name === userName) {
                 const uniqueDeliveries = new Map<string, Delivery>();
                 user.deliveries.forEach(delivery => {
-                    // Create a unique key for each delivery. ID is the most reliable.
-                    uniqueDeliveries.set(delivery.id, delivery);
+                    // Create a unique key based on date and bottles to identify duplicates.
+                    const duplicateKey = `${delivery.date}-${delivery.bottles}`;
+                    if (!uniqueDeliveries.has(duplicateKey)) {
+                        uniqueDeliveries.set(duplicateKey, delivery);
+                    }
                 });
-                return { ...user, deliveries: Array.from(uniqueDeliveries.values()) };
+                const cleanedDeliveries = Array.from(uniqueDeliveries.values());
+                cleanedDeliveries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                return { ...user, deliveries: cleanedDeliveries };
             }
             return user;
         });

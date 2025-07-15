@@ -43,7 +43,7 @@ function SearchDataPage() {
             const updatedUser = users.find(u => u.name === selectedUser.name);
             setSelectedUser(updatedUser || null);
         }
-    }, [users]);
+    }, [users, selectedUser?.name]);
 
 
     return (
