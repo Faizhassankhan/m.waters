@@ -103,7 +103,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                     </CardTitle>
                 </div>
                 <div className="text-right">
-                    <p className="font-semibold">INVOICE</p>
+                    <p className="font-semibold">BILL</p>
                     <p className="text-sm text-primary-foreground/80">{invoice.id}</p>
                 </div>
             </div>
@@ -115,14 +115,14 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                 <p className="font-semibold">{invoice.name}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-muted-foreground">INVOICE FOR</p>
-                <p className="font-semibold">{invoice.month}</p>
+                <p className="text-sm text-muted-foreground">DATE</p>
+                <p className="font-semibold">{format(new Date(invoice.createdAt), "MMMM dd, yyyy")}</p>
               </div>
             </div>
             
             {invoice.deliveries && invoice.deliveries.length > 0 && (
                 <>
-                    <p className="text-sm text-muted-foreground mb-2">DELIVERY DETAILS</p>
+                    <p className="text-sm text-muted-foreground mb-2">DELIVERY DETAILS FOR {invoice.month.toUpperCase()}</p>
                     <div className="rounded-md border">
                         <ScrollArea className="h-[150px] w-full">
                             <Table>
@@ -177,7 +177,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
       <CardFooter className="p-6 pt-4 bg-background rounded-b-lg">
           <Button onClick={handleShare} className="w-full" disabled={isSharing}>
               {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4"/>}
-              {isSharing ? 'Generating Image...' : 'Share Invoice as Image'}
+              {isSharing ? 'Generating Image...' : 'Share Bill as Image'}
           </Button>
       </CardFooter>
     </div>

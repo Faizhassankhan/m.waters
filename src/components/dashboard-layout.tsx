@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useContext } from "react";
@@ -24,11 +25,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Droplets, LayoutDashboard, FileText, LogOut, PanelLeft } from "lucide-react";
+import { Droplets, LayoutDashboard, FileText, LogOut, PanelLeft, Search } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Data", icon: LayoutDashboard },
   { href: "/invoice", label: "Create Invoice", icon: FileText },
+  { href: "/invoices", label: "Search Invoices", icon: Search },
 ];
 
 export default function DashboardLayout({
