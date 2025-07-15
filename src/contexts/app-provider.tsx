@@ -94,13 +94,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
               return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
           }) || [];
           return {
-              ...inv,
+              id: inv.id,
+              userId: inv.user_id,
               name: associatedUser?.name || 'Unknown User',
+              amount: inv.amount,
+              paymentMethod: inv.payment_method,
+              recipientNumber: inv.recipient_number,
+              createdAt: inv.created_at,
+              month: inv.month,
               deliveries: deliveriesForInvoice
-          }
+          } as Invoice;
       })
 
-      setInvoices(formattedInvoices as Invoice[]);
+      setInvoices(formattedInvoices);
 
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -229,19 +235,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (error) throw error;
     
-    // Refresh the list of invoices after adding a new one
     await fetchAllData();
 
-    // Construct and return the full invoice object, including deliveries.
     return {
-        ...data,
+        id: data.id,
+        userId: data.user_id,
         name: userToInvoice.name,
-        userId: userToInvoice.id,
+        amount: data.amount,
         paymentMethod: data.payment_method,
         recipientNumber: data.recipient_number,
         createdAt: data.created_at,
+        month: data.month,
         deliveries: invoiceData.deliveries || []
-    } as Invoice;
+    };
   }
   
   const deleteInvoice = async (invoiceId: string) => {
