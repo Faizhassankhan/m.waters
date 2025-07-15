@@ -26,11 +26,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Invoice, UserData, Delivery } from "@/lib/types";
-import { aiAssistInput, AiAssistInputOutput } from "@/ai/flows/ai-assisted-input";
-import { Loader2, Sparkles, UserCheck } from "lucide-react";
-import debounce from "lodash.debounce";
+import { UserCheck } from "lucide-react";
 import { format, subMonths, getMonth, getYear } from 'date-fns';
-import { Card } from "@/components/ui/card";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -52,10 +49,8 @@ const months = Array.from({ length: 12 }, (_, i) => {
 
 
 export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: Invoice) => void }) {
-  const { addInvoice, invoices, users } = useContext(AppContext);
+  const { addInvoice, users } = useContext(AppContext);
   const { toast } = useToast();
-  const [aiSuggestions, setAiSuggestions] = useState<AiAssistInputOutput | null>(null);
-  const [isAiLoading, setIsAiLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>(format(subMonths(new Date(), 1), 'MMMM'));
   const [deliveriesForInvoice, setDeliveriesForInvoice] = useState<Delivery[]>([]);
@@ -70,56 +65,19 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       month: selectedMonth,
     },
   });
-
-  const getAiSuggestions = useCallback(
-    debounce(async (name: string) => {
-        if (name.length < 3) {
-            setAiSuggestions(null);
-            setSelectedUser(null);
-            return;
-        }
-        
-        const foundUser = users.find(u => u.name.toLowerCase() === name.toLowerCase());
-        setSelectedUser(foundUser || null);
-
-        setIsAiLoading(true);
-        try {
-            const previousEntries = invoices
-                .filter(inv => inv.name.toLowerCase().includes(name.toLowerCase()))
-                .map(inv => ({
-                    name: inv.name,
-                    paymentType: inv.paymentMethod,
-                    currencyAmount: inv.amount
-                }));
-
-            const suggestions = await aiAssistInput({ inputText: name, previousEntries });
-            setAiSuggestions(suggestions);
-
-            if (suggestions.correctedText && suggestions.correctedText.toLowerCase() !== name.toLowerCase()) {
-                form.setValue("name", suggestions.correctedText, { shouldValidate: true });
-                toast({ title: "AI Correction", description: `Name corrected to "${suggestions.correctedText}"` });
-            }
-
-        } catch (error) {
-            console.error("AI suggestion failed:", error);
-            // toast({ variant: "destructive", title: "AI Error", description: "Could not fetch AI suggestions." });
-        } finally {
-            setIsAiLoading(false);
-        }
-    }, 500), [users, invoices, form.setValue, toast]
-  );
   
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "name" && value.name) {
-        getAiSuggestions(value.name);
+        const foundUser = users.find(u => u.name.toLowerCase() === value.name?.toLowerCase());
+        setSelectedUser(foundUser || null);
       }
       if (name === 'month' && value.month) {
         setSelectedMonth(value.month);
       }
     });
     return () => subscription.unsubscribe();
-  }, [form.watch, getAiSuggestions]);
+  }, [form.watch, users]);
 
   useEffect(() => {
     if (selectedUser && selectedMonth) {
@@ -147,13 +105,6 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     }
   }, [selectedUser, selectedMonth, form]);
 
-  const applySuggestion = (suggestion: Partial<InvoiceFormValues>) => {
-    if(suggestion.name) form.setValue("name", suggestion.name);
-    if(suggestion.amount) form.setValue("amount", suggestion.amount);
-    if(suggestion.paymentMethod) form.setValue("paymentMethod", suggestion.paymentMethod);
-    setAiSuggestions(null);
-  };
-
   function onSubmit(values: InvoiceFormValues) {
     const newInvoice = addInvoice({ ...values, deliveries: deliveriesForInvoice });
     onInvoiceCreated(newInvoice);
@@ -168,7 +119,6 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       recipientNumber: "",
       month: format(subMonths(new Date(), 1), 'MMMM'),
     });
-    setAiSuggestions(null);
     setSelectedUser(null);
     setDeliveriesForInvoice([]);
   }
@@ -185,7 +135,6 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
                 Recipient Name
                 <div className="flex items-center gap-2">
                     {selectedUser && <UserCheck className="h-4 w-4 text-green-500" title="User data found" />}
-                    {isAiLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                 </div>
               </FormLabel>
               <FormControl>
@@ -220,32 +169,6 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             </FormItem>
           )}
         />
-
-        {aiSuggestions && (
-          <Card className="bg-accent/50 p-3">
-             <div className="flex items-start gap-2 mb-2">
-                <Sparkles className="h-4 w-4 mt-1 text-primary shrink-0"/>
-                <p className="text-sm font-medium text-primary-foreground">AI Suggestions</p>
-             </div>
-             <div className="flex flex-wrap gap-2">
-             {aiSuggestions.suggestedName && (
-                <Button variant="outline" size="sm" type="button" onClick={() => applySuggestion({ name: aiSuggestions.suggestedName })}>
-                    Use name: {aiSuggestions.suggestedName}
-                </Button>
-            )}
-            {aiSuggestions.suggestedPaymentType && (
-                <Button variant="outline" size="sm" type="button" onClick={() => applySuggestion({ paymentMethod: aiSuggestions.suggestedPaymentType as any })}>
-                    Pay with: {aiSuggestions.suggestedPaymentType}
-                </Button>
-            )}
-            {aiSuggestions.suggestedCurrencyAmount && (
-                <Button variant="outline" size="sm" type="button" onClick={() => applySuggestion({ amount: aiSuggestions.suggestedCurrencyAmount })}>
-                    Amount: {aiSuggestions.suggestedCurrencyAmount} PKR
-                </Button>
-            )}
-            </div>
-          </Card>
-        )}
 
         <FormField
           control={form.control}
