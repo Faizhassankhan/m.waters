@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Droplets, Share2 } from "lucide-react";
 import { format } from "date-fns";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 
 interface InvoicePreviewProps {
   invoice: Invoice | null;
@@ -16,18 +19,29 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
   const handleShare = () => {
     if (!invoice) return;
 
-    let paymentDetails = "";
-    switch(invoice.paymentMethod) {
-        case "EasyPaisa":
-        case "JazzCash":
-            paymentDetails = `Payment can be made to ${invoice.recipientNumber} via ${invoice.paymentMethod}.`;
-            break;
-        case "Bank Transfer":
-            paymentDetails = "Please contact us for bank details.";
-            break;
+    let message = `*Invoice from M.Waters*\n\n` +
+                  `Hello ${invoice.name},\n\n` +
+                  `Here is your invoice for the period ending ${format(new Date(invoice.createdAt), 'MMMM yyyy')}.\n\n`;
+
+    if (invoice.deliveries && invoice.deliveries.length > 0) {
+        message += "*Delivery Details:*\n";
+        invoice.deliveries.forEach(d => {
+            message += `- ${format(new Date(d.date), 'MMM dd')}: ${d.bottles} bottles\n`;
+        });
+        message += "\n";
     }
 
-    const message = `*Invoice from M.Waters*\n\nHello ${invoice.name},\n\nThis is your invoice for *PKR ${invoice.amount.toLocaleString()}*.\n\n${paymentDetails}\n\nInvoice ID: ${invoice.id}\nDate: ${format(new Date(invoice.createdAt), 'MMMM dd, yyyy')}\n\nThank you!`;
+    message += `*Total Amount Due: PKR ${invoice.amount.toLocaleString()}*\n\n` +
+               `Payment can be made via *${invoice.paymentMethod}*.\n`;
+
+    if (invoice.paymentMethod !== 'Bank Transfer') {
+        message += `Account/Number: ${invoice.recipientNumber}\n\n`;
+    }
+
+    message += `Invoice ID: ${invoice.id}\n` +
+               `Date: ${format(new Date(invoice.createdAt), 'MMMM dd, yyyy')}\n\n` +
+               `Thank you!`;
+
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -64,15 +78,40 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
             <p className="font-semibold">{invoice.name}</p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-muted-foreground">DATE</p>
+            <p className="text-sm text-muted-foreground">INVOICE DATE</p>
             <p className="font-semibold">{format(new Date(invoice.createdAt), 'MMMM dd, yyyy')}</p>
           </div>
         </div>
         
-        <Separator className="my-4" />
+        {invoice.deliveries && invoice.deliveries.length > 0 && (
+            <>
+                <Separator className="my-4" />
+                <p className="text-sm text-muted-foreground mb-2">INVOICE ITEMS</p>
+                <ScrollArea className="h-[150px] w-full rounded-md border">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead className="text-right">Bottles</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                         <TableBody>
+                            {invoice.deliveries.map(d => (
+                                <TableRow key={d.id}>
+                                    <TableCell>{format(new Date(d.date), 'MMMM dd, yyyy')}</TableCell>
+                                    <TableCell className="text-right font-medium">{d.bottles}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </ScrollArea>
+            </>
+        )}
+        
+        <Separator className="my-6" />
 
-        <div className="space-y-2">
-            <div className="flex justify-between items-center">
+        <div className="grid gap-4">
+             <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Payment Method</span>
                 <span className="font-medium">{invoice.paymentMethod}</span>
             </div>
@@ -82,7 +121,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
             </div>
         </div>
         
-        <Separator className="my-4" />
+        <Separator className="my-6" />
 
         <div className="flex justify-end items-center text-right">
             <div>

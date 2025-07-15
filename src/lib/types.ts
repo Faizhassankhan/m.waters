@@ -17,4 +17,5 @@ export interface Invoice {
   paymentMethod: 'EasyPaisa' | 'JazzCash' | 'Bank Transfer';
   recipientNumber: string;
   createdAt: string;
+  deliveries?: Delivery[];
 }

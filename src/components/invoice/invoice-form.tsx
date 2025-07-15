@@ -1,7 +1,7 @@
 "use client";
 
-import { useContext, useState, useEffect, useCallback } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { AppContext } from "@/contexts/app-provider";
@@ -24,26 +24,41 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Invoice } from "@/lib/types";
+import { Invoice, UserData, Delivery } from "@/lib/types";
 import { aiAssistInput, AiAssistInputOutput } from "@/ai/flows/ai-assisted-input";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, UserCheck } from "lucide-react";
 import debounce from "lodash.debounce";
+import { format, subMonths, getMonth, getYear } from 'date-fns';
+import { Card } from "@/components/ui/card";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   amount: z.coerce.number().positive("Amount must be positive."),
   paymentMethod: z.enum(["EasyPaisa", "JazzCash", "Bank Transfer"]),
   recipientNumber: z.string().regex(/^03\d{9}$/, "Enter a valid Pakistani mobile number (03xxxxxxxxx)."),
+  month: z.string().min(1, "Month is required."),
 });
 
 type InvoiceFormValues = z.infer<typeof formSchema>;
 
+const BOTTLE_PRICE = 150; // Price per bottle
+
+const months = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(i);
+    return format(d, "MMMM");
+});
+
+
 export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: Invoice) => void }) {
-  const { addInvoice, invoices } = useContext(AppContext);
+  const { addInvoice, invoices, users } = useContext(AppContext);
   const { toast } = useToast();
   const [aiSuggestions, setAiSuggestions] = useState<AiAssistInputOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
-
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>(format(subMonths(new Date(), 1), 'MMMM'));
+  const [deliveriesForInvoice, setDeliveriesForInvoice] = useState<Delivery[]>([]);
+  
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -51,6 +66,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       amount: 0,
       paymentMethod: "EasyPaisa",
       recipientNumber: "",
+      month: selectedMonth,
     },
   });
 
@@ -58,8 +74,13 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     debounce(async (name: string) => {
         if (name.length < 3) {
             setAiSuggestions(null);
+            setSelectedUser(null);
             return;
         }
+        
+        const foundUser = users.find(u => u.name.toLowerCase() === name.toLowerCase());
+        setSelectedUser(foundUser || null);
+
         setIsAiLoading(true);
         try {
             const previousEntries = invoices
@@ -80,11 +101,11 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
 
         } catch (error) {
             console.error("AI suggestion failed:", error);
-            toast({ variant: "destructive", title: "AI Error", description: "Could not fetch AI suggestions." });
+            // toast({ variant: "destructive", title: "AI Error", description: "Could not fetch AI suggestions." });
         } finally {
             setIsAiLoading(false);
         }
-    }, 500), [invoices, form.setValue, toast]
+    }, 500), [users, invoices, form.setValue, toast]
   );
   
   useEffect(() => {
@@ -92,9 +113,35 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       if (name === "name" && value.name) {
         getAiSuggestions(value.name);
       }
+      if (name === 'month' && value.month) {
+        setSelectedMonth(value.month);
+      }
     });
     return () => subscription.unsubscribe();
   }, [form.watch, getAiSuggestions]);
+
+  useEffect(() => {
+    if (selectedUser && selectedMonth) {
+        const monthIndex = months.indexOf(selectedMonth);
+        const currentYear = getYear(new Date());
+
+        const userDeliveries = selectedUser.deliveries.filter(d => {
+            const deliveryDate = new Date(d.date);
+            return getMonth(deliveryDate) === monthIndex && getYear(deliveryDate) === currentYear;
+        });
+
+        setDeliveriesForInvoice(userDeliveries);
+
+        const totalBottles = userDeliveries.reduce((sum, d) => sum + d.bottles, 0);
+        const totalAmount = totalBottles * BOTTLE_PRICE;
+        form.setValue("amount", totalAmount, { shouldValidate: true });
+    } else {
+        setDeliveriesForInvoice([]);
+        if (!form.formState.dirtyFields.amount) {
+          form.setValue("amount", 0);
+        }
+    }
+  }, [selectedUser, selectedMonth, form]);
 
   const applySuggestion = (suggestion: Partial<InvoiceFormValues>) => {
     if(suggestion.name) form.setValue("name", suggestion.name);
@@ -104,14 +151,22 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   };
 
   function onSubmit(values: InvoiceFormValues) {
-    const newInvoice = addInvoice(values);
+    const newInvoice = addInvoice({ ...values, deliveries: deliveriesForInvoice });
     onInvoiceCreated(newInvoice);
     toast({
       title: "Invoice Created",
       description: `Invoice for ${values.name} has been generated.`,
     });
-    form.reset();
+    form.reset({
+      name: "",
+      amount: 0,
+      paymentMethod: "EasyPaisa",
+      recipientNumber: "",
+      month: format(subMonths(new Date(), 1), 'MMMM'),
+    });
     setAiSuggestions(null);
+    setSelectedUser(null);
+    setDeliveriesForInvoice([]);
   }
 
   return (
@@ -124,7 +179,10 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             <FormItem>
               <FormLabel className="flex items-center justify-between">
                 Recipient Name
-                {isAiLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                <div className="flex items-center gap-2">
+                    {selectedUser && <UserCheck className="h-4 w-4 text-green-500" />}
+                    {isAiLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                </div>
               </FormLabel>
               <FormControl>
                 <Input placeholder="e.g., John Doe" {...field} />
@@ -133,6 +191,33 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             </FormItem>
           )}
         />
+        
+        {selectedUser && (
+             <FormField
+              control={form.control}
+              name="month"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Invoice Month</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a month" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {months.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        )}
 
         {aiSuggestions && (
           <Card className="bg-accent/50 p-3">
@@ -167,8 +252,9 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             <FormItem>
               <FormLabel>Amount (PKR)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g., 5000" {...field} />
+                <Input type="number" placeholder="e.g., 5000" {...field} readOnly={deliveriesForInvoice.length > 0} />
               </FormControl>
+              {deliveriesForInvoice.length > 0 && <FormDescription>Amount auto-calculated from deliveries.</FormDescription>}
               <FormMessage />
             </FormItem>
           )}
