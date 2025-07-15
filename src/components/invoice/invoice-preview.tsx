@@ -95,9 +95,9 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                         <svg
                           viewBox="0 0 24 24"
                           className="h-2 w-2 mx-px inline-block align-baseline"
-                          style={{ fill: 'hsl(var(--primary-foreground))' }}
+                          style={{ fill: 'hsl(var(--primary-foreground))', transform: 'rotate(180deg)' }}
                         >
-                          <path d="M12 2c-5.523 0-10 4.477-10 10 0 5.523 10 12 10 12s10-6.477 10-12c0-5.523-4.477-10-10-10z" />
+                          <path d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z" />
                         </svg>
                         Waters
                     </CardTitle>
