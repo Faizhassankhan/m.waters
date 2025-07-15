@@ -124,7 +124,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                 <>
                     <p className="text-sm text-muted-foreground mb-2">DELIVERY DETAILS FOR {invoice.month.toUpperCase()}</p>
                     <div className="rounded-md border">
-                        <ScrollArea className="h-[150px] w-full">
+                        <div className="w-full">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -141,7 +141,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                                     ))}
                                 </TableBody>
                             </Table>
-                        </ScrollArea>
+                        </div>
                         <div className="flex justify-end items-center p-2 bg-muted/50 font-bold text-sm">
                             Total Bottles: {totalBottles}
                         </div>
