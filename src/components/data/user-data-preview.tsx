@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useRef, useState, useContext, useEffect } from "react";
+import { useRef, useState, useContext, useEffect, useMemo } from "react";
 import * as htmlToImage from 'html-to-image';
 import { UserData, Delivery } from "@/lib/types";
 import { AppContext } from "@/contexts/app-provider";
@@ -9,13 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Share2, Loader2, Save, X, Pencil, Trash2 } from "lucide-react";
-import { format, parse } from "date-fns";
+import { format, parse, getYear, getMonth } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +39,11 @@ interface UserDataPreviewProps {
   user: UserData | null;
 }
 
+const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+];
+
 export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
   const dataCardRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
@@ -40,15 +52,44 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
   const [deliveryUpdates, setDeliveryUpdates] = useState<Record<string, string>>({});
   const [deliveryToDelete, setDeliveryToDelete] = useState<Delivery | null>(null);
 
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  
   const { updateUserDelivery, deleteUserDelivery } = useContext(AppContext);
   const { toast } = useToast();
 
   useEffect(() => {
     setUser(initialUser);
+    if (initialUser && initialUser.deliveries.length > 0) {
+        // Default to the most recent month/year with data
+        const lastDelivery = initialUser.deliveries.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        const lastDeliveryDate = new Date(lastDelivery.date);
+        setSelectedMonth(getMonth(lastDeliveryDate));
+        setSelectedYear(getYear(lastDeliveryDate));
+    } else {
+        setSelectedMonth(null);
+        setSelectedYear(null);
+    }
+
     if (initialUser && (!initialUser.deliveries || initialUser.deliveries.length === 0)) {
         setIsEditing(false);
     }
   }, [initialUser]);
+
+  const availableYears = useMemo(() => {
+    if (!user) return [];
+    const years = new Set(user.deliveries.map(d => getYear(new Date(d.date))));
+    return Array.from(years).sort((a, b) => b - a);
+  }, [user]);
+
+  const filteredDeliveries = useMemo(() => {
+    if (!user) return [];
+    if (selectedYear === null || selectedMonth === null) return user.deliveries;
+    return user.deliveries.filter(d => {
+        const deliveryDate = new Date(d.date);
+        return getYear(deliveryDate) === selectedYear && getMonth(deliveryDate) === selectedMonth;
+    });
+  }, [user, selectedMonth, selectedYear]);
 
   const handleShare = async () => {
     if (!dataCardRef.current || !user || isEditing) return;
@@ -61,7 +102,10 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
       });
       
       const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `delivery-report-${user.name}.png`, { type: blob.type });
+      const fileName = selectedMonth !== null && selectedYear !== null 
+        ? `delivery-report-${user.name}-${months[selectedMonth]}-${selectedYear}.png`
+        : `delivery-report-${user.name}.png`;
+      const file = new File([blob], fileName, { type: blob.type });
 
       const shareData = {
         files: [file],
@@ -74,7 +118,7 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
       } else {
         const link = document.createElement('a');
         link.href = dataUrl;
-        link.download = `delivery-report-${user.name}.png`;
+        link.download = fileName;
         link.click();
         toast({
           title: "Image downloaded",
@@ -102,9 +146,8 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
     if (!user || !deliveryToDelete) return;
     deleteUserDelivery(user.name, deliveryToDelete.id);
     
-    // Optimistically update local state
-    const updatedDeliveries = user.deliveries.filter(d => d.id !== deliveryToDelete.id);
-    setUser({ ...user, deliveries: updatedDeliveries });
+    const updatedUser = { ...user, deliveries: user.deliveries.filter(d => d.id !== deliveryToDelete.id) };
+    setUser(updatedUser);
 
     toast({
         title: "Delivery Deleted",
@@ -116,24 +159,25 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
   const saveChanges = () => {
     if (!user) return;
     try {
+        let userToUpdate = user;
         Object.entries(deliveryUpdates).forEach(([deliveryId, newDateStr]) => {
-            // Validate date format before saving
             const parsedDate = parse(newDateStr, 'yyyy-MM-dd', new Date());
             if (isNaN(parsedDate.getTime())) {
                 throw new Error(`Invalid date format for one of the entries. Please use YYYY-MM-DD.`);
             }
             updateUserDelivery(user.name, deliveryId, newDateStr);
+
+            // Update local state for immediate feedback
+            const updatedDeliveries = userToUpdate.deliveries.map(d => {
+                if (d.id === deliveryId) {
+                    return { ...d, date: newDateStr };
+                }
+                return d;
+            });
+            userToUpdate = { ...userToUpdate, deliveries: updatedDeliveries };
         });
 
-        // Refresh local user state after successful updates
-        const updatedUser = { ...user };
-        updatedUser.deliveries = user.deliveries.map(d => {
-            if (deliveryUpdates[d.id]) {
-                return { ...d, date: deliveryUpdates[d.id] };
-            }
-            return d;
-        });
-        setUser(updatedUser);
+        setUser(userToUpdate);
 
         toast({
             title: "Changes Saved",
@@ -160,15 +204,10 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
       </Card>
     );
   }
-
-  const groupedByMonth = user.deliveries.reduce((acc, delivery) => {
-    const monthYear = format(new Date(delivery.date), "MMMM yyyy");
-    if (!acc[monthYear]) {
-      acc[monthYear] = [];
-    }
-    acc[monthYear].push(delivery);
-    return acc;
-  }, {} as Record<string, Delivery[]>);
+  
+  const reportTitle = selectedMonth !== null && selectedYear !== null 
+    ? `DELIVERY REPORT - ${months[selectedMonth].toUpperCase()} ${selectedYear}`
+    : "DELIVERY REPORT";
 
   return (
     <AlertDialog>
@@ -191,7 +230,7 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
                       </CardTitle>
                   </div>
                   <div className="text-right">
-                      <p className="font-semibold">DELIVERY REPORT</p>
+                      <p className="font-semibold">{reportTitle}</p>
                       <p className="text-sm text-primary-foreground/80">{format(new Date(), "MMMM dd, yyyy")}</p>
                   </div>
               </div>
@@ -203,10 +242,8 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
               </div>
               
               <ScrollArea className="max-h-[40vh] pr-4">
-                  <div className="space-y-6">
-                  {Object.entries(groupedByMonth).sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime()).map(([month, deliveries]) => (
-                      <div key={month}>
-                          <p className="text-sm text-muted-foreground mb-2">DELIVERIES FOR {month.toUpperCase()}</p>
+                  {filteredDeliveries.length > 0 ? (
+                      <div className="space-y-6">
                           <div className="rounded-md border">
                               <Table>
                                   <TableHeader>
@@ -217,7 +254,7 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
                                       </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                      {deliveries.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(d => (
+                                      {filteredDeliveries.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(d => (
                                           <TableRow key={d.id}>
                                               <TableCell>
                                                   {isEditing ? (
@@ -245,27 +282,49 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
                                       ))}
                                   </TableBody>
                               </Table>
-                              <div className="flex justify-end items-center p-2 bg-muted/50 font-bold text-sm">
-                                  Total Bottles: {deliveries.reduce((sum, d) => sum + d.bottles, 0)}
-                              </div>
                           </div>
                       </div>
-                  ))}
-                  </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-8">
+                        No deliveries found for the selected period.
+                    </div>
+                  )}
               </ScrollArea>
               
               <Separator className="my-6" />
 
               <div className="flex justify-end items-center text-right">
                   <div>
-                      <p className="text-sm text-muted-foreground">TOTAL BOTTLES (ALL TIME)</p>
-                      <p className="font-bold text-3xl font-headline text-primary">{user.deliveries.reduce((sum, d) => sum + d.bottles, 0)}</p>
+                      <p className="text-sm text-muted-foreground">TOTAL BOTTLES (IN PERIOD)</p>
+                      <p className="font-bold text-3xl font-headline text-primary">{filteredDeliveries.reduce((sum, d) => sum + d.bottles, 0)}</p>
                   </div>
               </div>
             </CardContent>
           </Card>
         </div>
-        <CardFooter className="p-6 pt-4 bg-background rounded-b-lg">
+        <CardFooter className="p-6 pt-4 bg-background rounded-b-lg flex-col items-start gap-4">
+            <div className="w-full">
+                <Label className="text-xs text-muted-foreground">Filter Report</Label>
+                <div className="flex w-full gap-2 mt-1">
+                    <Select onValueChange={(v) => setSelectedMonth(Number(v))} value={String(selectedMonth ?? -1)}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {months.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                     <Select onValueChange={(v) => setSelectedYear(Number(v))} value={String(selectedYear ?? -1)}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <Separator className="w-full" />
             <div className="flex w-full items-center justify-between gap-4">
                <div className="flex items-center space-x-2">
                   <Switch id="edit-mode" checked={isEditing} onCheckedChange={setIsEditing} disabled={!user.deliveries || user.deliveries.length === 0} />
@@ -306,3 +365,5 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
     </AlertDialog>
   );
 }
+
+    
