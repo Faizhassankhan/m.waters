@@ -21,7 +21,7 @@ export function ViewDataModal({ user, onClose }: ViewDataModalProps) {
 
   return (
     <Dialog open={!!user} onOpenChange={onClose}>
-      <DialogContent className="max-w-none w-auto sm:max-w-3xl p-0 border-0 bg-transparent shadow-none">
+      <DialogContent className="w-full max-w-2xl p-0 border-0 bg-transparent shadow-none">
           <UserDataPreview user={user} />
       </DialogContent>
     </Dialog>
