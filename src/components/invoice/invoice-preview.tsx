@@ -7,7 +7,7 @@ import { Invoice } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Droplets, Share2, Loader2 } from "lucide-react";
+import { Droplet, Share2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -90,8 +90,8 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
           <CardHeader className="bg-primary text-primary-foreground rounded-t-lg p-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <CardTitle className="font-headline text-3xl flex items-center gap-1">
-                        M<Droplets className="h-6 w-6" />Waters
+                    <CardTitle className="font-headline text-3xl flex items-center">
+                        M<Droplet className="h-4 w-4 mx-px" />Waters
                     </CardTitle>
                 </div>
                 <div className="text-right">
