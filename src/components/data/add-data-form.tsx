@@ -37,14 +37,14 @@ const months = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-export function AddDataForm({ onSave }: { onSave: () => void }) {
+export function AddDataForm({ onSave, initialName }: { onSave: () => void, initialName?: string }) {
   const { addUserData } = useContext(AppContext);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      name: initialName || "",
       month: format(new Date(), "MMMM"),
       date: format(new Date(), "yyyy-MM-dd"),
       bottles: 1,
@@ -57,7 +57,13 @@ export function AddDataForm({ onSave }: { onSave: () => void }) {
       title: "Success",
       description: `Data for ${values.name} has been saved.`,
     });
-    form.reset();
+    // Reset form but keep the name if it was pre-filled
+    form.reset({
+        name: initialName || "",
+        month: format(new Date(), "MMMM"),
+        date: format(new Date(), "yyyy-MM-dd"),
+        bottles: 1,
+    });
     onSave();
   }
 
@@ -72,7 +78,7 @@ export function AddDataForm({ onSave }: { onSave: () => void }) {
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., John Doe" {...field} />
+                    <Input placeholder="e.g., John Doe" {...field} readOnly={!!initialName} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -2,6 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { UserData } from "@/lib/types";
 import {
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Eye, ChevronDown, ChevronUp } from "lucide-react";
-import { ViewDataModal } from "./view-data-modal";
 
 interface ProcessedRow {
   type: "month-header" | "user-data";
@@ -24,7 +24,7 @@ interface ProcessedRow {
 }
 
 export function DataTable({ data }: { data: UserData[] }) {
-  const [modalUser, setModalUser] = useState<UserData | null>(null);
+  const router = useRouter();
   const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
 
   const processedData = useMemo(() => {
@@ -35,9 +35,7 @@ export function DataTable({ data }: { data: UserData[] }) {
         if (!groupedByMonth[monthYear]) {
           groupedByMonth[monthYear] = [];
         }
-        // Check if this user is already in the list for this month
         if (!groupedByMonth[monthYear].some(u => u.name === user.name)) {
-            // We only want deliveries for the current month for this user view
             const monthDeliveries = user.deliveries.filter(d => format(new Date(d.date), "MMMM yyyy") === monthYear) || [];
             groupedByMonth[monthYear].push({ ...user, deliveries: monthDeliveries });
         }
@@ -48,7 +46,7 @@ export function DataTable({ data }: { data: UserData[] }) {
 
     const initialExpandedState: Record<string, boolean> = {};
     sortedMonths.forEach((month, index) => {
-      initialExpandedState[month] = index === 0; // Expand the most recent month by default
+      initialExpandedState[month] = index === 0;
     });
     setExpandedMonths(initialExpandedState);
 
@@ -75,6 +73,10 @@ export function DataTable({ data }: { data: UserData[] }) {
   
   const toggleMonth = (month: string) => {
     setExpandedMonths(prev => ({...prev, [month]: !prev[month]}));
+  }
+
+  const viewUserData = (userName: string) => {
+    router.push(`/search-data?q=${encodeURIComponent(userName)}`);
   }
 
   if (data.length === 0) {
@@ -115,7 +117,7 @@ export function DataTable({ data }: { data: UserData[] }) {
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{row.deliveries}</TableCell>
                         <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => setModalUser(user)}>
+                        <Button variant="ghost" size="icon" onClick={() => viewUserData(user.name)}>
                             <Eye className="h-4 w-4" />
                             <span className="sr-only">View Full Data</span>
                         </Button>
@@ -128,9 +130,6 @@ export function DataTable({ data }: { data: UserData[] }) {
           </TableBody>
         </Table>
       </div>
-      {modalUser && (
-        <ViewDataModal user={modalUser} onClose={() => setModalUser(null)} />
-      )}
     </>
   );
 }
