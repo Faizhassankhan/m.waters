@@ -209,7 +209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId">): Promise<Invoice | null> => {
-    const userToInvoice = users.find(u => u.name === invoiceData.name);
+    const userToInvoice = users.find(u => u.name.toLowerCase() === invoiceData.name.toLowerCase());
     if (!userToInvoice) {
         console.error("Cannot create invoice for non-existent user.");
         return null;
@@ -228,11 +228,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .single();
     
     if (error) throw error;
-    await fetchAllData();
     
-    // Find the newly created invoice in the refreshed data
-    const newInvoice = invoices.find(inv => inv.id === data.id);
-    return newInvoice || null;
+    // Refresh the list of invoices after adding a new one
+    await fetchAllData();
+
+    // Construct and return the full invoice object, including deliveries.
+    return {
+        ...data,
+        name: userToInvoice.name,
+        userId: userToInvoice.id,
+        paymentMethod: data.payment_method,
+        recipientNumber: data.recipient_number,
+        createdAt: data.created_at,
+        deliveries: invoiceData.deliveries || []
+    } as Invoice;
   }
   
   const deleteInvoice = async (invoiceId: string) => {
@@ -308,5 +317,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    
