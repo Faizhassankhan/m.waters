@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Invoice } from "@/lib/types";
@@ -21,14 +22,15 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
 
     let message = `*Invoice from M.Waters*\n\n` +
                   `Hello ${invoice.name},\n\n` +
-                  `Here is your invoice for the period ending ${format(new Date(invoice.createdAt), 'MMMM yyyy')}.\n\n`;
+                  `Here is your invoice for the month of *${invoice.month}*.\n\n`;
 
     if (invoice.deliveries && invoice.deliveries.length > 0) {
         message += "*Delivery Details:*\n";
         invoice.deliveries.forEach(d => {
             message += `- ${format(new Date(d.date), 'MMM dd')}: ${d.bottles} bottles\n`;
         });
-        message += "\n";
+        const totalBottles = invoice.deliveries.reduce((sum, d) => sum + d.bottles, 0);
+        message += `_Total Bottles: ${totalBottles}_\n\n`;
     }
 
     message += `*Total Amount Due: PKR ${invoice.amount.toLocaleString()}*\n\n` +
@@ -57,6 +59,8 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
     );
   }
 
+  const totalBottles = invoice.deliveries?.reduce((sum, d) => sum + d.bottles, 0) || 0;
+
   return (
     <Card className="shadow-lg animate-in fade-in-50">
       <CardHeader className="bg-primary text-primary-foreground rounded-t-lg p-6">
@@ -78,33 +82,37 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
             <p className="font-semibold">{invoice.name}</p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-muted-foreground">INVOICE DATE</p>
-            <p className="font-semibold">{format(new Date(invoice.createdAt), 'MMMM dd, yyyy')}</p>
+            <p className="text-sm text-muted-foreground">INVOICE FOR</p>
+            <p className="font-semibold">{invoice.month}</p>
           </div>
         </div>
         
         {invoice.deliveries && invoice.deliveries.length > 0 && (
             <>
-                <Separator className="my-4" />
-                <p className="text-sm text-muted-foreground mb-2">INVOICE ITEMS</p>
-                <ScrollArea className="h-[150px] w-full rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead className="text-right">Bottles</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                         <TableBody>
-                            {invoice.deliveries.map(d => (
-                                <TableRow key={d.id}>
-                                    <TableCell>{format(new Date(d.date), 'MMMM dd, yyyy')}</TableCell>
-                                    <TableCell className="text-right font-medium">{d.bottles}</TableCell>
+                <p className="text-sm text-muted-foreground mb-2">DELIVERY DETAILS</p>
+                <div className="rounded-md border">
+                    <ScrollArea className="h-[150px] w-full">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead className="text-right">Bottles</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </ScrollArea>
+                            </TableHeader>
+                             <TableBody>
+                                {invoice.deliveries.map(d => (
+                                    <TableRow key={d.id}>
+                                        <TableCell>{format(new Date(d.date), 'MMMM dd, yyyy')}</TableCell>
+                                        <TableCell className="text-right font-medium">{d.bottles}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </ScrollArea>
+                    <div className="flex justify-end items-center p-2 bg-muted/50 font-bold text-sm">
+                        Total Bottles: {totalBottles}
+                    </div>
+                </div>
             </>
         )}
         

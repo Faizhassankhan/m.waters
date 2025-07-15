@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { useContext, useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -123,6 +124,8 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   useEffect(() => {
     if (selectedUser && selectedMonth) {
         const monthIndex = months.indexOf(selectedMonth);
+        // This logic assumes the current year for the invoice.
+        // For historical invoices, a year selector would be needed.
         const currentYear = getYear(new Date());
 
         const userDeliveries = selectedUser.deliveries.filter(d => {
@@ -180,7 +183,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
               <FormLabel className="flex items-center justify-between">
                 Recipient Name
                 <div className="flex items-center gap-2">
-                    {selectedUser && <UserCheck className="h-4 w-4 text-green-500" />}
+                    {selectedUser && <UserCheck className="h-4 w-4 text-green-500" title="User data found" />}
                     {isAiLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                 </div>
               </FormLabel>
@@ -192,32 +195,30 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
           )}
         />
         
-        {selectedUser && (
-             <FormField
-              control={form.control}
-              name="month"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Invoice Month</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a month" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {months.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-        )}
+        <FormField
+          control={form.control}
+          name="month"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Invoice Month</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a month" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {months.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {aiSuggestions && (
           <Card className="bg-accent/50 p-3">

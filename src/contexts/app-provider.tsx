@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useEffect, ReactNode } from "react";
 import { UserData, Delivery, Invoice } from "@/lib/types";
-import {_} from "next/dist/compiled/@vercel/og/satori-wasm";
+import { format, subMonths } from 'date-fns';
 
 interface AppContextType {
   isAuthenticated: boolean;
@@ -47,7 +47,7 @@ const MOCK_USERS: UserData[] = [
 ];
 
 const MOCK_INVOICES: Invoice[] = [
-    { id: "inv1", name: "John Doe", amount: 1500, paymentMethod: "EasyPaisa", recipientNumber: "03001234567", createdAt: new Date().toISOString() },
+    { id: "inv1", name: "John Doe", amount: 1500, paymentMethod: "EasyPaisa", recipientNumber: "03001234567", createdAt: new Date().toISOString(), month: 'January' },
 ];
 
 
@@ -120,10 +120,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addInvoice = (invoiceData: Omit<Invoice, "id" | "createdAt">) => {
       const newInvoice: Invoice = {
         ...invoiceData,
-        id: `inv_${new Date().toISOString()}`,
+        id: `inv_${new Date().getTime()}`,
         createdAt: new Date().toISOString(),
       };
-      setInvoices(prev => [...prev, newInvoice]);
+      setInvoices(prev => [...prev, newInvoice].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       return newInvoice;
   }
 
