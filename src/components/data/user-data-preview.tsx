@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useRef, useState, useContext } from "react";
+import { useRef, useState, useContext, useEffect } from "react";
 import * as htmlToImage from 'html-to-image';
-import { UserData } from "@/lib/types";
+import { UserData, Delivery } from "@/lib/types";
 import { AppContext } from "@/contexts/app-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,10 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
 
   const { updateUserDelivery } = useContext(AppContext);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setUser(initialUser);
+  }, [initialUser]);
 
   const handleShare = async () => {
     if (!dataCardRef.current || !user || isEditing) return;
@@ -134,7 +138,7 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
     }
     acc[monthYear].push(delivery);
     return acc;
-  }, {} as Record<string, typeof user.deliveries>);
+  }, {} as Record<string, Delivery[]>);
 
   return (
     <div className="flex flex-col h-full">
@@ -181,7 +185,7 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {deliveries.map(d => (
+                                    {deliveries.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(d => (
                                         <TableRow key={d.id}>
                                             <TableCell>
                                                 {isEditing ? (
