@@ -82,6 +82,10 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
 
   const totalBottles = invoice.deliveries?.reduce((sum, d) => sum + d.bottles, 0) || 0;
 
+  const sortedDeliveries = invoice.deliveries 
+    ? [...invoice.deliveries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    : [];
+
   return (
     <div className="flex flex-col h-full">
       {/* This div is what will be converted to an image */}
@@ -120,7 +124,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
               </div>
             </div>
             
-            {invoice.deliveries && invoice.deliveries.length > 0 && (
+            {sortedDeliveries.length > 0 && (
                 <>
                     <p className="text-sm text-muted-foreground mb-2">DELIVERY DETAILS FOR {invoice.month.toUpperCase()}</p>
                     <div className="rounded-md border">
@@ -133,7 +137,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {invoice.deliveries.map(d => (
+                                    {sortedDeliveries.map(d => (
                                         <TableRow key={d.id}>
                                             <TableCell>{format(new Date(d.date), 'MMMM dd, yyyy')}</TableCell>
                                             <TableCell className="text-right font-medium">{d.bottles}</TableCell>
