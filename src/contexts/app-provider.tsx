@@ -75,7 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deliveries: (u.deliveries || []).map(d => ({
             ...d,
             month: format(new Date(d.date), 'MMMM') // Add month property dynamically
-        })).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+        })).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
       }));
       setUsers(formattedUsers as UserData[]);
 
@@ -235,9 +235,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (error) throw error;
     
-    // We need to refresh data to get the new invoice included in lists.
-    await fetchAllData();
-    
     // Construct the full invoice object to return for immediate preview
     const newInvoice: Invoice = {
         id: data.id,
@@ -250,6 +247,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         month: data.month,
         deliveries: invoiceData.deliveries || []
     };
+
+    // After successfully creating, trigger a refresh in the background
+    fetchAllData();
 
     return newInvoice;
   }
