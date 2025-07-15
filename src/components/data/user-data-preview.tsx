@@ -8,7 +8,7 @@ import { AppContext } from "@/contexts/app-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Share2, Loader2, Save, X, Pencil } from "lucide-react";
+import { Share2, Loader2, Save, X, Pencil, Trash2 } from "lucide-react";
 import { format, parse } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,6 +16,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface UserDataPreviewProps {
   user: UserData | null;
@@ -27,12 +38,16 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [user, setUser] = useState(initialUser);
   const [deliveryUpdates, setDeliveryUpdates] = useState<Record<string, string>>({});
+  const [deliveryToDelete, setDeliveryToDelete] = useState<Delivery | null>(null);
 
-  const { updateUserDelivery } = useContext(AppContext);
+  const { updateUserDelivery, deleteUserDelivery } = useContext(AppContext);
   const { toast } = useToast();
 
   useEffect(() => {
     setUser(initialUser);
+    if (initialUser && (!initialUser.deliveries || initialUser.deliveries.length === 0)) {
+        setIsEditing(false);
+    }
   }, [initialUser]);
 
   const handleShare = async () => {
@@ -82,6 +97,21 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
   const handleDateChange = (deliveryId: string, newDate: string) => {
     setDeliveryUpdates(prev => ({ ...prev, [deliveryId]: newDate }));
   };
+  
+  const confirmDelete = () => {
+    if (!user || !deliveryToDelete) return;
+    deleteUserDelivery(user.name, deliveryToDelete.id);
+    
+    // Optimistically update local state
+    const updatedDeliveries = user.deliveries.filter(d => d.id !== deliveryToDelete.id);
+    setUser({ ...user, deliveries: updatedDeliveries });
+
+    toast({
+        title: "Delivery Deleted",
+        description: `The delivery on ${format(new Date(deliveryToDelete.date), "MMM dd")} has been removed.`
+    });
+    setDeliveryToDelete(null);
+  }
 
   const saveChanges = () => {
     if (!user) return;
@@ -141,6 +171,7 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
   }, {} as Record<string, Delivery[]>);
 
   return (
+    <>
     <div className="flex flex-col h-full">
       <div ref={dataCardRef} className="bg-background p-4 flex-grow">
         <Card style={{ boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.25)' }} className="animate-in fade-in-50 bg-white text-card-foreground">
@@ -182,6 +213,7 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
                                     <TableRow>
                                         <TableHead>Date</TableHead>
                                         <TableHead className="text-right">Bottles</TableHead>
+                                        {isEditing && <TableHead className="w-[50px] text-right">Actions</TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -200,6 +232,15 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right font-medium">{d.bottles}</TableCell>
+                                            {isEditing && (
+                                                <TableCell className="text-right">
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setDeliveryToDelete(d)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                </TableCell>
+                                            )}
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -227,9 +268,9 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
       <CardFooter className="p-6 pt-4 bg-background rounded-b-lg">
           <div className="flex w-full items-center justify-between gap-4">
              <div className="flex items-center space-x-2">
-                <Switch id="edit-mode" checked={isEditing} onCheckedChange={setIsEditing} />
+                <Switch id="edit-mode" checked={isEditing} onCheckedChange={setIsEditing} disabled={!user.deliveries || user.deliveries.length === 0} />
                 <Label htmlFor="edit-mode" className="flex items-center gap-2 cursor-pointer">
-                    <Pencil className="h-4 w-4" /> Edit Dates
+                    <Pencil className="h-4 w-4" /> Edit
                 </Label>
              </div>
              {isEditing ? (
@@ -238,7 +279,7 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
                         <X className="mr-2 h-4 w-4" /> Cancel
                     </Button>
                     <Button onClick={saveChanges} size="sm">
-                        <Save className="mr-2 h-4 w-4" /> Save
+                        <Save className="mr-2 h-4 w-4" /> Save Changes
                     </Button>
                 </div>
              ) : (
@@ -250,5 +291,20 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
           </div>
       </CardFooter>
     </div>
+    <AlertDialog open={!!deliveryToDelete} onOpenChange={() => setDeliveryToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will permanently delete the delivery of <span className="font-bold">{deliveryToDelete?.bottles} bottles</span> on <span className="font-bold">{deliveryToDelete ? format(new Date(deliveryToDelete.date), "MMMM dd, yyyy") : ""}</span> for <span className="font-bold">{user?.name}</span>. This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">Yes, delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
