@@ -14,16 +14,18 @@ interface InvoicePreviewProps {
 export function InvoicePreview({ invoice }: InvoicePreviewProps) {
   
   const getPaymentLink = (invoice: Invoice): string => {
-    // NOTE: These are hypothetical deep links. Real-world usage requires knowledge
-    // of the specific payment app's URL scheme.
+    // These are deep links that should open the respective mobile apps if installed.
     const amount = invoice.amount;
     const number = invoice.recipientNumber;
     switch(invoice.paymentMethod) {
         case "EasyPaisa":
-            return `https://easypaisa.com.pk/p2p?receiver=${number}&amount=${amount}`; // Placeholder URL
+            // Easypaisa deep link for person-to-person transfer
+            return `easypaisa://send_money/p2p?phone=${number}&amount=${amount}`;
         case "JazzCash":
-            return `https://jazzcash.com.pk/send-money?receiver=${number}&amount=${amount}`; // Placeholder URL
+            // JazzCash deep link for sending money
+            return `jazzcash://app/sendmoney/mobile?receiver=${number}&amount=${amount}`;
         default:
+            // Fallback for bank transfers
             return `our bank details.`;
     }
   }
