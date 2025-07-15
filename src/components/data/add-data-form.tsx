@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -18,6 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { Loader2 } from "lucide-react";
+import { AddUserDataPayload } from "@/lib/types";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -28,6 +30,7 @@ const formSchema = z.object({
 export function AddDataForm({ onSave, initialName }: { onSave: () => void, initialName?: string }) {
   const { addUserData } = useContext(AppContext);
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -39,8 +42,6 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
   });
 
   useEffect(() => {
-    // This effect runs when the initialName prop changes (e.g., a new user is selected)
-    // It resets the form with the new initial values.
     form.reset({
       name: initialName || "",
       date: format(new Date(), "yyyy-MM-dd"),
@@ -48,19 +49,29 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
     });
   }, [initialName, form]);
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    addUserData(values);
-    toast({
-      title: "Success",
-      description: `Data for ${values.name} has been saved.`,
-    });
-    // Reset form but keep the name if it was pre-filled
-    form.reset({
-        name: initialName || "",
-        date: format(new Date(), "yyyy-MM-dd"),
-        bottles: 1,
-    });
-    onSave();
+  async function onSubmit(values: AddUserDataPayload) {
+    setLoading(true);
+    try {
+      await addUserData(values);
+      toast({
+        title: "Success",
+        description: `Data for ${values.name} has been saved.`,
+      });
+      form.reset({
+          name: initialName || "",
+          date: format(new Date(), "yyyy-MM-dd"),
+          bottles: 1,
+      });
+      onSave();
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Error Saving Data",
+            description: error.message || "An unexpected error occurred."
+        });
+    } finally {
+        setLoading(false);
+    }
   }
 
   return (
@@ -107,8 +118,13 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
               )}
             />
         </div>
-        <Button type="submit">Save Data</Button>
+        <Button type="submit" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Data
+        </Button>
       </form>
     </Form>
   );
 }
+
+    

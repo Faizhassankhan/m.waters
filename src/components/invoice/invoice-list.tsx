@@ -34,14 +34,23 @@ export function InvoiceList({ invoices }: { invoices: Invoice[] }) {
     const { deleteInvoice } = useContext(AppContext);
     const { toast } = useToast();
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (invoiceToDelete) {
-            deleteInvoice(invoiceToDelete.id);
-            toast({
-                title: "Invoice Deleted",
-                description: `Invoice for ${invoiceToDelete.name} has been deleted.`,
-            });
-            setInvoiceToDelete(null);
+            try {
+                await deleteInvoice(invoiceToDelete.id);
+                toast({
+                    title: "Invoice Deleted",
+                    description: `Invoice for ${invoiceToDelete.name} has been deleted.`,
+                });
+            } catch (error: any) {
+                 toast({
+                    variant: "destructive",
+                    title: "Deletion Failed",
+                    description: error.message || "Could not delete invoice.",
+                });
+            } finally {
+                setInvoiceToDelete(null);
+            }
         }
     };
 
@@ -113,3 +122,5 @@ export function InvoiceList({ invoices }: { invoices: Invoice[] }) {
         </>
     );
 }
+
+    

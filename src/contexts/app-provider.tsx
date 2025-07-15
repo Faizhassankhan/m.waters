@@ -2,217 +2,299 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode } from "react";
-import { UserData, Delivery, Invoice } from "@/lib/types";
+import { UserData, Delivery, Invoice, AddUserDataPayload } from "@/lib/types";
+import { supabase } from "@/lib/supabase/client";
+import { PostgrestError, User } from "@supabase/supabase-js";
+import { format } from "date-fns";
 
 interface AppContextType {
-  isAuthenticated: boolean;
-  login: (pass: string) => boolean;
-  logout: () => void;
+  user: User | null;
+  login: (pass: string) => Promise<{ success: boolean; error: string | null }>;
+  logout: () => Promise<void>;
   users: UserData[];
-  addUserData: (data: {
-    name: string;
-    date: string;
-    bottles: number;
-  }) => void;
-  updateUserDelivery: (userName: string, deliveryId: string, newDate: string) => void;
-  deleteUserDelivery: (userName: string, deliveryId: string) => void;
-  removeDuplicateDeliveries: (userName: string) => void;
-  updateUserBottlePrice: (userName: string, newPrice: number) => void;
+  loading: boolean;
+  addUserData: (data: AddUserDataPayload) => Promise<void>;
+  updateUserDelivery: (userName: string, deliveryId: string, newDate: string) => Promise<void>;
+  deleteUserDelivery: (userName: string, deliveryId: string) => Promise<void>;
+  removeDuplicateDeliveries: (userName: string) => Promise<void>;
+  updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
   invoices: Invoice[];
-  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt">) => Invoice;
-  deleteInvoice: (invoiceId: string) => void;
+  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | null>;
+  deleteInvoice: (invoiceId: string) => Promise<void>;
+  refreshData: () => Promise<void>;
 }
 
 export const AppContext = createContext<AppContextType>({
-  isAuthenticated: false,
-  login: () => false,
-  logout: () => {},
+  user: null,
+  login: async () => ({ success: false, error: "Not implemented" }),
+  logout: async () => {},
   users: [],
-  addUserData: () => {},
-  updateUserDelivery: () => {},
-  deleteUserDelivery: () => {},
-  removeDuplicateDeliveries: () => {},
-  updateUserBottlePrice: () => {},
+  loading: true,
+  addUserData: async () => {},
+  updateUserDelivery: async () => {},
+  deleteUserDelivery: async () => {},
+  removeDuplicateDeliveries: async () => {},
+  updateUserBottlePrice: async () => {},
   invoices: [],
-  addInvoice: () => ({} as Invoice),
-  deleteInvoice: () => {},
+  addInvoice: async () => null,
+  deleteInvoice: async () => {},
+  refreshData: async () => {},
 });
 
-const MOCK_USERS: UserData[] = [
-  {
-    name: "John Doe",
-    bottlePrice: 150,
-    deliveries: [
-      { id: "1", month: "January", date: "2024-01-15", bottles: 10 },
-      { id: "2", month: "January", date: "2024-01-25", bottles: 12 },
-      { id: "3", month: "February", date: "2024-02-10", bottles: 8 },
-    ],
-  },
-  {
-    name: "Jane Smith",
-    bottlePrice: 160,
-    deliveries: [
-        { id: "4", month: "January", date: "2024-01-20", bottles: 5 },
-    ],
-  },
-];
-
-const MOCK_INVOICES: Invoice[] = [
-    { id: "inv1", name: "John Doe", amount: 1500, paymentMethod: "EasyPaisa", recipientNumber: "03001234567", createdAt: new Date().toISOString(), month: 'January' },
-];
-
-
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      // Fetch users and their deliveries in one go
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select(`
+          id,
+          name,
+          bottle_price,
+          deliveries (
+            id,
+            date,
+            bottles
+          )
+        `)
+        .order('name', { ascending: true });
+
+      if (usersError) throw usersError;
+
+      const formattedUsers = usersData.map(u => ({
+        id: u.id,
+        name: u.name,
+        bottlePrice: u.bottle_price,
+        // Ensure deliveries are sorted by date
+        deliveries: (u.deliveries || []).map(d => ({
+            ...d,
+            month: format(new Date(d.date), 'MMMM') // Add month property dynamically
+        })).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+      }));
+      setUsers(formattedUsers as UserData[]);
+
+      // Fetch invoices
+      const { data: invoicesData, error: invoicesError } = await supabase
+        .from('invoices')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (invoicesError) throw invoicesError;
+
+      const formattedInvoices = invoicesData.map(inv => {
+          const associatedUser = formattedUsers.find(u => u.id === inv.user_id);
+          const deliveriesForInvoice = associatedUser?.deliveries.filter(d => {
+              const deliveryDate = new Date(d.date);
+              return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
+          }) || [];
+          return {
+              ...inv,
+              name: associatedUser?.name || 'Unknown User',
+              deliveries: deliveriesForInvoice
+          }
+      })
+
+      setInvoices(formattedInvoices as Invoice[]);
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   useEffect(() => {
-    try {
-      const authStatus = localStorage.getItem("aquaManagerAuth") === "true";
-      setIsAuthenticated(authStatus);
+    const getSession = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+        if (session?.user) {
+            await fetchAllData();
+        } else {
+            setLoading(false);
+        }
+    };
+    
+    getSession();
 
-      const storedUsers = localStorage.getItem("aquaManagerUsers");
-      setUsers(storedUsers ? JSON.parse(storedUsers) : MOCK_USERS);
-      
-      const storedInvoices = localStorage.getItem("aquaManagerInvoices");
-      setInvoices(storedInvoices ? JSON.parse(storedInvoices) : MOCK_INVOICES);
-    } catch (error) {
-        // If localStorage is not available or fails, use mock data
-        setUsers(MOCK_USERS);
-        setInvoices(MOCK_INVOICES);
-    }
-    setIsLoaded(true);
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+            fetchAllData();
+        } else {
+            setUsers([]);
+            setInvoices([]);
+        }
+      }
+    );
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
-  useEffect(() => {
-    if (isLoaded) {
-      try {
-        localStorage.setItem("aquaManagerAuth", String(isAuthenticated));
-        localStorage.setItem("aquaManagerUsers", JSON.stringify(users));
-        localStorage.setItem("aquaManagerInvoices", JSON.stringify(invoices));
-      } catch (error) {
-        console.warn("Could not write to localStorage");
-      }
+  const login = async (password: string) => {
+    // Note: It's recommended to create a user in Supabase with this email.
+    const email = "admin@aquamanager.com";
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+        return { success: false, error: error.message };
     }
-  }, [isAuthenticated, users, invoices, isLoaded]);
+    await fetchAllData();
+    return { success: true, error: null };
+  };
 
-  const login = (pass: string) => {
-    // In a real app, username would also be checked.
-    if (pass === "admin2007") {
-      setIsAuthenticated(true);
-      return true;
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setUsers([]);
+    setInvoices([]);
+  };
+
+  const addUserData = async (data: AddUserDataPayload) => {
+    let userId;
+
+    // Check if user exists, if not, create them
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('name', data.name)
+      .single();
+
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      const { data: newUser, error: userError } = await supabase
+        .from('users')
+        .insert({ name: data.name, bottle_price: 150 }) // default price
+        .select('id')
+        .single();
+      if (userError) throw userError;
+      userId = newUser.id;
     }
-    return false;
-  };
 
-  const logout = () => {
-    setIsAuthenticated(false);
-  };
-
-  const addUserData = (data: { name: string; date: string; bottles: number; }) => {
-    const month = new Date(data.date).toLocaleString('default', { month: 'long' });
-    setUsers((prevUsers) => {
-      const newUsers = JSON.parse(JSON.stringify(prevUsers));
-      const userIndex = newUsers.findIndex((u: UserData) => u.name.toLowerCase() === data.name.toLowerCase());
-      const newDelivery: Delivery = { id: new Date().toISOString(), ...data, month };
-
-      if (userIndex > -1) {
-        newUsers[userIndex].deliveries.push(newDelivery);
-        newUsers[userIndex].deliveries.sort((a: Delivery, b: Delivery) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      } else {
-        newUsers.push({ name: data.name, deliveries: [newDelivery], bottlePrice: 150 });
-      }
-      return newUsers;
-    });
-  };
-
-  const updateUserDelivery = (userName: string, deliveryId: string, newDate: string) => {
-    setUsers(prevUsers => {
-      return prevUsers.map(user => {
-        if (user.name === userName) {
-          const updatedDeliveries = user.deliveries.map(delivery => {
-            if (delivery.id === deliveryId) {
-              return { ...delivery, date: newDate, month: new Date(newDate).toLocaleString('default', { month: 'long' }) };
-            }
-            return delivery;
-          });
-          // Sort deliveries after update
-          updatedDeliveries.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-          return { ...user, deliveries: updatedDeliveries };
-        }
-        return user;
+    // Add the delivery record
+    const { error: deliveryError } = await supabase
+      .from('deliveries')
+      .insert({
+        user_id: userId,
+        date: data.date,
+        bottles: data.bottles,
       });
-    });
+
+    if (deliveryError) throw deliveryError;
+
+    // Refresh all data to reflect changes
+    await fetchAllData();
   };
+
+  const updateUserBottlePrice = async (userName: string, newPrice: number) => {
+    const userToUpdate = users.find(u => u.name === userName);
+    if (!userToUpdate) throw new Error("User not found");
+
+    const { error } = await supabase
+      .from('users')
+      .update({ bottle_price: newPrice })
+      .eq('id', userToUpdate.id);
+    
+    if (error) throw error;
+    await fetchAllData();
+  };
+
+  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId">): Promise<Invoice | null> => {
+    const userToInvoice = users.find(u => u.name === invoiceData.name);
+    if (!userToInvoice) {
+        console.error("Cannot create invoice for non-existent user.");
+        return null;
+    }
+
+    const { data, error } = await supabase
+        .from('invoices')
+        .insert({
+            user_id: userToInvoice.id,
+            amount: invoiceData.amount,
+            month: invoiceData.month,
+            payment_method: invoiceData.paymentMethod,
+            recipient_number: invoiceData.recipientNumber,
+        })
+        .select()
+        .single();
+    
+    if (error) throw error;
+    await fetchAllData();
+    
+    // Find the newly created invoice in the refreshed data
+    const newInvoice = invoices.find(inv => inv.id === data.id);
+    return newInvoice || null;
+  }
   
-  const deleteUserDelivery = (userName: string, deliveryId: string) => {
-    setUsers(prevUsers => {
-        const newUsers = prevUsers.map(user => {
-            if (user.name === userName) {
-                const updatedDeliveries = user.deliveries.filter(delivery => delivery.id !== deliveryId);
-                return { ...user, deliveries: updatedDeliveries };
-            }
-            return user;
-        });
-        // Optional: remove user if they have no deliveries left
-        // return newUsers.filter(user => user.deliveries.length > 0);
-        return newUsers;
-    });
-  };
-
-  const removeDuplicateDeliveries = (userName: string) => {
-    setUsers(prevUsers => {
-        return prevUsers.map(user => {
-            if (user.name === userName) {
-                const uniqueDeliveries = new Map<string, Delivery>();
-                user.deliveries.forEach(delivery => {
-                    // Create a unique key based on date and bottles to identify duplicates.
-                    const duplicateKey = `${delivery.date}-${delivery.bottles}`;
-                    if (!uniqueDeliveries.has(duplicateKey)) {
-                        uniqueDeliveries.set(duplicateKey, delivery);
-                    }
-                });
-                const cleanedDeliveries = Array.from(uniqueDeliveries.values());
-                cleanedDeliveries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                return { ...user, deliveries: cleanedDeliveries };
-            }
-            return user;
-        });
-    });
-  };
-
-  const updateUserBottlePrice = (userName: string, newPrice: number) => {
-    setUsers(prevUsers => {
-      return prevUsers.map(user => {
-        if (user.name === userName) {
-          return { ...user, bottlePrice: newPrice };
-        }
-        return user;
-      });
-    });
-  };
-
-  const addInvoice = (invoiceData: Omit<Invoice, "id" | "createdAt">) => {
-      const newInvoice: Invoice = {
-        ...invoiceData,
-        id: `inv_${new Date().getTime()}`,
-        createdAt: new Date().toISOString(),
-      };
-      setInvoices(prev => [...prev, newInvoice].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      return newInvoice;
+  const deleteInvoice = async (invoiceId: string) => {
+      const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
+      if (error) throw error;
+      await fetchAllData();
   }
 
-  const deleteInvoice = (invoiceId: string) => {
-    setInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
+  const updateUserDelivery = async (userName: string, deliveryId: string, newDate: string) => {
+    const { error } = await supabase
+        .from('deliveries')
+        .update({ date: newDate })
+        .eq('id', deliveryId);
+    
+    if (error) throw error;
+    await fetchAllData();
+  };
+
+  const deleteUserDelivery = async (userName: string, deliveryId: string) => {
+    const { error } = await supabase
+        .from('deliveries')
+        .delete()
+        .eq('id', deliveryId);
+    
+    if (error) throw error;
+    await fetchAllData();
+  }
+
+  const removeDuplicateDeliveries = async (userName: string) => {
+    const userToRemoveDuplicates = users.find(u => u.name === userName);
+    if (!userToRemoveDuplicates) return;
+
+    const uniqueDeliveries = new Map<string, Delivery>();
+    userToRemoveDuplicates.deliveries.forEach(delivery => {
+        const key = `${delivery.date}-${delivery.bottles}`;
+        if (!uniqueDeliveries.has(key)) {
+            uniqueDeliveries.set(key, delivery);
+        }
+    });
+
+    const deliveriesToDelete = userToRemoveDuplicates.deliveries
+        .filter(d => !Array.from(uniqueDeliveries.values()).find(ud => ud.id === d.id));
+
+    if (deliveriesToDelete.length > 0) {
+        const idsToDelete = deliveriesToDelete.map(d => d.id);
+        const { error } = await supabase
+            .from('deliveries')
+            .delete()
+            .in('id', idsToDelete);
+        
+        if (error) throw error;
+    }
+
+    await fetchAllData();
   }
 
   const value = {
-    isAuthenticated,
+    user,
     login,
     logout,
     users,
+    loading,
     addUserData,
     updateUserDelivery,
     deleteUserDelivery,
@@ -220,14 +302,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateUserBottlePrice,
     invoices,
     addInvoice,
-    deleteInvoice
+    deleteInvoice,
+    refreshData: fetchAllData,
   };
-
-  // Prevent rendering children until state is loaded from localStorage
-  // to avoid hydration mismatch.
-  if (!isLoaded) {
-    return null;
-  }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    

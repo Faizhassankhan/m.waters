@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo, useEffect, useCallback } from "react";
+import { useState, useContext, useEffect, useCallback } from "react";
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
 import DashboardLayout from "@/components/dashboard-layout";
@@ -10,13 +10,26 @@ import { Input } from "@/components/ui/input";
 import { UserDataPreview } from "@/components/data/user-data-preview";
 import { AddDataForm } from "@/components/data/add-data-form";
 import { UserData } from "@/lib/types";
+import { useSearchParams } from 'next/navigation'
+
 
 function SearchDataPage() {
-    const { users } = useContext(AppContext);
+    const { users, refreshData } = useContext(AppContext);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+    const searchParams = useSearchParams();
 
-    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Effect to handle search query from URL (e.g., from Data Table)
+    useEffect(() => {
+        const query = searchParams.get('q');
+        if (query) {
+            setSearchTerm(query);
+            const foundUser = users.find(user => user.name.toLowerCase() === query.toLowerCase());
+            setSelectedUser(foundUser || null);
+        }
+    }, [searchParams, users]);
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const term = e.target.value;
         setSearchTerm(term);
         if (term.trim() === "") {
@@ -27,23 +40,14 @@ function SearchDataPage() {
         setSelectedUser(foundUser || null);
     }
     
-    // This function will be called from UserDataPreview after a delivery is added or data is refreshed
-    const refreshUserData = useCallback(() => {
-        if (selectedUser) {
-            // Re-find the user from the potentially updated users list in the context
-            const updatedUser = users.find(u => u.name === selectedUser.name);
-            setSelectedUser(updatedUser ? { ...updatedUser } : null);
-        }
-    }, [selectedUser, users]);
-    
-    // This effect ensures that if the user data is updated globally (e.g., from another page),
+    // This effect ensures that if the user data is updated globally,
     // the currently viewed user is also updated.
     useEffect(() => {
         if (selectedUser) {
-            const updatedUser = users.find(u => u.name === selectedUser.name);
+            const updatedUser = users.find(u => u.id === selectedUser.id);
             setSelectedUser(updatedUser || null);
         }
-    }, [users, selectedUser?.name]);
+    }, [users, selectedUser?.id]);
 
 
     return (
@@ -65,7 +69,7 @@ function SearchDataPage() {
                                 <Input
                                     placeholder="Enter user name..."
                                     value={searchTerm}
-                                    onChange={handleSearch}
+                                    onChange={handleSearchChange}
                                 />
                             </CardContent>
                         </Card>
@@ -75,14 +79,14 @@ function SearchDataPage() {
                                     <CardTitle className="font-headline">Add Delivery for {selectedUser.name}</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <AddDataForm onSave={refreshUserData} initialName={selectedUser.name} />
+                                    <AddDataForm onSave={refreshData} initialName={selectedUser.name} />
                                 </CardContent>
                             </Card>
                         )}
                     </div>
                    
                     <div className="lg:col-span-3">
-                        <UserDataPreview user={selectedUser} onRefresh={refreshUserData} />
+                        <UserDataPreview user={selectedUser} onRefresh={refreshData} />
                     </div>
                 </div>
             </div>
@@ -90,7 +94,8 @@ function SearchDataPage() {
     );
 }
 
-
+// Wrap with a Suspense boundary if needed, or just export a container component
+// that doesn't rely on searchParams at the top level. For this page, it's fine.
 export default function Home() {
     return (
         <AuthGuard>
@@ -98,3 +103,5 @@ export default function Home() {
         </AuthGuard>
     );
 }
+
+    

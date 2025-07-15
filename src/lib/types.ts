@@ -1,23 +1,34 @@
+
 export interface Delivery {
-  id: string;
-  month: string;
-  date: string;
+  id: string; // uuid from supabase
+  date: string; // YYYY-MM-DD
   bottles: number;
+  month: string; // Dynamically added on client
 }
 
 export interface UserData {
+  id: string; // uuid from supabase
   name: string;
+  bottlePrice: number;
   deliveries: Delivery[];
-  bottlePrice?: number;
+}
+
+export interface AddUserDataPayload {
+    name: string;
+    date: string; // YYYY-MM-DD
+    bottles: number;
 }
 
 export interface Invoice {
-  id: string;
-  name: string;
+  id: string; // uuid from supabase
+  userId: string; // uuid from supabase
+  name: string; // Joined from users table
   amount: number;
   paymentMethod: 'EasyPaisa' | 'JazzCash' | 'Bank Transfer';
   recipientNumber: string;
-  createdAt: string;
+  createdAt: string; // timestamp with time zone
   month: string;
-  deliveries?: Delivery[];
+  deliveries?: Delivery[]; // Joined from deliveries table
 }
+
+    

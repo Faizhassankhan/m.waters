@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useContext, useMemo, useState } from "react";
@@ -10,10 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
-import { UserData } from "@/lib/types";
 
 function DataManagementPage() {
-  const { users } = useContext(AppContext);
+  const { users, refreshData } = useContext(AppContext);
   const [searchMonth, setSearchMonth] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -31,6 +31,11 @@ function DataManagementPage() {
       })
       .filter((user) => user.deliveries.length > 0);
   }, [users, searchMonth]);
+
+  const handleSave = () => {
+      refreshData();
+      setShowAddForm(false);
+  }
 
   return (
     <DashboardLayout>
@@ -51,7 +56,7 @@ function DataManagementPage() {
               <CardTitle className="font-headline">Add New Delivery</CardTitle>
             </CardHeader>
             <CardContent>
-              <AddDataForm onSave={() => setShowAddForm(false)} />
+              <AddDataForm onSave={handleSave} />
             </CardContent>
           </Card>
         )}
@@ -70,7 +75,7 @@ function DataManagementPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable data={filteredUsers as UserData[]} />
+            <DataTable data={filteredUsers} />
           </CardContent>
         </Card>
       </div>
@@ -85,3 +90,5 @@ export default function Home() {
     </AuthGuard>
   );
 }
+
+    

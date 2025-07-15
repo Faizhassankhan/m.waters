@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useContext, useState, useEffect, useCallback } from "react";
+import { useContext, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -26,8 +26,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Invoice, UserData, Delivery } from "@/lib/types";
-import { UserCheck } from "lucide-react";
-import { format, subMonths, getMonth, getYear } from 'date-fns';
+import { UserCheck, Loader2 } from "lucide-react";
+import { format, subMonths, getYear, getMonth } from 'date-fns';
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -39,7 +39,7 @@ const formSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof formSchema>;
 
-const DEFAULT_BOTTLE_PRICE = 150; // Price per bottle if not set for user
+const DEFAULT_BOTTLE_PRICE = 150;
 
 const months = Array.from({ length: 12 }, (_, i) => {
     const d = new Date();
@@ -54,6 +54,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>(format(subMonths(new Date(), 1), 'MMMM'));
   const [deliveriesForInvoice, setDeliveriesForInvoice] = useState<Delivery[]>([]);
+  const [loading, setLoading] = useState(false);
   
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(formSchema),
@@ -82,8 +83,6 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   useEffect(() => {
     if (selectedUser && selectedMonth) {
         const monthIndex = months.indexOf(selectedMonth);
-        // This logic assumes the current year for the invoice.
-        // For historical invoices, a year selector would be needed.
         const currentYear = getYear(new Date());
 
         const userDeliveries = selectedUser.deliveries.filter(d => {
@@ -105,22 +104,41 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     }
   }, [selectedUser, selectedMonth, form]);
 
-  function onSubmit(values: InvoiceFormValues) {
-    const newInvoice = addInvoice({ ...values, deliveries: deliveriesForInvoice });
-    onInvoiceCreated(newInvoice);
-    toast({
-      title: "Invoice Created",
-      description: `Invoice for ${values.name} has been generated.`,
-    });
-    form.reset({
-      name: "",
-      amount: 0,
-      paymentMethod: "EasyPaisa",
-      recipientNumber: "",
-      month: format(subMonths(new Date(), 1), 'MMMM'),
-    });
-    setSelectedUser(null);
-    setDeliveriesForInvoice([]);
+  async function onSubmit(values: InvoiceFormValues) {
+    setLoading(true);
+    try {
+        const newInvoice = await addInvoice({ ...values, deliveries: deliveriesForInvoice });
+        if(newInvoice){
+            onInvoiceCreated(newInvoice);
+            toast({
+                title: "Invoice Created",
+                description: `Invoice for ${values.name} has been generated.`,
+            });
+            form.reset({
+                name: "",
+                amount: 0,
+                paymentMethod: "EasyPaisa",
+                recipientNumber: "",
+                month: format(subMonths(new Date(), 1), 'MMMM'),
+            });
+            setSelectedUser(null);
+            setDeliveriesForInvoice([]);
+        } else {
+             toast({
+                variant: "destructive",
+                title: "Error",
+                description: `Could not create invoice. Ensure user exists.`,
+            });
+        }
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Error Creating Invoice",
+            description: error.message || "An unexpected error occurred."
+        });
+    } finally {
+        setLoading(false);
+    }
   }
 
   return (
@@ -220,8 +238,13 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full">Create Invoice</Button>
+        <Button type="submit" className="w-full" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Create Invoice
+        </Button>
       </form>
     </Form>
   );
 }
+
+    

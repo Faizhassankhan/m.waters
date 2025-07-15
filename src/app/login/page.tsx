@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useContext, useState } from "react";
@@ -13,36 +14,30 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Water, Droplets } from "lucide-react";
+import { Droplets, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("admin2007");
+  const [loading, setLoading] = useState(false);
   const { login } = useContext(AppContext);
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username !== 'admin') {
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid username. Please try again.",
-      });
-      return;
-    }
-    const success = login(password);
+    setLoading(true);
+    const { success, error } = await login(password);
     if (success) {
       router.push("/");
     } else {
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: "Invalid password. Please try again.",
+        description: error || "An unexpected error occurred. Please try again.",
       });
     }
+    setLoading(false);
   };
 
   return (
@@ -60,14 +55,13 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
-                required
+                id="email"
+                type="email"
+                value="admin@aquamanager.com"
+                readOnly
+                className="bg-muted"
               />
             </div>
             <div className="space-y-2">
@@ -77,11 +71,12 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="admin2007"
+                placeholder="Enter your password"
                 required
               />
             </div>
-            <Button type="submit" className="w-full font-bold">
+            <Button type="submit" className="w-full font-bold" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Log In
             </Button>
           </form>
@@ -90,3 +85,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    

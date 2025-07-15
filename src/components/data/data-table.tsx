@@ -42,7 +42,7 @@ export function DataTable({ data }: { data: UserData[] }) {
       });
     });
 
-    const sortedMonths = Object.keys(groupedByMonth).sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
+    const sortedMonths = Object.keys(groupedByMonth).sort((a,b) => new Date(b).getTime() - new Date(a).getTime());
 
     const initialExpandedState: Record<string, boolean> = {};
     sortedMonths.forEach((month, index) => {
@@ -80,7 +80,7 @@ export function DataTable({ data }: { data: UserData[] }) {
   }
 
   if (data.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">No data available for the selected month.</p>;
+    return <p className="text-center text-muted-foreground py-8">No delivery data available.</p>;
   }
 
   return (
@@ -113,7 +113,7 @@ export function DataTable({ data }: { data: UserData[] }) {
               const month = row.month as string;
               if (expandedMonths[month]) {
                  return (
-                    <TableRow key={`${user.name}-${month}`}>
+                    <TableRow key={`${user.id}-${month}`}>
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{row.deliveries}</TableCell>
                         <TableCell className="text-right">
@@ -133,3 +133,5 @@ export function DataTable({ data }: { data: UserData[] }) {
     </>
   );
 }
+
+    

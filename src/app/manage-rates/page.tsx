@@ -1,44 +1,59 @@
 
 "use client";
 
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import AuthGuard from "@/components/auth-guard";
 import DashboardLayout from "@/components/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { AppContext } from "@/contexts/app-provider";
-import { UserData } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Save } from "lucide-react";
+import { Save, Loader2 } from "lucide-react";
 
 
 function ManageRatesPage() {
     const { users, updateUserBottlePrice } = useContext(AppContext);
-    const [rates, setRates] = useState<Record<string, number | string>>(
-        users.reduce((acc, user) => {
+    const [rates, setRates] = useState<Record<string, number | string>>({});
+    const [loading, setLoading] = useState<Record<string, boolean>>({});
+
+    const { toast } = useToast();
+    
+    useEffect(() => {
+        const initialRates = users.reduce((acc, user) => {
             acc[user.name] = user.bottlePrice || 150;
             return acc;
-        }, {} as Record<string, number>)
-    );
-    const { toast } = useToast();
+        }, {} as Record<string, number>);
+        setRates(initialRates);
+    }, [users]);
 
     const handleRateChange = (userName: string, value: string) => {
         const numericValue = value === "" ? "" : Number(value);
-        if (!isNaN(numericValue)) {
+        if (!isNaN(numericValue as number)) {
             setRates(prev => ({ ...prev, [userName]: numericValue }));
         }
     };
 
-    const handleSaveRate = (userName: string) => {
+    const handleSaveRate = async (userName: string) => {
         const newRate = Number(rates[userName]);
         if (newRate > 0) {
-            updateUserBottlePrice(userName, newRate);
-            toast({
-                title: "Rate Updated",
-                description: `The per-bottle rate for ${userName} has been set to ${newRate} PKR.`,
-            });
+            setLoading(prev => ({ ...prev, [userName]: true }));
+            try {
+                await updateUserBottlePrice(userName, newRate);
+                toast({
+                    title: "Rate Updated",
+                    description: `The per-bottle rate for ${userName} has been set to ${newRate} PKR.`,
+                });
+            } catch (error: any) {
+                toast({
+                    variant: "destructive",
+                    title: "Update Failed",
+                    description: error.message || "Could not update the rate.",
+                });
+            } finally {
+                setLoading(prev => ({ ...prev, [userName]: false }));
+            }
         } else {
             toast({
                 variant: "destructive",
@@ -76,7 +91,7 @@ function ManageRatesPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {users.map((user) => (
-                                        <TableRow key={user.name}>
+                                        <TableRow key={user.id}>
                                             <TableCell className="font-medium">{user.name}</TableCell>
                                             <TableCell>
                                                 <Input
@@ -87,8 +102,11 @@ function ManageRatesPage() {
                                                 />
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button size="sm" onClick={() => handleSaveRate(user.name)}>
-                                                    <Save className="mr-2 h-4 w-4" /> Save
+                                                <Button size="sm" onClick={() => handleSaveRate(user.name)} disabled={loading[user.name]}>
+                                                    {loading[user.name] 
+                                                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                                                        : <><Save className="mr-2 h-4 w-4" /> Save</>
+                                                    }
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -110,3 +128,5 @@ export default function Home() {
         </AuthGuard>
     );
 }
+
+    

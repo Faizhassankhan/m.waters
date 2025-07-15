@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useRef, useState, useContext, useEffect, useMemo, useCallback } from "react";
+import { useRef, useState, useContext, useEffect, useMemo } from "react";
 import * as htmlToImage from 'html-to-image';
 import { UserData, Delivery } from "@/lib/types";
 import { AppContext } from "@/contexts/app-provider";
@@ -49,6 +49,7 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
   const dataCardRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [user, setUser] = useState(initialUser);
   const [deliveryUpdates, setDeliveryUpdates] = useState<Record<string, string>>({});
   const [deliveryToDelete, setDeliveryToDelete] = useState<Delivery | null>(null);
@@ -56,14 +57,13 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   
-  const { updateUserDelivery, deleteUserDelivery, removeDuplicateDeliveries } = useContext(AppContext);
+  const { updateUserDelivery, deleteUserDelivery, removeDuplicateDeliveries, refreshData } = useContext(AppContext);
   const { toast } = useToast();
 
   useEffect(() => {
     setUser(initialUser);
     if (initialUser && initialUser.deliveries.length > 0) {
-        // Default to the most recent month/year with data
-        const lastDelivery = initialUser.deliveries.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        const lastDelivery = [...initialUser.deliveries].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
         const lastDeliveryDate = new Date(lastDelivery.date);
         setSelectedMonth(getMonth(lastDeliveryDate));
         setSelectedYear(getYear(lastDeliveryDate));
@@ -143,43 +143,56 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
     setDeliveryUpdates(prev => ({ ...prev, [deliveryId]: newDate }));
   };
   
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!user || !deliveryToDelete) return;
-    deleteUserDelivery(user.name, deliveryToDelete.id);
-    
-    // Immediately call onRefresh to get the latest state from context
-    onRefresh();
-
-    toast({
-        title: "Delivery Deleted",
-        description: `The delivery on ${format(new Date(deliveryToDelete.date), "MMM dd")} has been removed.`
-    });
-    setDeliveryToDelete(null);
+    try {
+        await deleteUserDelivery(user.name, deliveryToDelete.id);
+        toast({
+            title: "Delivery Deleted",
+            description: `The delivery on ${format(new Date(deliveryToDelete.date), "MMM dd")} has been removed.`
+        });
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Deletion Failed",
+            description: error.message || "Could not delete delivery."
+        });
+    } finally {
+        setDeliveryToDelete(null);
+    }
   }
 
-  const handleRemoveDuplicates = () => {
-    if (!user) return;
-    removeDuplicateDeliveries(user.name);
-    onRefresh();
-    toast({
-        title: "Duplicates Removed",
-        description: `Duplicate delivery entries for ${user.name} have been removed.`,
-    });
-  }
-
-  const saveChanges = () => {
+  const handleRemoveDuplicates = async () => {
     if (!user) return;
     try {
-        Object.entries(deliveryUpdates).forEach(([deliveryId, newDateStr]) => {
+      await removeDuplicateDeliveries(user.name);
+      toast({
+          title: "Duplicates Removed",
+          description: `Duplicate delivery entries for ${user.name} have been removed.`,
+      });
+    } catch(error: any) {
+       toast({
+            variant: "destructive",
+            title: "Operation Failed",
+            description: error.message || "Could not remove duplicates.",
+        });
+    }
+  }
+
+  const saveChanges = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+        const updatePromises = Object.entries(deliveryUpdates).map(([deliveryId, newDateStr]) => {
             const parsedDate = parse(newDateStr, 'yyyy-MM-dd', new Date());
             if (isNaN(parsedDate.getTime())) {
                 throw new Error(`Invalid date format for one of the entries. Please use YYYY-MM-DD.`);
             }
-            updateUserDelivery(user.name, deliveryId, newDateStr);
+            return updateUserDelivery(user.name, deliveryId, newDateStr);
         });
 
-        onRefresh();
-
+        await Promise.all(updatePromises);
+        
         toast({
             title: "Changes Saved",
             description: "Delivery dates have been successfully updated.",
@@ -192,6 +205,8 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
             title: "Save Failed",
             description: e.message || "Could not save changes.",
         });
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -200,7 +215,7 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
     return (
       <Card className="h-full flex items-center justify-center border-dashed">
         <div className="text-center text-muted-foreground">
-          <p>No user data to display.</p>
+          <p>Search for a user to see their data.</p>
         </div>
       </Card>
     );
@@ -255,7 +270,7 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
                                       </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                      {filteredDeliveries.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(d => (
+                                      {filteredDeliveries.map(d => (
                                           <TableRow key={d.id}>
                                               <TableCell>
                                                   {isEditing ? (
@@ -307,7 +322,7 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
             <div className="w-full">
                 <Label className="text-xs text-muted-foreground">Filter Report</Label>
                 <div className="flex w-full gap-2 mt-1">
-                    <Select onValueChange={(v) => setSelectedMonth(Number(v))} value={String(selectedMonth ?? -1)}>
+                    <Select onValueChange={(v) => setSelectedMonth(Number(v))} value={selectedMonth !== null ? String(selectedMonth) : undefined}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select Month" />
                         </SelectTrigger>
@@ -315,7 +330,7 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
                             {months.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                     <Select onValueChange={(v) => setSelectedYear(Number(v))} value={String(selectedYear ?? -1)}>
+                     <Select onValueChange={(v) => setSelectedYear(Number(v))} value={selectedYear !== null ? String(selectedYear) : undefined}>
                         <SelectTrigger>
                             <SelectValue placeholder="Select Year" />
                         </SelectTrigger>
@@ -350,8 +365,9 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
                     <Button onClick={() => { setIsEditing(false); setDeliveryUpdates({}); }} variant="ghost" className="w-full">
                         <X className="mr-2 h-4 w-4" /> Cancel
                     </Button>
-                    <Button onClick={saveChanges} className="w-full">
-                        <Save className="mr-2 h-4 w-4" /> Save Changes
+                    <Button onClick={saveChanges} className="w-full" disabled={isSaving}>
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                         Save Changes
                     </Button>
                 </div>
             ) : (
