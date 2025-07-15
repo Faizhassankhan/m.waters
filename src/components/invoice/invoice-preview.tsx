@@ -20,10 +20,10 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
     switch(invoice.paymentMethod) {
         case "EasyPaisa":
             // Easypaisa deep link for person-to-person transfer
-            return `easypaisa://send_money/p2p?phone=${number}&amount=${amount}`;
+            return `easypaisa://send_money?receiver_msisdn=${number}&amount=${amount}`;
         case "JazzCash":
             // JazzCash deep link for sending money
-            return `jazzcash://app/sendmoney/mobile?receiver=${number}&amount=${amount}`;
+            return `jc://sendmoney/${number}/${amount}`;
         default:
             // Fallback for bank transfers
             return `our bank details.`;
