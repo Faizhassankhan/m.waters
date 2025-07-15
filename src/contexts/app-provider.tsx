@@ -17,6 +17,7 @@ interface AppContextType {
   }) => void;
   updateUserDelivery: (userName: string, deliveryId: string, newDate: string) => void;
   deleteUserDelivery: (userName: string, deliveryId: string) => void;
+  removeDuplicateDeliveries: (userName: string) => void;
   invoices: Invoice[];
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt">) => Invoice;
   deleteInvoice: (invoiceId: string) => void;
@@ -30,6 +31,7 @@ export const AppContext = createContext<AppContextType>({
   addUserData: () => {},
   updateUserDelivery: () => {},
   deleteUserDelivery: () => {},
+  removeDuplicateDeliveries: () => {},
   invoices: [],
   addInvoice: () => ({} as Invoice),
   deleteInvoice: () => {},
@@ -108,14 +110,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addUserData = (data: { name: string; month: string; date: string; bottles: number; }) => {
     setUsers((prevUsers) => {
-      const newUsers = [...prevUsers];
-      const userIndex = newUsers.findIndex((u) => u.name.toLowerCase() === data.name.toLowerCase());
+      const newUsers = JSON.parse(JSON.stringify(prevUsers));
+      const userIndex = newUsers.findIndex((u: UserData) => u.name.toLowerCase() === data.name.toLowerCase());
       const newDelivery: Delivery = { id: new Date().toISOString(), ...data };
 
       if (userIndex > -1) {
         newUsers[userIndex].deliveries.push(newDelivery);
-        // Sort deliveries by date
-        newUsers[userIndex].deliveries.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        newUsers[userIndex].deliveries.sort((a: Delivery, b: Delivery) => new Date(a.date).getTime() - new Date(b.date).getTime());
       } else {
         newUsers.push({ name: data.name, deliveries: [newDelivery] });
       }
@@ -155,7 +156,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // return newUsers.filter(user => user.deliveries.length > 0);
         return newUsers;
     });
-};
+  };
+
+  const removeDuplicateDeliveries = (userName: string) => {
+    setUsers(prevUsers => {
+        return prevUsers.map(user => {
+            if (user.name === userName) {
+                const uniqueDeliveries = new Map<string, Delivery>();
+                user.deliveries.forEach(delivery => {
+                    // Create a unique key for each delivery. ID is the most reliable.
+                    uniqueDeliveries.set(delivery.id, delivery);
+                });
+                return { ...user, deliveries: Array.from(uniqueDeliveries.values()) };
+            }
+            return user;
+        });
+    });
+  };
 
   const addInvoice = (invoiceData: Omit<Invoice, "id" | "createdAt">) => {
       const newInvoice: Invoice = {
@@ -179,6 +196,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addUserData,
     updateUserDelivery,
     deleteUserDelivery,
+    removeDuplicateDeliveries,
     invoices,
     addInvoice,
     deleteInvoice

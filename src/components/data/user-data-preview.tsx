@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useRef, useState, useContext, useEffect, useMemo } from "react";
+import { useRef, useState, useContext, useEffect, useMemo, useCallback } from "react";
 import * as htmlToImage from 'html-to-image';
 import { UserData, Delivery } from "@/lib/types";
 import { AppContext } from "@/contexts/app-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Share2, Loader2, Save, X, Pencil, Trash2 } from "lucide-react";
+import { Share2, Loader2, Save, X, Pencil, Trash2, RefreshCw, ClipboardX } from "lucide-react";
 import { format, parse, getYear, getMonth } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -37,6 +37,7 @@ import {
 
 interface UserDataPreviewProps {
   user: UserData | null;
+  onRefresh: () => void;
 }
 
 const months = [
@@ -44,7 +45,7 @@ const months = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
+export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPreviewProps) {
   const dataCardRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -55,7 +56,7 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   
-  const { updateUserDelivery, deleteUserDelivery } = useContext(AppContext);
+  const { updateUserDelivery, deleteUserDelivery, removeDuplicateDeliveries } = useContext(AppContext);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -146,8 +147,8 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
     if (!user || !deliveryToDelete) return;
     deleteUserDelivery(user.name, deliveryToDelete.id);
     
-    const updatedUser = { ...user, deliveries: user.deliveries.filter(d => d.id !== deliveryToDelete.id) };
-    setUser(updatedUser);
+    // Immediately call onRefresh to get the latest state from context
+    onRefresh();
 
     toast({
         title: "Delivery Deleted",
@@ -156,28 +157,28 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
     setDeliveryToDelete(null);
   }
 
+  const handleRemoveDuplicates = () => {
+    if (!user) return;
+    removeDuplicateDeliveries(user.name);
+    onRefresh();
+    toast({
+        title: "Duplicates Removed",
+        description: `Duplicate delivery entries for ${user.name} have been removed.`,
+    });
+  }
+
   const saveChanges = () => {
     if (!user) return;
     try {
-        let userToUpdate = user;
         Object.entries(deliveryUpdates).forEach(([deliveryId, newDateStr]) => {
             const parsedDate = parse(newDateStr, 'yyyy-MM-dd', new Date());
             if (isNaN(parsedDate.getTime())) {
                 throw new Error(`Invalid date format for one of the entries. Please use YYYY-MM-DD.`);
             }
             updateUserDelivery(user.name, deliveryId, newDateStr);
-
-            // Update local state for immediate feedback
-            const updatedDeliveries = userToUpdate.deliveries.map(d => {
-                if (d.id === deliveryId) {
-                    return { ...d, date: newDateStr };
-                }
-                return d;
-            });
-            userToUpdate = { ...userToUpdate, deliveries: updatedDeliveries };
         });
 
-        setUser(userToUpdate);
+        onRefresh();
 
         toast({
             title: "Changes Saved",
@@ -325,29 +326,41 @@ export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
                 </div>
             </div>
             <Separator className="w-full" />
-            <div className="flex w-full items-center justify-between gap-4">
-               <div className="flex items-center space-x-2">
+             <div className="flex w-full items-center justify-between gap-4">
+                <div className="flex items-center space-x-2">
+                    <Button onClick={onRefresh} variant="outline" size="sm">
+                        <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                    </Button>
+                    <Button onClick={handleRemoveDuplicates} variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                        <ClipboardX className="mr-2 h-4 w-4" /> Delete Duplicates
+                    </Button>
+                </div>
+                <div className="flex items-center space-x-2">
                   <Switch id="edit-mode" checked={isEditing} onCheckedChange={setIsEditing} disabled={!user.deliveries || user.deliveries.length === 0} />
                   <Label htmlFor="edit-mode" className="flex items-center gap-2 cursor-pointer">
                       <Pencil className="h-4 w-4" /> Edit
                   </Label>
                </div>
-               {isEditing ? (
-                  <div className="flex gap-2">
-                      <Button onClick={() => { setIsEditing(false); setDeliveryUpdates({}); }} variant="ghost" size="sm">
-                          <X className="mr-2 h-4 w-4" /> Cancel
-                      </Button>
-                      <Button onClick={saveChanges} size="sm">
-                          <Save className="mr-2 h-4 w-4" /> Save Changes
-                      </Button>
-                  </div>
-               ) : (
-                  <Button onClick={handleShare} className="w-full max-w-xs" disabled={isSharing}>
-                      {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4"/>}
-                      {isSharing ? 'Generating Image...' : 'Share Report as Image'}
-                  </Button>
-               )}
             </div>
+
+            <Separator className="w-full" />
+            
+            {isEditing ? (
+                <div className="flex w-full gap-2">
+                    <Button onClick={() => { setIsEditing(false); setDeliveryUpdates({}); }} variant="ghost" className="w-full">
+                        <X className="mr-2 h-4 w-4" /> Cancel
+                    </Button>
+                    <Button onClick={saveChanges} className="w-full">
+                        <Save className="mr-2 h-4 w-4" /> Save Changes
+                    </Button>
+                </div>
+            ) : (
+                <Button onClick={handleShare} className="w-full" disabled={isSharing}>
+                    {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4"/>}
+                    {isSharing ? 'Generating Image...' : 'Share Report as Image'}
+                </Button>
+            )}
+
         </CardFooter>
       </div>
       <AlertDialogContent>

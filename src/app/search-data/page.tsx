@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo, useEffect } from "react";
+import { useState, useContext, useMemo, useEffect, useCallback } from "react";
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
 import DashboardLayout from "@/components/dashboard-layout";
@@ -27,14 +27,14 @@ function SearchDataPage() {
         setSelectedUser(foundUser || null);
     }
     
-    // This function will be called from UserDataPreview after a delivery is added
-    const refreshUserData = () => {
+    // This function will be called from UserDataPreview after a delivery is added or data is refreshed
+    const refreshUserData = useCallback(() => {
         if (selectedUser) {
             // Re-find the user from the potentially updated users list in the context
             const updatedUser = users.find(u => u.name === selectedUser.name);
-            setSelectedUser(updatedUser || null);
+            setSelectedUser(updatedUser ? { ...updatedUser } : null);
         }
-    };
+    }, [selectedUser, users]);
     
     // This effect ensures that if the user data is updated globally (e.g., from another page),
     // the currently viewed user is also updated.
@@ -82,7 +82,7 @@ function SearchDataPage() {
                     </div>
                    
                     <div className="lg:col-span-3">
-                        <UserDataPreview user={selectedUser} />
+                        <UserDataPreview user={selectedUser} onRefresh={refreshUserData} />
                     </div>
                 </div>
             </div>
