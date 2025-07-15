@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useContext, useMemo } from "react";
+import { useState, useContext, useMemo, useEffect } from "react";
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
 import DashboardLayout from "@/components/dashboard-layout";
@@ -30,10 +30,20 @@ function SearchDataPage() {
     // This function will be called from UserDataPreview after a delivery is added
     const refreshUserData = () => {
         if (selectedUser) {
+            // Re-find the user from the potentially updated users list in the context
             const updatedUser = users.find(u => u.name === selectedUser.name);
             setSelectedUser(updatedUser || null);
         }
     };
+    
+    // This effect ensures that if the user data is updated globally (e.g., from another page),
+    // the currently viewed user is also updated.
+    useEffect(() => {
+        if (selectedUser) {
+            const updatedUser = users.find(u => u.name === selectedUser.name);
+            setSelectedUser(updatedUser || null);
+        }
+    }, [users]);
 
 
     return (
