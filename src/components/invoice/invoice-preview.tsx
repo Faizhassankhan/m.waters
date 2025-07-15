@@ -86,12 +86,13 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
     <div className="flex flex-col h-full">
       {/* This div is what will be converted to an image */}
       <div ref={invoiceRef} className="bg-background p-4 flex-grow">
-        <Card style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)' }} className="animate-in fade-in-50 bg-white text-card-foreground">
+        <Card style={{ boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.25)' }} className="animate-in fade-in-50 bg-white text-card-foreground">
           <CardHeader className="bg-primary text-primary-foreground rounded-t-lg p-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Droplets className="h-8 w-8" />
-                    <CardTitle className="font-headline text-3xl">M.Waters</CardTitle>
+                    <CardTitle className="font-headline text-3xl flex items-center gap-1">
+                        M<Droplets className="h-6 w-6" />Waters
+                    </CardTitle>
                 </div>
                 <div className="text-right">
                     <p className="font-semibold">INVOICE</p>
