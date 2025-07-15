@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useContext, useEffect } from "react";
@@ -15,27 +16,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  month: z.string().min(1, "Month is required."),
   date: z.string().min(1, "Date is required."),
   bottles: z.coerce.number().min(1, "At least one bottle is required."),
 });
-
-const months = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 
 export function AddDataForm({ onSave, initialName }: { onSave: () => void, initialName?: string }) {
   const { addUserData } = useContext(AppContext);
@@ -45,7 +33,6 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: initialName || "",
-      month: format(new Date(), "MMMM"),
       date: format(new Date(), "yyyy-MM-dd"),
       bottles: 1,
     },
@@ -56,14 +43,14 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
     // It resets the form with the new initial values.
     form.reset({
       name: initialName || "",
-      month: format(new Date(), "MMMM"),
       date: format(new Date(), "yyyy-MM-dd"),
       bottles: 1,
     });
   }, [initialName, form]);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    addUserData(values);
+    const month = format(new Date(values.date), "MMMM");
+    addUserData({ ...values, month });
     toast({
       title: "Success",
       description: `Data for ${values.name} has been saved.`,
@@ -71,7 +58,6 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
     // Reset form but keep the name if it was pre-filled
     form.reset({
         name: initialName || "",
-        month: format(new Date(), "MMMM"),
         date: format(new Date(), "yyyy-MM-dd"),
         bottles: 1,
     });
@@ -91,30 +77,6 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
                   <FormControl>
                     <Input placeholder="e.g., John Doe" {...field} readOnly={!!initialName} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="month"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Month</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a month" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {months.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
