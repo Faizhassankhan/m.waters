@@ -1,29 +1,38 @@
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useContext } from "react";
 import * as htmlToImage from 'html-to-image';
 import { UserData } from "@/lib/types";
+import { AppContext } from "@/contexts/app-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Share2, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import { Share2, Loader2, Save, X, Pencil } from "lucide-react";
+import { format, parse } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 interface UserDataPreviewProps {
   user: UserData | null;
 }
 
-export function UserDataPreview({ user }: UserDataPreviewProps) {
+export function UserDataPreview({ user: initialUser }: UserDataPreviewProps) {
   const dataCardRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [user, setUser] = useState(initialUser);
+  const [deliveryUpdates, setDeliveryUpdates] = useState<Record<string, string>>({});
+
+  const { updateUserDelivery } = useContext(AppContext);
   const { toast } = useToast();
 
   const handleShare = async () => {
-    if (!dataCardRef.current || !user) return;
+    if (!dataCardRef.current || !user || isEditing) return;
 
     setIsSharing(true);
     try {
@@ -65,6 +74,48 @@ export function UserDataPreview({ user }: UserDataPreviewProps) {
       setIsSharing(false);
     }
   };
+
+  const handleDateChange = (deliveryId: string, newDate: string) => {
+    setDeliveryUpdates(prev => ({ ...prev, [deliveryId]: newDate }));
+  };
+
+  const saveChanges = () => {
+    if (!user) return;
+    try {
+        Object.entries(deliveryUpdates).forEach(([deliveryId, newDateStr]) => {
+            // Validate date format before saving
+            const parsedDate = parse(newDateStr, 'yyyy-MM-dd', new Date());
+            if (isNaN(parsedDate.getTime())) {
+                throw new Error(`Invalid date format for one of the entries. Please use YYYY-MM-DD.`);
+            }
+            updateUserDelivery(user.name, deliveryId, newDateStr);
+        });
+
+        // Refresh local user state after successful updates
+        const updatedUser = { ...user };
+        updatedUser.deliveries = user.deliveries.map(d => {
+            if (deliveryUpdates[d.id]) {
+                return { ...d, date: deliveryUpdates[d.id] };
+            }
+            return d;
+        });
+        setUser(updatedUser);
+
+        toast({
+            title: "Changes Saved",
+            description: "Delivery dates have been successfully updated.",
+        });
+        setDeliveryUpdates({});
+        setIsEditing(false);
+    } catch(e: any) {
+        toast({
+            variant: "destructive",
+            title: "Save Failed",
+            description: e.message || "Could not save changes.",
+        });
+    }
+  };
+
 
   if (!user) {
     return (
@@ -132,7 +183,18 @@ export function UserDataPreview({ user }: UserDataPreviewProps) {
                                 <TableBody>
                                     {deliveries.map(d => (
                                         <TableRow key={d.id}>
-                                            <TableCell>{format(new Date(d.date), 'EEEE, MMM dd')}</TableCell>
+                                            <TableCell>
+                                                {isEditing ? (
+                                                    <Input 
+                                                        type="date" 
+                                                        className="h-8 w-auto"
+                                                        value={deliveryUpdates[d.id] ?? d.date}
+                                                        onChange={(e) => handleDateChange(d.id, e.target.value)}
+                                                    />
+                                                ) : (
+                                                    format(new Date(d.date), 'EEEE, MMM dd')
+                                                )}
+                                            </TableCell>
                                             <TableCell className="text-right font-medium">{d.bottles}</TableCell>
                                         </TableRow>
                                     ))}
@@ -159,10 +221,29 @@ export function UserDataPreview({ user }: UserDataPreviewProps) {
         </Card>
       </div>
       <CardFooter className="p-6 pt-4 bg-background rounded-b-lg">
-          <Button onClick={handleShare} className="w-full" disabled={isSharing}>
-              {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4"/>}
-              {isSharing ? 'Generating Image...' : 'Share Report as Image'}
-          </Button>
+          <div className="flex w-full items-center justify-between gap-4">
+             <div className="flex items-center space-x-2">
+                <Switch id="edit-mode" checked={isEditing} onCheckedChange={setIsEditing} />
+                <Label htmlFor="edit-mode" className="flex items-center gap-2 cursor-pointer">
+                    <Pencil className="h-4 w-4" /> Edit Dates
+                </Label>
+             </div>
+             {isEditing ? (
+                <div className="flex gap-2">
+                    <Button onClick={() => { setIsEditing(false); setDeliveryUpdates({}); }} variant="ghost" size="sm">
+                        <X className="mr-2 h-4 w-4" /> Cancel
+                    </Button>
+                    <Button onClick={saveChanges} size="sm">
+                        <Save className="mr-2 h-4 w-4" /> Save
+                    </Button>
+                </div>
+             ) : (
+                <Button onClick={handleShare} className="w-full max-w-xs" disabled={isSharing}>
+                    {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4"/>}
+                    {isSharing ? 'Generating Image...' : 'Share Report as Image'}
+                </Button>
+             )}
+          </div>
       </CardFooter>
     </div>
   );

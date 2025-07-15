@@ -15,6 +15,7 @@ interface AppContextType {
     date: string;
     bottles: number;
   }) => void;
+  updateUserDelivery: (userName: string, deliveryId: string, newDate: string) => void;
   invoices: Invoice[];
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt">) => Invoice;
   deleteInvoice: (invoiceId: string) => void;
@@ -26,6 +27,7 @@ export const AppContext = createContext<AppContextType>({
   logout: () => {},
   users: [],
   addUserData: () => {},
+  updateUserDelivery: () => {},
   invoices: [],
   addInvoice: () => ({} as Invoice),
   deleteInvoice: () => {},
@@ -119,6 +121,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateUserDelivery = (userName: string, deliveryId: string, newDate: string) => {
+    setUsers(prevUsers => {
+      return prevUsers.map(user => {
+        if (user.name === userName) {
+          const updatedDeliveries = user.deliveries.map(delivery => {
+            if (delivery.id === deliveryId) {
+              return { ...delivery, date: newDate, month: new Date(newDate).toLocaleString('default', { month: 'long' }) };
+            }
+            return delivery;
+          });
+          // Sort deliveries after update
+          updatedDeliveries.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          return { ...user, deliveries: updatedDeliveries };
+        }
+        return user;
+      });
+    });
+  };
+
   const addInvoice = (invoiceData: Omit<Invoice, "id" | "createdAt">) => {
       const newInvoice: Invoice = {
         ...invoiceData,
@@ -139,6 +160,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     logout,
     users,
     addUserData,
+    updateUserDelivery,
     invoices,
     addInvoice,
     deleteInvoice
