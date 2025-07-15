@@ -90,7 +90,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
           <CardHeader className="bg-primary text-primary-foreground rounded-t-lg p-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <CardTitle className="font-headline text-3xl flex items-center">
+                    <CardTitle className="font-headline text-3xl flex items-baseline">
                         M<Droplet className="h-4 w-4 mx-px" />Waters
                     </CardTitle>
                 </div>
