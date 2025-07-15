@@ -13,28 +13,21 @@ interface InvoicePreviewProps {
 
 export function InvoicePreview({ invoice }: InvoicePreviewProps) {
   
-  const getPaymentLink = (invoice: Invoice): string => {
-    // These are deep links that should open the respective mobile apps if installed.
-    const amount = invoice.amount;
-    const number = invoice.recipientNumber;
-    switch(invoice.paymentMethod) {
-        case "EasyPaisa":
-            // Easypaisa deep link for person-to-person transfer
-            return `easypaisa://send_money?receiver_msisdn=${number}&amount=${amount}`;
-        case "JazzCash":
-            // JazzCash deep link for sending money
-            return `jc://sendmoney/${number}/${amount}`;
-        default:
-            // Fallback for bank transfers
-            return `our bank details.`;
-    }
-  }
-
   const handleShare = () => {
     if (!invoice) return;
 
-    const paymentLink = getPaymentLink(invoice);
-    const message = `Hello ${invoice.name},\n\nHere is your invoice from M.Waters for PKR ${invoice.amount}.\n\nPlease use the following link to pay via ${invoice.paymentMethod}:\n${paymentLink}\n\nThank you!`;
+    let paymentDetails = "";
+    switch(invoice.paymentMethod) {
+        case "EasyPaisa":
+        case "JazzCash":
+            paymentDetails = `Payment can be made to ${invoice.recipientNumber} via ${invoice.paymentMethod}.`;
+            break;
+        case "Bank Transfer":
+            paymentDetails = "Please contact us for bank details.";
+            break;
+    }
+
+    const message = `*Invoice from M.Waters*\n\nHello ${invoice.name},\n\nThis is your invoice for *PKR ${invoice.amount.toLocaleString()}*.\n\n${paymentDetails}\n\nInvoice ID: ${invoice.id}\nDate: ${format(new Date(invoice.createdAt), 'MMMM dd, yyyy')}\n\nThank you!`;
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -101,7 +94,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
       <CardFooter className="p-6 bg-muted/50 rounded-b-lg">
         <Button onClick={handleShare} className="w-full">
             <Share2 className="mr-2 h-4 w-4"/>
-            Share Invoice
+            Share Invoice on WhatsApp
         </Button>
       </CardFooter>
     </Card>
