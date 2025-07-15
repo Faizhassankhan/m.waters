@@ -86,7 +86,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
     <div className="flex flex-col h-full">
       {/* This div is what will be converted to an image */}
       <div ref={invoiceRef} className="bg-background p-4 flex-grow">
-        <Card className="shadow-lg animate-in fade-in-50 bg-white text-card-foreground">
+        <Card className="shadow-xl animate-in fade-in-50 bg-white text-card-foreground">
           <CardHeader className="bg-primary text-primary-foreground rounded-t-lg p-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
