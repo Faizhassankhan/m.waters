@@ -1,0 +1,147 @@
+"use client";
+
+import React, { createContext, useState, useEffect, ReactNode } from "react";
+import { UserData, Delivery, Invoice } from "@/lib/types";
+import {_} from "next/dist/compiled/@vercel/og/satori-wasm";
+
+interface AppContextType {
+  isAuthenticated: boolean;
+  login: (pass: string) => boolean;
+  logout: () => void;
+  users: UserData[];
+  addUserData: (data: {
+    name: string;
+    month: string;
+    date: string;
+    bottles: number;
+  }) => void;
+  invoices: Invoice[];
+  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt">) => Invoice;
+}
+
+export const AppContext = createContext<AppContextType>({
+  isAuthenticated: false,
+  login: () => false,
+  logout: () => {},
+  users: [],
+  addUserData: () => {},
+  invoices: [],
+  addInvoice: () => ({} as Invoice),
+});
+
+const MOCK_USERS: UserData[] = [
+  {
+    name: "John Doe",
+    deliveries: [
+      { id: "1", month: "January", date: "2024-01-15", bottles: 10 },
+      { id: "2", month: "January", date: "2024-01-25", bottles: 12 },
+      { id: "3", month: "February", date: "2024-02-10", bottles: 8 },
+    ],
+  },
+  {
+    name: "Jane Smith",
+    deliveries: [
+        { id: "4", month: "January", date: "2024-01-20", bottles: 5 },
+    ],
+  },
+];
+
+const MOCK_INVOICES: Invoice[] = [
+    { id: "inv1", name: "John Doe", amount: 1500, paymentMethod: "EasyPaisa", recipientNumber: "03001234567", createdAt: new Date().toISOString() },
+];
+
+
+export function AppProvider({ children }: { children: ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const authStatus = localStorage.getItem("aquaManagerAuth") === "true";
+      setIsAuthenticated(authStatus);
+
+      const storedUsers = localStorage.getItem("aquaManagerUsers");
+      setUsers(storedUsers ? JSON.parse(storedUsers) : MOCK_USERS);
+      
+      const storedInvoices = localStorage.getItem("aquaManagerInvoices");
+      setInvoices(storedInvoices ? JSON.parse(storedInvoices) : MOCK_INVOICES);
+    } catch (error) {
+        // If localStorage is not available or fails, use mock data
+        setUsers(MOCK_USERS);
+        setInvoices(MOCK_INVOICES);
+    }
+    setIsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      try {
+        localStorage.setItem("aquaManagerAuth", String(isAuthenticated));
+        localStorage.setItem("aquaManagerUsers", JSON.stringify(users));
+        localStorage.setItem("aquaManagerInvoices", JSON.stringify(invoices));
+      } catch (error) {
+        console.warn("Could not write to localStorage");
+      }
+    }
+  }, [isAuthenticated, users, invoices, isLoaded]);
+
+  const login = (pass: string) => {
+    // In a real app, username would also be checked.
+    if (pass === "admin2007") {
+      setIsAuthenticated(true);
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+  };
+
+  const addUserData = (data: { name: string; month: string; date: string; bottles: number; }) => {
+    setUsers((prevUsers) => {
+      const newUsers = [...prevUsers];
+      const userIndex = newUsers.findIndex((u) => u.name.toLowerCase() === data.name.toLowerCase());
+      const newDelivery: Delivery = { id: new Date().toISOString(), ...data };
+
+      if (userIndex > -1) {
+        newUsers[userIndex].deliveries.push(newDelivery);
+        // Sort deliveries by date
+        newUsers[userIndex].deliveries.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      } else {
+        newUsers.push({ name: data.name, deliveries: [newDelivery] });
+      }
+      return newUsers;
+    });
+  };
+
+  const addInvoice = (invoiceData: Omit<Invoice, "id" | "createdAt">) => {
+      const newInvoice: Invoice = {
+        ...invoiceData,
+        id: `inv_${new Date().toISOString()}`,
+        createdAt: new Date().toISOString(),
+      };
+      setInvoices(prev => [...prev, newInvoice]);
+      return newInvoice;
+  }
+
+  const value = {
+    isAuthenticated,
+    login,
+    logout,
+    users,
+    addUserData,
+    invoices,
+    addInvoice
+  };
+
+  // Prevent rendering children until state is loaded from localStorage
+  // to avoid hydration mismatch.
+  if (!isLoaded) {
+    return null;
+  }
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
