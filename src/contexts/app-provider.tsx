@@ -1,8 +1,8 @@
+
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode } from "react";
 import { UserData, Delivery, Invoice } from "@/lib/types";
-import { format, subMonths } from 'date-fns';
 
 interface AppContextType {
   isAuthenticated: boolean;
@@ -17,6 +17,7 @@ interface AppContextType {
   }) => void;
   invoices: Invoice[];
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt">) => Invoice;
+  deleteInvoice: (invoiceId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -27,6 +28,7 @@ export const AppContext = createContext<AppContextType>({
   addUserData: () => {},
   invoices: [],
   addInvoice: () => ({} as Invoice),
+  deleteInvoice: () => {},
 });
 
 const MOCK_USERS: UserData[] = [
@@ -127,6 +129,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return newInvoice;
   }
 
+  const deleteInvoice = (invoiceId: string) => {
+    setInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
+  }
+
   const value = {
     isAuthenticated,
     login,
@@ -134,7 +140,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     users,
     addUserData,
     invoices,
-    addInvoice
+    addInvoice,
+    deleteInvoice
   };
 
   // Prevent rendering children until state is loaded from localStorage

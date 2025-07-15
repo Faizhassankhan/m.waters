@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
+import { useState, useContext } from "react";
+import { AppContext } from "@/contexts/app-provider";
 import { Invoice } from "@/lib/types";
 import {
   Table,
@@ -14,11 +14,36 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye } from "lucide-react";
+import { Eye, Trash2 } from "lucide-react";
 import { ViewInvoiceModal } from "./view-invoice-modal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export function InvoiceList({ invoices }: { invoices: Invoice[] }) {
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+    const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+    const { deleteInvoice } = useContext(AppContext);
+    const { toast } = useToast();
+
+    const handleDelete = () => {
+        if (invoiceToDelete) {
+            deleteInvoice(invoiceToDelete.id);
+            toast({
+                title: "Invoice Deleted",
+                description: `Invoice for ${invoiceToDelete.name} has been deleted.`,
+            });
+            setInvoiceToDelete(null);
+        }
+    };
 
     if (invoices.length === 0) {
         return <p className="text-center text-muted-foreground py-8">No invoices found for the current search.</p>;
@@ -53,6 +78,10 @@ export function InvoiceList({ invoices }: { invoices: Invoice[] }) {
                                         <Eye className="h-4 w-4" />
                                         <span className="sr-only">View & Share</span>
                                     </Button>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setInvoiceToDelete(invoice)}>
+                                        <Trash2 className="h-4 w-4" />
+                                        <span className="sr-only">Delete</span>
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -65,7 +94,22 @@ export function InvoiceList({ invoices }: { invoices: Invoice[] }) {
                     onClose={() => setSelectedInvoice(null)}
                 />
             )}
+            <AlertDialog open={!!invoiceToDelete} onOpenChange={() => setInvoiceToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the invoice for <span className="font-bold">{invoiceToDelete?.name}</span>.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+                            Yes, delete invoice
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
-
