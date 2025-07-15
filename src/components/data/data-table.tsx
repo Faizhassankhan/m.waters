@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -34,16 +35,16 @@ export function DataTable({ data }: { data: UserData[] }) {
         if (!groupedByMonth[monthYear]) {
           groupedByMonth[monthYear] = [];
         }
-        // Avoid adding the same user multiple times per month
-        if (!groupedByMonth[monthYear].find(u => u.name === user.name)) {
-             // We only want deliveries for the current month for this user view
-            const monthDeliveries = data.find(u => u.name === user.name)?.deliveries.filter(d => format(new Date(d.date), "MMMM yyyy") === monthYear) || []
+        // Check if this user is already in the list for this month
+        if (!groupedByMonth[monthYear].some(u => u.name === user.name)) {
+            // We only want deliveries for the current month for this user view
+            const monthDeliveries = user.deliveries.filter(d => format(new Date(d.date), "MMMM yyyy") === monthYear) || [];
             groupedByMonth[monthYear].push({ ...user, deliveries: monthDeliveries });
         }
       });
     });
 
-    const sortedMonths = Object.keys(groupedByMonth).sort((a,b) => new Date(a).getTime() - new Date(b).getTime()).reverse();
+    const sortedMonths = Object.keys(groupedByMonth).sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
 
     const initialExpandedState: Record<string, boolean> = {};
     sortedMonths.forEach((month, index) => {
