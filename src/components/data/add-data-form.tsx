@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -50,6 +50,17 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
       bottles: 1,
     },
   });
+
+  useEffect(() => {
+    // This effect runs when the initialName prop changes (e.g., a new user is selected)
+    // It resets the form with the new initial values.
+    form.reset({
+      name: initialName || "",
+      month: format(new Date(), "MMMM"),
+      date: format(new Date(), "yyyy-MM-dd"),
+      bottles: 1,
+    });
+  }, [initialName, form]);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     addUserData(values);
