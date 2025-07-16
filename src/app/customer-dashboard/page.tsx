@@ -161,6 +161,7 @@ function CustomerDashboardPage() {
     const reportTitle = `DELIVERY REPORT - ${months[selectedMonth]?.label.toUpperCase() || ''} ${selectedYear}`;
     
     const paymentStatus = currentInvoice?.paymentStatus;
+    const showPaymentStatus = currentInvoice?.showStatusToCustomer;
     const paymentStatusText = paymentStatus === 'paid' ? 'Paid' : 'Not Paid Yet';
     const PaymentStatusIcon = paymentStatus === 'paid' ? CheckCircle2 : XCircle;
 
@@ -218,7 +219,7 @@ function CustomerDashboardPage() {
                             </ScrollArea>
                             <Separator className="my-6" />
                              <div className="flex justify-between items-center text-right">
-                                {currentInvoice && (
+                                {currentInvoice && showPaymentStatus && (
                                      <div>
                                         <p className="text-sm text-muted-foreground text-left">PAYMENT STATUS</p>
                                         <Badge variant={paymentStatus === 'paid' ? 'success' : 'destructive'} className="text-lg">
@@ -291,5 +292,3 @@ export default function Home() {
         </AuthGuard>
     )
 }
-
-    

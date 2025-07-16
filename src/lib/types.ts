@@ -31,10 +31,9 @@ export interface Invoice {
   bottlePrice?: number;
   paymentMethod: 'EasyPaisa' | 'JazzCash' | 'Bank Transfer';
   paymentStatus?: 'paid' | 'not_paid_yet';
+  showStatusToCustomer?: boolean; // New field to control visibility
   recipientNumber: string;
   createdAt: string; // timestamp with time zone
   month: string;
   deliveries?: Delivery[]; // Joined from deliveries table
 }
-
-    

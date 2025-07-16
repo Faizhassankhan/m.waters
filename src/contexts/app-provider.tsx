@@ -29,6 +29,7 @@ interface AppContextType {
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   updateInvoiceStatus: (invoiceId: string, status: 'paid' | 'not_paid_yet') => Promise<void>;
+  updateInvoiceVisibility: (invoiceId: string, isVisible: boolean) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -51,6 +52,7 @@ export const AppContext = createContext<AppContextType>({
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
   updateInvoiceStatus: async () => {},
+  updateInvoiceVisibility: async () => {},
   refreshData: async () => {},
 });
 
@@ -66,7 +68,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchAllData = useCallback(async () => {
-    setLoading(true);
+    // No need to set loading here to avoid screen flicker on minor updates
     try {
         const { data, error } = await supabase.rpc('get_all_user_data');
 
@@ -126,6 +128,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const handleAuthChange = useCallback(async (_event: string, session: any) => {
     const currentUser = session?.user ?? null;
     setUser(currentUser);
+    setLoading(true);
 
     if (currentUser) {
         await fetchAllData();
@@ -223,15 +226,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserProfile = async (name: string, email: string) => {
-    // This is a simplified user management function that uses the standard sign-up flow.
-    
-    // We must sign out the current admin to sign up a new user.
     const { data: { session: adminSession } } = await supabase.auth.getSession();
     if (!adminSession) {
         throw new Error("Admin not logged in. Cannot create user.");
     }
     
-    // 1. Sign up the new user with a random password. They can reset it later if they need to log in.
     const randomPassword = Math.random().toString(36).slice(-8);
     const { data: { user }, error: signUpError } = await supabase.auth.signUp({
         email: email,
@@ -242,32 +241,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     if (signUpError) {
-        await supabase.auth.setSession(adminSession); // Re-authenticate admin
+        await supabase.auth.setSession(adminSession);
         throw new Error(`Failed to create user auth account: ${signUpError.message}`);
     }
     if (!user) {
-        await supabase.auth.setSession(adminSession); // Re-authenticate admin
+        await supabase.auth.setSession(adminSession);
         throw new Error("User object was not returned after sign up.");
     }
 
-    // 2. Insert the user's profile into the public.users table
-    // We are temporarily logged in as the new user, so RLS allows this insert.
     const { error: insertError } = await supabase
         .from('users')
         .insert({ id: user.id, name: name });
 
     if (insertError) {
-        // If profile creation fails, we must delete the orphaned auth user
-        // This requires admin privileges, so we'll skip it on the client-side to avoid errors.
-        // The ideal solution is a server-side function, but this is safer for now.
         console.error("Failed to create user profile, but auth user was created:", user.id);
         throw new Error(`User auth account was created, but profile failed: ${insertError.message}`);
     }
     
-    // 3. Re-authenticate the admin user
     await supabase.auth.setSession(adminSession);
     
-    // Refresh the data to show the new user
     await fetchAllData();
   };
 
@@ -330,13 +322,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
   
   const updateInvoiceStatus = async (invoiceId: string, status: 'paid' | 'not_paid_yet') => {
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('invoices')
         .update({ payment_status: status })
-        .eq('id', invoiceId);
+        .eq('id', invoiceId)
+        .select()
+        .single();
+
     if (error) throw error;
-    await refreshData();
+    
+    // Update local state immediately for better UX
+    setInvoices(prev => prev.map(inv => 
+        inv.id === invoiceId 
+        ? { ...inv, paymentStatus: data.payment_status, showStatusToCustomer: data.show_status_to_customer } 
+        : inv
+    ));
   };
+  
+  const updateInvoiceVisibility = async (invoiceId: string, isVisible: boolean) => {
+    const { data, error } = await supabase
+        .from('invoices')
+        .update({ show_status_to_customer: isVisible })
+        .eq('id', invoiceId)
+        .select()
+        .single();
+    
+    if (error) throw error;
+    
+    setInvoices(prev => prev.map(inv => 
+        inv.id === invoiceId 
+        ? { ...inv, paymentStatus: data.payment_status, showStatusToCustomer: data.show_status_to_customer } 
+        : inv
+    ));
+  }
 
   const updateUserDelivery = async (userId: string, deliveryId: string, newDate: string) => {
     const { error } = await supabase.from('deliveries').update({ date: newDate }).eq('id', deliveryId).eq('user_id', userId);
@@ -393,10 +411,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addInvoice,
     deleteInvoice,
     updateInvoiceStatus,
+    updateInvoiceVisibility,
     refreshData,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    
