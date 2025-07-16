@@ -115,8 +115,13 @@ function CustomerDashboardPage() {
     const renderHeader = () => (
         <header className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2 font-semibold font-headline text-lg">
-                <svg viewBox="0 0 24 24" className="h-6 w-6 text-primary"><path fill="currentColor" d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z"></path></svg>
-                <span>m.waters Portal</span>
+                <svg width="140" height="40" viewBox="0 0 170 80" className="text-primary -ml-4">
+                    <circle cx="40" cy="40" r="35" fill="currentColor"/>
+                    <text x="40" y="52" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="50" fill="hsl(var(--primary-foreground))" textAnchor="middle" dy=".3em">m</text>
+                    <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="currentColor"/>
+                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="currentColor" dy=".3em">waters</text>
+                    <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--muted-foreground))" dy=".3em">FIT TO LIVE</text>
+                </svg>
             </div>
              <Button onClick={handleLogout} variant="outline" size="sm">
                 <LogOut className="mr-2 h-4 w-4" />
@@ -157,15 +162,13 @@ function CustomerDashboardPage() {
                         <CardHeader className="bg-primary text-primary-foreground rounded-t-lg p-6">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="font-headline text-3xl flex items-baseline">
-                                    m
-                                    <svg
-                                        viewBox="0 0 24 24"
-                                        className="h-2 w-2 mx-px inline-block align-baseline"
-                                        style={{ fill: 'hsl(var(--primary-foreground))', transform: 'rotate(180deg)' }}
-                                    >
-                                        <path d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z" />
+                                     <svg width="140" height="40" viewBox="0 0 170 80" className="text-primary-foreground -ml-4">
+                                        <circle cx="40" cy="40" r="35" fill="hsl(var(--primary-foreground))" stroke="hsl(var(--primary))" strokeWidth="2" />
+                                        <text x="40" y="52" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="50" fill="hsl(var(--primary))" textAnchor="middle" dy=".3em">m</text>
+                                        <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="hsl(var(--primary))"/>
+                                        <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="hsl(var(--primary-foreground))" dy=".3em">waters</text>
+                                        <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--primary-foreground))" dy=".3em">FIT TO LIVE</text>
                                     </svg>
-                                    waters
                                 </CardTitle>
                                 <div className="text-right">
                                     <p className="font-semibold">{reportTitle}</p>
@@ -268,5 +271,3 @@ export default function Home() {
         </AuthGuard>
     )
 }
-
-    

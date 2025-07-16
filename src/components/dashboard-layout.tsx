@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Droplets, LayoutDashboard, FileText, LogOut, PanelLeft, Search, Users, Tags, FileSpreadsheet, UserPlus } from "lucide-react";
+import { LayoutDashboard, FileText, LogOut, PanelLeft, Search, Users, Tags, FileSpreadsheet, UserPlus } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Data", icon: LayoutDashboard },
@@ -59,18 +59,13 @@ export default function DashboardLayout({
     <div className="flex h-full flex-col gap-2">
         <div className="flex h-[60px] items-center border-b border-sidebar-border px-6">
             <Link className="flex items-center gap-2 font-semibold font-headline text-lg" href="/">
-                 <svg viewBox="0 0 24 24" className="h-6 w-6 text-sidebar-primary"><path fill="currentColor" d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z"></path></svg>
-                <span className="flex items-baseline">
-                    m
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-1.5 w-1.5 mx-px inline-block align-baseline"
-                        style={{ fill: 'hsl(var(--sidebar-primary))', transform: 'rotate(180deg)' }}
-                      >
-                        <path d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z" />
-                      </svg>
-                    waters
-                </span>
+                <svg width="140" height="40" viewBox="0 0 170 80" className="text-sidebar-primary">
+                    <circle cx="40" cy="40" r="35" fill="currentColor"/>
+                    <text x="40" y="52" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="50" fill="hsl(var(--sidebar-primary-foreground))" textAnchor="middle" dy=".3em">m</text>
+                    <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="currentColor"/>
+                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="hsl(var(--sidebar-foreground))" dy=".3em">waters</text>
+                    <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--sidebar-foreground))" dy=".3em">FIT TO LIVE</text>
+                </svg>
             </Link>
         </div>
         <div className="flex-1 overflow-auto py-2">

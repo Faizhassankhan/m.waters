@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Droplets, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
@@ -69,20 +69,16 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm shadow-2xl">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex items-center justify-center">
-             <svg viewBox="0 0 24 24" className="h-12 w-12 text-primary"><path fill="currentColor" d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z"></path></svg>
-          </div>
-          <CardTitle className="text-3xl font-headline flex items-baseline justify-center">
-              m
-              <svg
-                viewBox="0 0 24 24"
-                className="h-2 w-2 mx-px inline-block align-baseline"
-                style={{ fill: 'hsl(var(--primary))', transform: 'rotate(180deg)' }}
-              >
-                <path d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z" />
-              </svg>
-              waters
-            </CardTitle>
+            <div className="flex flex-col items-center justify-center">
+                 <svg width="150" height="70" viewBox="0 0 170 80" className="text-primary">
+                    <circle cx="40" cy="40" r="35" fill="currentColor"/>
+                    <text x="40" y="52" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="50" fill="hsl(var(--primary-foreground))" textAnchor="middle" dy=".3em">m</text>
+                    <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="currentColor"/>
+                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="currentColor" dy=".3em">waters</text>
+                    <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--muted-foreground))" dy=".3em">FIT TO LIVE</text>
+                </svg>
+            </div>
+          <CardTitle className="sr-only">m.waters</CardTitle>
           <CardDescription>
             Admin & Customer Login
           </CardDescription>
