@@ -249,7 +249,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (error) throw error;
     
-    await fetchAllData();
+    // We will manually refresh data on the page where needed,
+    // to prevent UI interruption here.
+    // await fetchAllData();
 
     const newInvoice: Invoice = {
         id: data.id,

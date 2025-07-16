@@ -49,7 +49,7 @@ const months = Array.from({ length: 12 }, (_, i) => {
 
 
 export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: Invoice) => void }) {
-  const { addInvoice, users } = useContext(AppContext);
+  const { addInvoice, users, refreshData } = useContext(AppContext);
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>(format(subMonths(new Date(), 1), 'MMMM'));
@@ -123,6 +123,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             });
             setSelectedUser(null);
             setDeliveriesForInvoice([]);
+            refreshData(); // Manually refresh data after success
         } else {
              toast({
                 variant: "destructive",
