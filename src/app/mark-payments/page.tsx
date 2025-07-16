@@ -151,7 +151,7 @@ function MarkPaymentsPage() {
                                                               onClick={() => handleVisibilityChange(invoice.id, false)}
                                                               disabled={!invoice.showStatusToCustomer}
                                                           >
-                                                              <EyeOff className="mr-2 h-4 w-4" /> Unshow
+                                                              <EyeOff className="mr-2 h-4 w-4" /> Hide
                                                           </Button>
                                                       </div>
                                                     )}
