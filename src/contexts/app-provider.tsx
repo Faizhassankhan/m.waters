@@ -83,7 +83,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
             throw error;
         }
-
+        
         if (data) {
             setUserProfiles(data.userProfiles || []);
             setInvoices(data.invoices || []);
@@ -101,8 +101,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             });
             setInvoices(processedInvoices);
         } else {
+             setUserProfiles([]);
+             setInvoices([]);
+             setCustomerData(null);
              console.error("Error fetching application data: RPC returned no data. This may be a permission issue or the function may have failed silently.");
-             throw new Error("RPC returned no data.");
         }
 
     } catch (e: any) {
@@ -114,7 +116,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
         setLoading(false);
     }
-}, []);
+  }, []);
 
 
   const handleAuthChange = useCallback(async (_event: string, session: any) => {
@@ -161,6 +163,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
                   options: { data: { user_type: 'admin' } }
               });
               if (signUpError) throw signUpError;
+              
+              // After signing up the admin, we must create their profile record in the 'users' table
+              if (signUpData.user) {
+                  const { error: insertError } = await supabase.from('users').insert({ id: signUpData.user.id, name: 'Admin' });
+                  if (insertError) throw new Error(`Could not create admin profile: ${insertError.message}`);
+              }
+              
               data = signUpData;
           } else if (error) {
               throw error;
@@ -215,28 +224,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data: existingName } = await supabase.from('users').select('id').eq('name', name).single();
     if (existingName) throw new Error(`User with this name already exists.`);
 
-    const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password: Math.random().toString(36).slice(-8), // Create a random password for them
-        options: {
-            data: {
-                user_type: "customer",
-            },
-        },
+    const { error } = await supabase.functions.invoke('create-user-profile', {
+      body: { name, email },
     });
 
-    if (signUpError) throw signUpError;
-    if (!user) throw new Error("Failed to create auth user.");
-
-    // Now that the auth user exists, create their profile in the 'users' table
-    const { error: insertError } = await supabase.from('users').insert({ id: user.id, name });
-
-    if (insertError) {
-        // If profile creation fails, we should try to delete the auth user to avoid orphans
-        // This requires admin privileges, so we'll skip it on the client-side to avoid errors.
-        // The ideal solution is a server-side function, but this is safer for now.
-        console.error("Failed to create user profile, but auth user was created:", user.id);
-        throw new Error(`User auth account was created, but profile failed: ${insertError.message}`);
+    if (error) {
+      throw new Error(`Failed to create user: ${error.message}`);
     }
     
     await fetchAllData();
