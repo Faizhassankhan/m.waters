@@ -200,32 +200,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const login = async (emailOrName: string, password: string) => {
       // Admin Login
-      if (emailOrName.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-          let { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
-              email: ADMIN_EMAIL, 
-              password: ADMIN_PASSWORD 
-          });
-
-          if (authError?.message.includes("Invalid login credentials")) {
-              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                  email: ADMIN_EMAIL,
-                  password: ADMIN_PASSWORD,
-                  options: { data: { user_type: 'admin' } }
+      if (emailOrName.toLowerCase() === ADMIN_EMAIL) {
+          if (password === ADMIN_PASSWORD) {
+              let { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
+                  email: ADMIN_EMAIL, 
+                  password: ADMIN_PASSWORD 
               });
-              if (signUpError) return { success: false, error: signUpError.message, userType: null };
-              authData = signUpData;
-          } else if (authError) {
-              return { success: false, error: authError.message, userType: null };
-          }
-          
-          if (!authData.user) {
-             return { success: false, error: "Could not authenticate admin user.", userType: null };
-          }
 
-          await supabase.auth.updateUser({ data: { user_type: 'admin' } });
-          setUser(authData.user);
-          await fetchAllAdminData();
-          return { success: true, error: null, userType: 'admin' };
+              // If admin user doesn't exist, sign them up
+              if (authError?.message.includes("Invalid login credentials")) {
+                  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                      email: ADMIN_EMAIL,
+                      password: ADMIN_PASSWORD,
+                      options: { data: { user_type: 'admin' } }
+                  });
+                  if (signUpError) return { success: false, error: signUpError.message, userType: null };
+                  authData = signUpData;
+              } else if (authError) {
+                  return { success: false, error: authError.message, userType: null };
+              }
+              
+              if (!authData.user) {
+                 return { success: false, error: "Could not authenticate admin user.", userType: null };
+              }
+
+              // Ensure user_type is set correctly
+              if (authData.user.user_metadata.user_type !== 'admin') {
+                await supabase.auth.updateUser({ data: { user_type: 'admin' } });
+              }
+              
+              setUser(authData.user);
+              await fetchAllAdminData();
+              return { success: true, error: null, userType: 'admin' };
+          } else {
+              return { success: false, error: "Invalid password for admin.", userType: null };
+          }
       }
       
       // Customer Login
@@ -358,7 +367,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let userToInvoice = users.find(u => u.name.toLowerCase() === invoiceData.name.toLowerCase());
 
     if (!userToInvoice) {
-        throw "Cannot create invoice for non-existent user. Please add them first.";
+        throw new Error("Cannot create invoice for non-existent user. Please add them first.");
     }
 
     const { data, error } = await supabase
