@@ -215,10 +215,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId">): Promise<Invoice | undefined> => {
-    const userToInvoice = users.find(u => u.name.toLowerCase() === invoiceData.name.toLowerCase());
+    let userToInvoice = users.find(u => u.name.toLowerCase() === invoiceData.name.toLowerCase());
+
     if (!userToInvoice) {
-        console.error("Cannot create invoice for non-existent user.");
-        return;
+        // If user does not exist, create a new one
+        const { data: newUser, error: userError } = await supabase
+            .from('users')
+            .insert({ name: invoiceData.name, bottle_price: 150 }) // Default price
+            .select('id, name, bottle_price')
+            .single();
+
+        if (userError) throw userError;
+        
+        userToInvoice = {
+            id: newUser.id,
+            name: newUser.name,
+            bottlePrice: newUser.bottle_price,
+            deliveries: []
+        };
     }
 
     const { data, error } = await supabase
@@ -235,7 +249,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (error) throw error;
     
-    // Construct the full invoice object to return for immediate preview
+    await fetchAllData();
+
     const newInvoice: Invoice = {
         id: data.id,
         userId: data.user_id,
@@ -247,10 +262,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         month: data.month,
         deliveries: invoiceData.deliveries || []
     };
-
-    // After successfully creating, trigger a refresh in the background.
-    // We don't await this so the UI can update immediately with the returned invoice.
-    fetchAllData();
 
     return newInvoice;
   }
