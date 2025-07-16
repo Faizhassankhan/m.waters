@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { DataProfile, RegisteredUser, Delivery, Invoice, AddUserDataPayload } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { User, PostgrestError } from "@supabase/supabase-js";
 import { format } from "date-fns";
 
 interface AppContextType {
@@ -71,79 +71,94 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchAllAdminData = useCallback(async () => {
-    // Step 1: Fetch all data profiles
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('data_profiles')
-      .select('id, name, bottle_price, can_share_report, linked_user_id')
-      .order('name', { ascending: true });
+    try {
+      // Step 1: Fetch all data profiles
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('data_profiles')
+        .select('id, name, bottle_price, can_share_report, linked_user_id')
+        .order('name', { ascending: true });
 
-    if (profilesError) throw profilesError;
+      if (profilesError) throw profilesError;
 
-    // Step 2: Fetch all deliveries
-    const { data: deliveriesData, error: deliveriesError } = await supabase
-      .from('deliveries')
-      .select('id, profile_id, date, bottles')
-      .order('date', { ascending: false });
+      // Step 2: Fetch all deliveries
+      const { data: deliveriesData, error: deliveriesError } = await supabase
+        .from('deliveries')
+        .select('id, profile_id, date, bottles')
+        .order('date', { ascending: false });
 
-    if (deliveriesError) throw deliveriesError;
-    
-    // Step 3: Map deliveries to their respective profiles
-    const profilesWithDeliveries = profilesData.map(profile => {
-        const profileDeliveries = (deliveriesData || [])
-            .filter(delivery => delivery.profile_id === profile.id)
-            .map(d => ({
-                id: d.id,
-                date: d.date,
-                bottles: d.bottles,
-                month: format(new Date(d.date), 'MMMM')
-            }));
+      if (deliveriesError) throw deliveriesError;
+      
+      // Step 3: Map deliveries to their respective profiles
+      const profilesWithDeliveries = profilesData.map(profile => {
+          const profileDeliveries = (deliveriesData || [])
+              .filter(delivery => delivery.profile_id === profile.id)
+              .map(d => ({
+                  id: d.id,
+                  date: d.date,
+                  bottles: d.bottles,
+                  month: format(new Date(d.date), 'MMMM')
+              }));
 
-        return {
-            id: profile.id,
-            name: profile.name,
-            bottlePrice: profile.bottle_price,
-            canShareReport: profile.can_share_report,
-            linked_user_id: profile.linked_user_id,
-            deliveries: profileDeliveries,
-        };
-    });
-    
-    setDataProfiles(profilesWithDeliveries as DataProfile[]);
+          return {
+              id: profile.id,
+              name: profile.name,
+              bottlePrice: profile.bottle_price,
+              canShareReport: profile.can_share_report,
+              linked_user_id: profile.linked_user_id,
+              deliveries: profileDeliveries,
+          };
+      });
+      
+      setDataProfiles(profilesWithDeliveries as DataProfile[]);
 
-    // Fetch registered users (customers)
-    const { data: registeredUsersData, error: registeredUsersError } = await supabase
-        .from('users_public')
-        .select('id, email');
-    if (registeredUsersError) throw registeredUsersError;
-    setRegisteredUsers(registeredUsersData as RegisteredUser[]);
+      // Fetch registered users (customers)
+      const { data: registeredUsersData, error: registeredUsersError } = await supabase
+          .from('users_public')
+          .select('id, email');
+      if (registeredUsersError) throw registeredUsersError;
+      setRegisteredUsers(registeredUsersData as RegisteredUser[]);
 
-    // Fetch invoices
-    const { data: invoicesData, error: invoicesError } = await supabase
-      .from('invoices')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (invoicesError) throw invoicesError;
+      // Fetch invoices
+      const { data: invoicesData, error: invoicesError } = await supabase
+        .from('invoices')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (invoicesError) throw invoicesError;
 
-    const formattedInvoices = invoicesData.map(inv => {
-        const associatedProfile = profilesWithDeliveries.find(p => p.id === inv.profile_id);
-        const deliveriesForInvoice = associatedProfile?.deliveries.filter(d => {
-            const deliveryDate = new Date(d.date);
-            return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
-        }) || [];
-        return {
-            id: inv.id,
-            profileId: inv.profile_id,
-            name: associatedProfile?.name || 'Unknown Profile',
-            amount: inv.amount,
-            bottlePrice: associatedProfile?.bottlePrice,
-            paymentMethod: inv.payment_method,
-            recipientNumber: inv.recipient_number,
-            createdAt: inv.created_at,
-            month: inv.month,
-            deliveries: deliveriesForInvoice
-        } as Invoice;
-    })
-    setInvoices(formattedInvoices);
+      const formattedInvoices = invoicesData.map(inv => {
+          const associatedProfile = profilesWithDeliveries.find(p => p.id === inv.profile_id);
+          const deliveriesForInvoice = associatedProfile?.deliveries.filter(d => {
+              const deliveryDate = new Date(d.date);
+              return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
+          }) || [];
+          return {
+              id: inv.id,
+              profileId: inv.profile_id,
+              name: associatedProfile?.name || 'Unknown Profile',
+              amount: inv.amount,
+              bottlePrice: associatedProfile?.bottlePrice,
+              paymentMethod: inv.payment_method,
+              recipientNumber: inv.recipient_number,
+              createdAt: inv.created_at,
+              month: inv.month,
+              deliveries: deliveriesForInvoice
+          } as Invoice;
+      })
+      setInvoices(formattedInvoices);
+    } catch(err) {
+        const error = err as PostgrestError;
+        // This is a common error if the user hasn't set up their DB schema.
+        if (error.code === '42P01') { // relation does not exist
+            console.warn(
+                '%cDATABASE SCHEMA NOT DETECTED',
+                'color: #f87171; font-weight: bold; font-size: 14px;',
+                '\nIt looks like your database tables are not set up. Please copy the contents of `schema.sql` and run it in your Supabase SQL Editor to create the required tables.'
+            );
+        } else {
+            // Rethrow other errors so they can be handled downstream
+            throw error;
+        }
+    }
   }, []);
   
   const fetchCustomerData = useCallback(async (userId: string) => {
@@ -199,7 +214,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         } catch (error: any) {
             console.error("Error fetching data on auth change:", error.message || error);
-            // Optionally set an error state here to show in the UI
         }
     } else {
         // Clear all state on logout
