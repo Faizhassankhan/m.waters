@@ -10,7 +10,7 @@ export interface Delivery {
 export interface UserProfile {
   id: string; // uuid from supabase, links to auth.users
   name: string;
-  email: string;
+  email?: string; // This is now optional as it's primarily in auth.users
   bottlePrice: number;
   canShareReport: boolean;
   deliveries: Delivery[];

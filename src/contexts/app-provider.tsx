@@ -13,13 +13,11 @@ interface AppContextType {
   login: (emailOrName: string, pass: string) => Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }>;
   logout: () => Promise<void>;
   
-  // Admin-specific data
   userProfiles: UserProfile[];
   invoices: Invoice[];
   
   loading: boolean;
   
-  // Admin actions
   addUserData: (data: AddUserDataPayload) => Promise<void>;
   addUserProfile: (name: string, email: string) => Promise<void>;
   deleteUserProfile: (profileId: string) => Promise<void>;
@@ -64,10 +62,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchAllAdminData = useCallback(async () => {
-    // Step 1: Fetch all user profiles
+    // Step 1: Fetch all user profiles from your 'users' table
     const { data: profilesData, error: profilesError } = await supabase
       .from('users')
-      .select('id, name, email, bottle_price, can_share_report')
+      .select('id, name, bottle_price, can_share_report')
       .order('name', { ascending: true });
 
     if (profilesError) {
@@ -82,7 +80,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw profilesError;
     }
 
-    // Step 2: Fetch all deliveries
+    // Step 2: Fetch all auth users to get their emails
+    const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
+    if (authUsersError) throw authUsersError;
+
+    const emailMap = new Map(authUsers.map(u => [u.id, u.email]));
+
+    // Step 3: Fetch all deliveries
     const { data: deliveriesData, error: deliveriesError } = await supabase
       .from('deliveries')
       .select('id, user_id, date, bottles')
@@ -90,7 +94,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (deliveriesError) throw deliveriesError;
     
-    // Step 3: Map deliveries to their respective profiles
+    // Step 4: Map deliveries to their respective profiles and add emails
     const profilesWithDeliveries = profilesData.map(profile => {
         const profileDeliveries = (deliveriesData || [])
             .filter(delivery => delivery.user_id === profile.id)
@@ -104,7 +108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return {
             id: profile.id,
             name: profile.name,
-            email: profile.email,
+            email: emailMap.get(profile.id) || 'No email',
             bottlePrice: profile.bottle_price,
             canShareReport: profile.can_share_report,
             deliveries: profileDeliveries,
@@ -113,7 +117,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     setUserProfiles(profilesWithDeliveries as UserProfile[]);
 
-    // Step 4: Fetch invoices
+    // Step 5: Fetch invoices
     const { data: invoicesData, error: invoicesError } = await supabase
       .from('invoices')
       .select('*')
@@ -142,16 +146,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setInvoices(formattedInvoices);
   }, []);
   
-  const fetchCustomerData = useCallback(async (userId: string) => {
-      // For customers, their data is directly on their user record.
+  const fetchCustomerData = useCallback(async (userId: string, userEmail?: string) => {
       const { data: profileData, error: profileError } = await supabase
         .from('users')
-        .select(`id, name, email, bottle_price, can_share_report`)
+        .select(`id, name, bottle_price, can_share_report`)
         .eq('id', userId)
         .single();
       
       if (profileError) {
-          if (profileError.code !== 'PGRST116') {
+          if (profileError.code !== 'PGRST116') { // 'PGRST116' means no rows returned, which is fine.
              console.error("Error fetching customer profile:", profileError);
           }
           setCustomerData(null);
@@ -163,7 +166,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Fetch deliveries for that user profile
       const { data: deliveriesData, error: deliveriesError } = await supabase
         .from('deliveries')
         .select('id, date, bottles')
@@ -175,7 +177,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const formattedCustomerData = {
           id: profileData.id,
           name: profileData.name,
-          email: profileData.email,
+          email: userEmail || 'N/A', // Use the email from the auth user
           bottlePrice: profileData.bottle_price,
           canShareReport: profileData.can_share_report,
           deliveries: (deliveriesData || []).map(d => ({
@@ -197,13 +199,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (userType === 'admin') {
                 await fetchAllAdminData();
             } else if (userType === 'customer') {
-                await fetchCustomerData(currentUser.id);
+                await fetchCustomerData(currentUser.id, currentUser.email);
             }
         } catch (error: any) {
             console.error("Error fetching data on auth change:", error.message || error);
         }
     } else {
-        // Clear all state on logout
         setCustomerData(null);
         setUserProfiles([]);
         setInvoices([]);
@@ -215,7 +216,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(handleAuthChange);
 
-    // Initial check
     supabase.auth.getSession().then(({ data: { session } }) => {
         handleAuthChange("INITIAL_SESSION", session);
     });
@@ -228,14 +228,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const login = async (emailOrName: string, password: string): Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }> => {
     try {
-      // Admin Login
       if (emailOrName.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
           let { data, error } = await supabase.auth.signInWithPassword({ 
               email: ADMIN_EMAIL, 
               password: ADMIN_PASSWORD 
           });
 
-          // If admin user doesn't exist, sign them up
           if (error?.message.includes("Invalid login credentials")) {
               const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                   email: ADMIN_EMAIL,
@@ -250,15 +248,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           
           if (!data.user) throw new Error("Could not authenticate admin user.");
           
-          // Ensure user_type is set correctly
           if (data.user.user_metadata.user_type !== 'admin') {
-            await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
+            const { error: updateUserError } = await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
+            if (updateUserError) throw updateUserError;
           }
           
           return { success: true, error: null, userType: 'admin' };
       }
       
-      // Customer Login
       const { data, error } = await supabase.auth.signInWithPassword({
           email: emailOrName,
           password: password,
@@ -271,12 +268,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("This email is not registered as a customer account.");
       }
       
-      const { data: userProfile } = await supabase.from('users').select('id').eq('id', data.user.id).single();
-      if (!userProfile) {
-          const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email, email: data.user.email });
+      const { data: userProfile, error: profileError } = await supabase.from('users').select('id').eq('id', data.user.id).single();
+      if (profileError && profileError.code === 'PGRST116') { // No profile exists, create one
+          const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email?.split('@')[0] || 'New User' });
           if(insertError) throw insertError;
+      } else if (profileError) {
+          throw profileError;
       }
-
 
       return { success: true, error: null, userType: 'customer' };
 
@@ -290,19 +288,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserProfile = async (name: string, email: string) => {
-    const { data: existing } = await supabase.from('users').select('id').eq('name', name).single();
-    if (existing) throw new Error(`User with this name already exists.`);
+    const { data: existingName } = await supabase.from('users').select('id').eq('name', name).single();
+    if (existingName) throw new Error(`User with this name already exists.`);
 
-    const { data: existingEmail } = await supabase.from('users').select('id').eq('email', email).single();
-    if (existingEmail) throw new Error(`User with this email already exists.`);
+    const { data: existingUser, error: findUserError } = await supabase.auth.admin.listUsers({ email });
+    if (findUserError) throw findUserError;
+    if (existingUser.users.length > 0) throw new Error(`A user with this email already exists in the authentication system.`);
 
-    const { error } = await supabase.from('users').insert({ name, email, bottle_price: 100, can_share_report: true });
-    if (error) throw error;
+    const { data: newUser, error: signUpError } = await supabase.auth.admin.createUser({
+        email,
+        password: Math.random().toString(36).slice(-8), // Create a random password
+        email_confirm: true, // Auto-confirm the email
+        user_metadata: { user_type: 'customer' }
+    });
+    if (signUpError) throw signUpError;
+    if (!newUser.user) throw new Error("Failed to create auth user.");
+
+    const { error: insertError } = await supabase.from('users').insert({ id: newUser.user.id, name });
+    if (insertError) {
+        // If profile creation fails, delete the auth user to avoid orphans
+        await supabase.auth.admin.deleteUser(newUser.user.id);
+        throw insertError;
+    }
+    
     await fetchAllAdminData();
   };
 
   const deleteUserProfile = async (userId: string) => {
-    const { error } = await supabase.from('users').delete().eq('id', userId);
+    // Supabase is set up with cascading deletes, so deleting the auth user will delete the profile.
+    const { error } = await supabase.auth.admin.deleteUser(userId);
     if (error) throw error;
     await fetchAllAdminData();
   };
@@ -401,7 +415,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
         if (user?.user_metadata.user_type === 'customer') {
-            await fetchCustomerData(user.id);
+            await fetchCustomerData(user.id, user.email);
         } else if (user?.user_metadata.user_type === 'admin') {
             await fetchAllAdminData();
         }

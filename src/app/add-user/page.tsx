@@ -58,7 +58,7 @@ function AddUserPage() {
       await addUserProfile(values.name, values.email);
       toast({
         title: "Success",
-        description: `Customer "${values.name}" has been created.`,
+        description: `Customer "${values.name}" has been created and an invitation has been sent to ${values.email}.`,
       });
       form.reset();
     } catch (error: any) {
@@ -106,7 +106,7 @@ function AddUserPage() {
               <CardHeader>
                 <CardTitle className="font-headline flex items-center gap-2"><UserCog /> Add New Customer</CardTitle>
                 <CardDescription>
-                  Create customer profiles here. This allows you to track their deliveries and generate invoices. The email doesn't need to be a registered account initially.
+                  Create customer profiles here. This will create an authenticated user account and a data profile for them.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -197,7 +197,7 @@ function AddUserPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the profile for <span className="font-bold">{profileToDelete?.name}</span> and all of their associated delivery data and invoices. This action cannot be undone.
+              This will permanently delete the profile for <span className="font-bold">{profileToDelete?.name}</span> and all of their associated delivery data and invoices. This will also delete their login account. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
