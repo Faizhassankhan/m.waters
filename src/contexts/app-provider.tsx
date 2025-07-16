@@ -215,24 +215,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data: existingName } = await supabase.from('users').select('id').eq('name', name).single();
     if (existingName) throw new Error(`User with this name already exists.`);
 
-    const { data: existingUser, error: findUserError } = await supabase.auth.admin.listUsers({ email });
-    if (findUserError) throw findUserError;
-    if (existingUser.users.length > 0) throw new Error(`A user with this email already exists in the authentication system.`);
-
-    const { data: newUser, error: signUpError } = await supabase.auth.admin.createUser({
+    const { data: { user }, error: signUpError } = await supabase.auth.signUp({
         email,
-        password: Math.random().toString(36).slice(-8), // Create a random password
-        email_confirm: true, // Auto-confirm the email
-        user_metadata: { user_type: 'customer' }
+        password: Math.random().toString(36).slice(-8), // Create a random password for them
+        options: {
+            data: {
+                user_type: "customer",
+            },
+        },
     });
-    if (signUpError) throw signUpError;
-    if (!newUser.user) throw new Error("Failed to create auth user.");
 
-    const { error: insertError } = await supabase.from('users').insert({ id: newUser.user.id, name });
+    if (signUpError) throw signUpError;
+    if (!user) throw new Error("Failed to create auth user.");
+
+    // Now that the auth user exists, create their profile in the 'users' table
+    const { error: insertError } = await supabase.from('users').insert({ id: user.id, name });
+
     if (insertError) {
-        // If profile creation fails, delete the auth user to avoid orphans
-        await supabase.auth.admin.deleteUser(newUser.user.id);
-        throw insertError;
+        // If profile creation fails, we should try to delete the auth user to avoid orphans
+        // This requires admin privileges, so we'll skip it on the client-side to avoid errors.
+        // The ideal solution is a server-side function, but this is safer for now.
+        console.error("Failed to create user profile, but auth user was created:", user.id);
+        throw new Error(`User auth account was created, but profile failed: ${insertError.message}`);
     }
     
     await fetchAllData();
