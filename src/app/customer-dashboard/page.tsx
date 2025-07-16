@@ -5,8 +5,9 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, AlertCircle } from "lucide-react";
+import { Loader2, Share2, LogOut, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { format, getYear, getMonth } from "date-fns";
@@ -63,6 +64,12 @@ function CustomerDashboardPage() {
             const deliveryDate = new Date(d.date);
             return getYear(deliveryDate) === selectedYear && getMonth(deliveryDate) === selectedMonth;
         });
+    }, [customerData, selectedMonth, selectedYear]);
+
+    const currentInvoice = useMemo(() => {
+        if (!customerData || !customerData.invoices) return null;
+        const monthName = months[selectedMonth].label;
+        return customerData.invoices.find(inv => inv.month === monthName && getYear(new Date(inv.createdAt)) === selectedYear);
     }, [customerData, selectedMonth, selectedYear]);
 
     const handleShare = async () => {
@@ -152,6 +159,10 @@ function CustomerDashboardPage() {
     }
     
     const reportTitle = `DELIVERY REPORT - ${months[selectedMonth]?.label.toUpperCase() || ''} ${selectedYear}`;
+    
+    const paymentStatus = currentInvoice?.paymentStatus;
+    const paymentStatusText = paymentStatus === 'paid' ? 'Paid' : 'Not Paid Yet';
+    const PaymentStatusIcon = paymentStatus === 'paid' ? CheckCircle2 : XCircle;
 
     return (
         <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
@@ -206,7 +217,16 @@ function CustomerDashboardPage() {
                                 )}
                             </ScrollArea>
                             <Separator className="my-6" />
-                            <div className="flex justify-end items-center text-right">
+                             <div className="flex justify-between items-center text-right">
+                                {currentInvoice && (
+                                     <div>
+                                        <p className="text-sm text-muted-foreground text-left">PAYMENT STATUS</p>
+                                        <Badge variant={paymentStatus === 'paid' ? 'success' : 'destructive'} className="text-lg">
+                                            <PaymentStatusIcon className="mr-2 h-4 w-4" />
+                                            {paymentStatusText}
+                                        </Badge>
+                                    </div>
+                                )}
                                 <div>
                                     <p className="text-sm text-muted-foreground">TOTAL BOTTLES (IN PERIOD)</p>
                                     <p className="font-bold text-3xl font-headline text-primary">{filteredDeliveries.reduce((sum, d) => sum + d.bottles, 0)}</p>
@@ -271,3 +291,5 @@ export default function Home() {
         </AuthGuard>
     )
 }
+
+    

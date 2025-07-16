@@ -14,6 +14,7 @@ export interface UserProfile {
   bottlePrice: number;
   canShareReport: boolean;
   deliveries: Delivery[];
+  invoices?: Invoice[]; // Now includes invoices for customer dashboard
 }
 
 export interface AddUserDataPayload {
@@ -29,8 +30,11 @@ export interface Invoice {
   amount: number;
   bottlePrice?: number;
   paymentMethod: 'EasyPaisa' | 'JazzCash' | 'Bank Transfer';
+  paymentStatus?: 'paid' | 'not_paid_yet';
   recipientNumber: string;
   createdAt: string; // timestamp with time zone
   month: string;
   deliveries?: Delivery[]; // Joined from deliveries table
 }
+
+    

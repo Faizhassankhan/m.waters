@@ -28,6 +28,7 @@ interface AppContextType {
   updateUserName: (userId: string, newName: string) => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
+  updateInvoiceStatus: (invoiceId: string, status: 'paid' | 'not_paid_yet') => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -49,6 +50,7 @@ export const AppContext = createContext<AppContextType>({
   updateUserName: async () => {},
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
+  updateInvoiceStatus: async () => {},
   refreshData: async () => {},
 });
 
@@ -101,7 +103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 }) || [];
                 return { ...inv, deliveries: deliveriesForInvoice, bottlePrice: profile?.bottlePrice };
             });
-            setInvoices(processedInvoices);
+            setInvoices(processedInvoices.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         } else {
              setUserProfiles([]);
              setInvoices([]);
@@ -326,6 +328,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
   }
+  
+  const updateInvoiceStatus = async (invoiceId: string, status: 'paid' | 'not_paid_yet') => {
+    const { error } = await supabase
+        .from('invoices')
+        .update({ payment_status: status })
+        .eq('id', invoiceId);
+    if (error) throw error;
+    await refreshData();
+  };
 
   const updateUserDelivery = async (userId: string, deliveryId: string, newDate: string) => {
     const { error } = await supabase.from('deliveries').update({ date: newDate }).eq('id', deliveryId).eq('user_id', userId);
@@ -381,8 +392,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateUserName,
     addInvoice,
     deleteInvoice,
+    updateInvoiceStatus,
     refreshData,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
