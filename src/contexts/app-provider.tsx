@@ -14,6 +14,7 @@ interface AppContextType {
   users: UserData[];
   loading: boolean;
   addUserData: (data: AddUserDataPayload) => Promise<void>;
+  addUser: (name: string) => Promise<void>;
   updateUserDelivery: (userName: string, deliveryId: string, newDate: string) => Promise<void>;
   deleteUserDelivery: (userName: string, deliveryId: string) => Promise<void>;
   removeDuplicateDeliveries: (userName: string) => Promise<void>;
@@ -31,6 +32,7 @@ export const AppContext = createContext<AppContextType>({
   users: [],
   loading: true,
   addUserData: async () => {},
+  addUser: async () => {},
   updateUserDelivery: async () => {},
   deleteUserDelivery: async () => {},
   removeDuplicateDeliveries: async () => {},
@@ -164,33 +166,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setInvoices([]);
   };
 
-  const addUserData = async (data: AddUserDataPayload) => {
-    let userId;
+  const addUser = async (name: string) => {
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('name', name)
+      .single();
+    
+    if (existingUser) {
+        throw new Error(`User with name "${name}" already exists.`);
+    }
 
-    // Check if user exists, if not, create them
+    const { error } = await supabase
+        .from('users')
+        .insert({ name: name, bottle_price: 150 }); // default price
+    
+    if (error) throw error;
+    await fetchAllData();
+  };
+
+  const addUserData = async (data: AddUserDataPayload) => {
+    // User must exist to add data
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
       .eq('name', data.name)
       .single();
 
-    if (existingUser) {
-      userId = existingUser.id;
-    } else {
-      const { data: newUser, error: userError } = await supabase
-        .from('users')
-        .insert({ name: data.name, bottle_price: 150 }) // default price
-        .select('id')
-        .single();
-      if (userError) throw userError;
-      userId = newUser.id;
+    if (!existingUser) {
+      throw new Error("User does not exist. Please add them from the 'Add User' page first.");
     }
 
     // Add the delivery record
     const { error: deliveryError } = await supabase
       .from('deliveries')
       .insert({
-        user_id: userId,
+        user_id: existingUser.id,
         date: data.date,
         bottles: data.bottles,
       });
@@ -218,10 +229,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let userToInvoice = users.find(u => u.name.toLowerCase() === invoiceData.name.toLowerCase());
 
     if (!userToInvoice) {
-        // If user does not exist, create a new one
         const { data: newUser, error: userError } = await supabase
             .from('users')
-            .insert({ name: invoiceData.name, bottle_price: 150 }) // Default price
+            .insert({ name: invoiceData.name, bottle_price: 150 })
             .select('id, name, bottle_price')
             .single();
 
@@ -233,6 +243,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             bottlePrice: newUser.bottle_price,
             deliveries: []
         };
+        await fetchAllData();
     }
 
     const { data, error } = await supabase
@@ -248,10 +259,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .single();
     
     if (error) throw error;
-    
-    // We will manually refresh data on the page where needed,
-    // to prevent UI interruption here.
-    // await fetchAllData();
 
     const newInvoice: Invoice = {
         id: data.id,
@@ -264,6 +271,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         month: data.month,
         deliveries: invoiceData.deliveries || []
     };
+    
+    setInvoices(prev => [newInvoice, ...prev]);
 
     return newInvoice;
   }
@@ -329,6 +338,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     users,
     loading,
     addUserData,
+    addUser,
     updateUserDelivery,
     deleteUserDelivery,
     removeDuplicateDeliveries,

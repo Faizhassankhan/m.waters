@@ -28,13 +28,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Droplets, LayoutDashboard, FileText, LogOut, PanelLeft, Search, Users, Tags, FileSpreadsheet } from "lucide-react";
+import { Droplets, LayoutDashboard, FileText, LogOut, PanelLeft, Search, Users, Tags, FileSpreadsheet, UserPlus } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Data", icon: LayoutDashboard },
-  { href: "/search-data", label: "Search Data", icon: Users },
+  { href: "/search-data", label: "Search Data", icon: Search },
+  { href: "/add-user", label: "Add User", icon: UserPlus },
   { href: "/invoice", label: "Create Invoice", icon: FileText },
-  { href: "/invoices", label: "Search Invoices", icon: Search },
+  { href: "/invoices", label: "Search Invoices", icon: FileText },
   { href: "/manage-rates", label: "Manage Rates", icon: Tags },
   { href: "/users-sheet", label: "Users Sheet", icon: FileSpreadsheet },
 ];

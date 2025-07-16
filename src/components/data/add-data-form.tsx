@@ -16,19 +16,26 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { AddUserDataPayload } from "@/lib/types";
 
 const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters."),
+  name: z.string().min(1, "Please select a user."),
   date: z.string().min(1, "Date is required."),
   bottles: z.coerce.number().min(1, "At least one bottle is required."),
 });
 
 export function AddDataForm({ onSave, initialName }: { onSave: () => void, initialName?: string }) {
-  const { addUserData } = useContext(AppContext);
+  const { addUserData, users } = useContext(AppContext);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -84,9 +91,20 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., John Doe" {...field} readOnly={!!initialName} />
-                  </FormControl>
+                   <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!initialName}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a user" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {users.map(user => (
+                        <SelectItem key={user.id} value={user.name}>
+                          {user.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -126,5 +144,3 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
     </Form>
   );
 }
-
-    
