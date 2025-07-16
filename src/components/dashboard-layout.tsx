@@ -34,6 +34,7 @@ const navItems = [
   { href: "/", label: "Data", icon: LayoutDashboard },
   { href: "/search-data", label: "Search Data", icon: Search },
   { href: "/add-user", label: "Add User", icon: UserPlus },
+  { href: "/manage-users", label: "Manage Users", icon: Users },
   { href: "/invoice", label: "Create Invoice", icon: FileText },
   { href: "/invoices", label: "Search Invoices", icon: FileText },
   { href: "/manage-rates", label: "Manage Rates", icon: Tags },
@@ -111,7 +112,7 @@ export default function DashboardLayout({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar>
-                  <AvatarImage src="https://placehold.co/100x100" />
+                  <AvatarImage src="https://placehold.co/100x100" data-ai-hint="profile avatar" />
                   <AvatarFallback>A</AvatarFallback>
                 </Avatar>
               </Button>

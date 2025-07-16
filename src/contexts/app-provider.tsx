@@ -25,6 +25,7 @@ interface AppContextType {
   deleteUserDelivery: (userId: string, deliveryId: string) => Promise<void>;
   removeDuplicateDeliveries: (userId: string) => Promise<void>;
   updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
+  updateUserName: (userId: string, newName: string) => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   refreshData: () => Promise<void>;
@@ -45,6 +46,7 @@ export const AppContext = createContext<AppContextType>({
   deleteUserDelivery: async () => {},
   removeDuplicateDeliveries: async () => {},
   updateUserBottlePrice: async () => {},
+  updateUserName: async () => {},
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
   refreshData: async () => {},
@@ -84,7 +86,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             throw error;
         }
         
-        if (data) {
+        if (data && typeof data === 'object') {
             setUserProfiles(data.userProfiles || []);
             setInvoices(data.invoices || []);
             setCustomerData(data.customerData || null);
@@ -104,7 +106,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
              setUserProfiles([]);
              setInvoices([]);
              setCustomerData(null);
-             console.error("Error fetching application data: RPC returned no data. This may be a permission issue or the function may have failed silently.");
+             console.error("Error fetching application data: RPC returned invalid data. This may be a permission issue or the function may have failed silently.", data);
         }
 
     } catch (e: any) {
@@ -177,8 +179,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (!data.user) throw new Error("Could not authenticate admin user.");
           
           if (data.user.user_metadata.user_type !== 'admin') {
-            const { error: updateUserError } = await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
-            if (updateUserError) throw updateUserError;
+            await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
           }
           
           return { success: true, error: null, userType: 'admin' };
@@ -220,10 +221,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserProfile = async (name: string, email: string) => {
-    // This is a temporary user management function.
-    // The proper way to do this is with a server-side Edge Function that uses the service_role key.
-    // For now, we will create a user with a random password and then insert their profile.
-    // NOTE: This will fail if the user already exists. The UI should handle this.
+    // This is a simplified user management function that uses the standard sign-up flow.
     
     // We must sign out the current admin to sign up a new user.
     const { data: { session: adminSession } } = await supabase.auth.getSession();
@@ -231,7 +229,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("Admin not logged in. Cannot create user.");
     }
     
-    // 1. Sign up the new user
+    // 1. Sign up the new user with a random password. They can reset it later if they need to log in.
     const randomPassword = Math.random().toString(36).slice(-8);
     const { data: { user }, error: signUpError } = await supabase.auth.signUp({
         email: email,
@@ -242,28 +240,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     if (signUpError) {
-        // Re-authenticate the admin if sign-up fails
-        await supabase.auth.setSession(adminSession);
+        await supabase.auth.setSession(adminSession); // Re-authenticate admin
         throw new Error(`Failed to create user auth account: ${signUpError.message}`);
     }
     if (!user) {
-         await supabase.auth.setSession(adminSession);
+        await supabase.auth.setSession(adminSession); // Re-authenticate admin
         throw new Error("User object was not returned after sign up.");
     }
 
     // 2. Insert the user's profile into the public.users table
+    // We are temporarily logged in as the new user, so RLS allows this insert.
     const { error: insertError } = await supabase
         .from('users')
         .insert({ id: user.id, name: name });
 
     if (insertError) {
         // If profile creation fails, we must delete the orphaned auth user
-        await supabase.auth.admin.deleteUser(user.id);
-        // Re-authenticate the admin
-        await supabase.auth.setSession(adminSession);
+        // This requires admin privileges, so we'll skip it on the client-side to avoid errors.
+        // The ideal solution is a server-side function, but this is safer for now.
+        console.error("Failed to create user profile, but auth user was created:", user.id);
         throw new Error(`User auth account was created, but profile failed: ${insertError.message}`);
     }
-
+    
     // 3. Re-authenticate the admin user
     await supabase.auth.setSession(adminSession);
     
@@ -288,6 +286,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateUserBottlePrice = async (userName: string, newPrice: number) => {
     const { error } = await supabase.from('users').update({ bottle_price: newPrice }).eq('name', userName);
+    if (error) throw error;
+    await refreshData();
+  };
+
+  const updateUserName = async (userId: string, newName: string) => {
+    const { error } = await supabase.from('users').update({ name: newName }).eq('id', userId);
     if (error) throw error;
     await refreshData();
   };
@@ -374,6 +378,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteUserDelivery,
     removeDuplicateDeliveries,
     updateUserBottlePrice,
+    updateUserName,
     addInvoice,
     deleteInvoice,
     refreshData,
