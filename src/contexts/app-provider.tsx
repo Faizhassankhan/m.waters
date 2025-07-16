@@ -50,6 +50,7 @@ export const AppContext = createContext<AppContextType>({
 });
 
 const ADMIN_EMAIL = "admin@aquamanager.com";
+const ADMIN_PASSWORD = "admin2007";
 const CUSTOMER_PASSWORD = "2025";
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -199,11 +200,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const login = async (emailOrName: string, password: string) => {
       // Admin Login
-      if (emailOrName.toLowerCase() === ADMIN_EMAIL) {
-          const { data, error } = await supabase.auth.signInWithPassword({ email: ADMIN_EMAIL, password });
-          if (error) return { success: false, error: error.message, userType: null };
+      if (emailOrName.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+          let { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
+              email: ADMIN_EMAIL, 
+              password: ADMIN_PASSWORD 
+          });
+
+          if (authError?.message.includes("Invalid login credentials")) {
+              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                  email: ADMIN_EMAIL,
+                  password: ADMIN_PASSWORD,
+                  options: { data: { user_type: 'admin' } }
+              });
+              if (signUpError) return { success: false, error: signUpError.message, userType: null };
+              authData = signUpData;
+          } else if (authError) {
+              return { success: false, error: authError.message, userType: null };
+          }
+          
+          if (!authData.user) {
+             return { success: false, error: "Could not authenticate admin user.", userType: null };
+          }
+
           await supabase.auth.updateUser({ data: { user_type: 'admin' } });
-          setUser(data.user);
+          setUser(authData.user);
           await fetchAllAdminData();
           return { success: true, error: null, userType: 'admin' };
       }
