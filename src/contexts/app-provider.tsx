@@ -170,7 +170,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .single();
       
       if (profileError) {
-        if (profileError.code === 'PGRST116') {
+        if (profileError.code === 'PGRST116' || profileError.code === '42P01') {
             setCustomerData(null);
             return;
         }
@@ -454,3 +454,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
