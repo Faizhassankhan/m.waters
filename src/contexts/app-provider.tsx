@@ -78,6 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setUserProfiles([]);
                 setInvoices([]);
                 setCustomerData(null);
+                setLoading(false);
                 return;
             }
             throw error;
@@ -99,6 +100,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 return { ...inv, deliveries: deliveriesForInvoice, bottlePrice: profile?.bottlePrice };
             });
             setInvoices(processedInvoices);
+        } else {
+             console.error("Error fetching application data: RPC returned no data. This may be a permission issue or the function may have failed silently.");
+             throw new Error("RPC returned no data.");
         }
 
     } catch (e: any) {
