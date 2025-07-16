@@ -72,7 +72,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                  console.warn(
                     '%cDATABASE FUNCTION NOT DETECTED',
                     'color: #f87171; font-weight: bold; font-size: 14px;',
-                    "The database is not set up correctly. Please run the provided SQL script in your Supabase SQL Editor."
+                    "The database function is not set up correctly. Please run the provided SQL script in your Supabase SQL Editor."
                 );
                 // Set empty state to prevent app crash
                 setUserProfiles([]);
@@ -164,7 +164,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
               });
               if (signUpError) throw signUpError;
               
-              // After signing up the admin, we must create their profile record in the 'users' table
               if (signUpData.user) {
                   const { error: insertError } = await supabase.from('users').insert({ id: signUpData.user.id, name: 'Admin' });
                   if (insertError) throw new Error(`Could not create admin profile: ${insertError.message}`);
@@ -221,17 +220,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserProfile = async (name: string, email: string) => {
-    const { data: existingName } = await supabase.from('users').select('id').eq('name', name).single();
-    if (existingName) throw new Error(`User with this name already exists.`);
-
-    const { error } = await supabase.functions.invoke('create-user-profile', {
-      body: { name, email },
-    });
-
-    if (error) {
-      throw new Error(`Failed to create user: ${error.message}`);
+    // This is a temporary user management function.
+    // The proper way to do this is with a server-side Edge Function that uses the service_role key.
+    // For now, we will create a user with a random password and then insert their profile.
+    // NOTE: This will fail if the user already exists. The UI should handle this.
+    
+    // We must sign out the current admin to sign up a new user.
+    const { data: { session: adminSession } } = await supabase.auth.getSession();
+    if (!adminSession) {
+        throw new Error("Admin not logged in. Cannot create user.");
     }
     
+    // 1. Sign up the new user
+    const randomPassword = Math.random().toString(36).slice(-8);
+    const { data: { user }, error: signUpError } = await supabase.auth.signUp({
+        email: email,
+        password: randomPassword,
+        options: {
+            data: { user_type: 'customer' }
+        }
+    });
+
+    if (signUpError) {
+        // Re-authenticate the admin if sign-up fails
+        await supabase.auth.setSession(adminSession);
+        throw new Error(`Failed to create user auth account: ${signUpError.message}`);
+    }
+    if (!user) {
+         await supabase.auth.setSession(adminSession);
+        throw new Error("User object was not returned after sign up.");
+    }
+
+    // 2. Insert the user's profile into the public.users table
+    const { error: insertError } = await supabase
+        .from('users')
+        .insert({ id: user.id, name: name });
+
+    if (insertError) {
+        // If profile creation fails, we must delete the orphaned auth user
+        await supabase.auth.admin.deleteUser(user.id);
+        // Re-authenticate the admin
+        await supabase.auth.setSession(adminSession);
+        throw new Error(`User auth account was created, but profile failed: ${insertError.message}`);
+    }
+
+    // 3. Re-authenticate the admin user
+    await supabase.auth.setSession(adminSession);
+    
+    // Refresh the data to show the new user
     await fetchAllData();
   };
 
