@@ -2,19 +2,19 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { DataProfile, RegisteredUser, Delivery, Invoice, AddUserDataPayload } from "@/lib/types";
+import { UserProfile, RegisteredUser, Delivery, Invoice, AddUserDataPayload } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
 import { User, PostgrestError } from "@supabase/supabase-js";
 import { format } from "date-fns";
 
 interface AppContextType {
   user: User | null;
-  customerData: DataProfile | null;
+  customerData: UserProfile | null;
   login: (emailOrName: string, pass: string) => Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }>;
   logout: () => Promise<void>;
   
   // Admin-specific data
-  dataProfiles: DataProfile[];
+  userProfiles: UserProfile[];
   registeredUsers: RegisteredUser[];
   invoices: Invoice[];
   
@@ -22,15 +22,13 @@ interface AppContextType {
   
   // Admin actions
   addUserData: (data: AddUserDataPayload) => Promise<void>;
-  addDataProfile: (name: string) => Promise<void>;
-  deleteDataProfile: (profileId: string) => Promise<void>;
-  updateProfileDelivery: (profileId: string, deliveryId: string, newDate: string) => Promise<void>;
-  deleteProfileDelivery: (profileId: string, deliveryId: string) => Promise<void>;
-  removeDuplicateDeliveries: (profileId: string) => Promise<void>;
-  updateUserBottlePrice: (profileName: string, newPrice: number) => Promise<void>;
-  linkProfileToUser: (profileId: string, userId: string) => Promise<void>;
-  unlinkProfile: (profileId: string) => Promise<void>;
-  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "profileId">) => Promise<Invoice | undefined>;
+  addUserProfile: (name: string, email: string, userId: string) => Promise<void>;
+  deleteUserProfile: (profileId: string) => Promise<void>;
+  updateUserDelivery: (userId: string, deliveryId: string, newDate: string) => Promise<void>;
+  deleteUserDelivery: (userId: string, deliveryId: string) => Promise<void>;
+  removeDuplicateDeliveries: (userId: string) => Promise<void>;
+  updateUserBottlePrice: (userId: string, newPrice: number) => Promise<void>;
+  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   refreshData: () => Promise<void>;
 }
@@ -40,19 +38,17 @@ export const AppContext = createContext<AppContextType>({
   customerData: null,
   login: async () => ({ success: false, error: "Not implemented", userType: null }),
   logout: async () => {},
-  dataProfiles: [],
+  userProfiles: [],
   registeredUsers: [],
   invoices: [],
   loading: true,
   addUserData: async () => {},
-  addDataProfile: async () => {},
-  deleteDataProfile: async () => {},
-  updateProfileDelivery: async () => {},
-  deleteProfileDelivery: async () => {},
+  addUserProfile: async () => {},
+  deleteUserProfile: async () => {},
+  updateUserDelivery: async () => {},
+  deleteUserDelivery: async () => {},
   removeDuplicateDeliveries: async () => {},
   updateUserBottlePrice: async () => {},
-  linkProfileToUser: async () => {},
-  unlinkProfile: async () => {},
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
   refreshData: async () => {},
@@ -64,18 +60,18 @@ const ADMIN_PASSWORD = "admin2007";
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [customerData, setCustomerData] = useState<DataProfile | null>(null);
-  const [dataProfiles, setDataProfiles] = useState<DataProfile[]>([]);
+  const [customerData, setCustomerData] = useState<UserProfile | null>(null);
+  const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAllAdminData = useCallback(async () => {
     try {
-      // Step 1: Fetch all data profiles
+      // Step 1: Fetch all user profiles
       const { data: profilesData, error: profilesError } = await supabase
-        .from('data_profiles')
-        .select('id, name, bottle_price, can_share_report, linked_user_id')
+        .from('users')
+        .select('id, name, email, bottle_price, can_share_report')
         .order('name', { ascending: true });
 
       if (profilesError) throw profilesError;
@@ -83,7 +79,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Step 2: Fetch all deliveries
       const { data: deliveriesData, error: deliveriesError } = await supabase
         .from('deliveries')
-        .select('id, profile_id, date, bottles')
+        .select('id, user_id, date, bottles')
         .order('date', { ascending: false });
 
       if (deliveriesError) throw deliveriesError;
@@ -91,7 +87,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Step 3: Map deliveries to their respective profiles
       const profilesWithDeliveries = profilesData.map(profile => {
           const profileDeliveries = (deliveriesData || [])
-              .filter(delivery => delivery.profile_id === profile.id)
+              .filter(delivery => delivery.user_id === profile.id)
               .map(d => ({
                   id: d.id,
                   date: d.date,
@@ -102,21 +98,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return {
               id: profile.id,
               name: profile.name,
+              email: profile.email,
               bottlePrice: profile.bottle_price,
               canShareReport: profile.can_share_report,
-              linked_user_id: profile.linked_user_id,
               deliveries: profileDeliveries,
           };
       });
       
-      setDataProfiles(profilesWithDeliveries as DataProfile[]);
+      setUserProfiles(profilesWithDeliveries as UserProfile[]);
 
-      // Fetch registered users (customers)
-      const { data: registeredUsersData, error: registeredUsersError } = await supabase
-          .from('users_public')
-          .select('id, email');
-      if (registeredUsersError) throw registeredUsersError;
-      setRegisteredUsers(registeredUsersData as RegisteredUser[]);
+      // Fetch registered users (customers from auth table)
+      const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
+      if (authUsersError) throw authUsersError;
+
+      const customerUsers = authUsers
+        .filter(u => u.user_metadata?.user_type === 'customer')
+        .map(u => ({ id: u.id, email: u.email || '' }));
+      setRegisteredUsers(customerUsers);
 
       // Fetch invoices
       const { data: invoicesData, error: invoicesError } = await supabase
@@ -126,14 +124,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (invoicesError) throw invoicesError;
 
       const formattedInvoices = invoicesData.map(inv => {
-          const associatedProfile = profilesWithDeliveries.find(p => p.id === inv.profile_id);
+          const associatedProfile = profilesWithDeliveries.find(p => p.id === inv.user_id);
           const deliveriesForInvoice = associatedProfile?.deliveries.filter(d => {
               const deliveryDate = new Date(d.date);
               return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
           }) || [];
           return {
               id: inv.id,
-              profileId: inv.profile_id,
+              userId: inv.user_id,
               name: associatedProfile?.name || 'Unknown Profile',
               amount: inv.amount,
               bottlePrice: associatedProfile?.bottlePrice,
@@ -147,26 +145,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setInvoices(formattedInvoices);
     } catch(err) {
         const error = err as PostgrestError;
-        // This is a common error if the user hasn't set up their DB schema.
         if (error.code === '42P01') { // relation does not exist
             console.warn(
                 '%cDATABASE SCHEMA NOT DETECTED',
                 'color: #f87171; font-weight: bold; font-size: 14px;',
-                '\nIt looks like your database tables are not set up. Please copy the contents of `schema.sql` and run it in your Supabase SQL Editor to create the required tables.'
+                '\nIt looks like your database tables are not set up. Please run the SQL script provided to create the required tables.'
             );
         } else {
-            // Rethrow other errors so they can be handled downstream
-            throw error;
+            console.error("Error fetching admin data:", error.message || error);
         }
     }
   }, []);
   
   const fetchCustomerData = useCallback(async (userId: string) => {
-      // Step 1: Fetch the linked data profile
+      // Step 1: Fetch the user profile from 'users' table
       const { data: profileData, error: profileError } = await supabase
-        .from('data_profiles')
+        .from('users')
         .select(`id, name, bottle_price, can_share_report`)
-        .eq('linked_user_id', userId)
+        .eq('id', userId)
         .single();
       
       if (profileError) {
@@ -176,12 +172,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         throw profileError;
       };
+      if (!profileData) {
+        setCustomerData(null);
+        return;
+      }
 
-      // Step 2: Fetch deliveries for that profile
+      // Step 2: Fetch deliveries for that user
       const { data: deliveriesData, error: deliveriesError } = await supabase
         .from('deliveries')
         .select('id, date, bottles')
-        .eq('profile_id', profileData.id)
+        .eq('user_id', profileData.id)
         .order('date', { ascending: false });
       
       if (deliveriesError) throw deliveriesError;
@@ -196,7 +196,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               month: format(new Date(d.date), 'MMMM')
           })),
       }
-      setCustomerData(formattedCustomerData as DataProfile);
+      setCustomerData(formattedCustomerData as UserProfile);
   }, []);
 
   const handleAuthChange = useCallback(async (_event: string, session: any) => {
@@ -218,7 +218,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
         // Clear all state on logout
         setCustomerData(null);
-        setDataProfiles([]);
+        setUserProfiles([]);
         setInvoices([]);
         setRegisteredUsers([]);
     }
@@ -266,8 +266,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           
           // Ensure user_type is set correctly
           if (data.user.user_metadata.user_type !== 'admin') {
-            const { error: updateError } = await supabase.auth.updateUser({ data: { user_type: 'admin' } });
-            if(updateError) console.error("Failed to update user metadata for admin");
+            await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
           }
           
           return { success: true, error: null, userType: 'admin' };
@@ -297,58 +296,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  const addDataProfile = async (name: string) => {
-    const { data: existing } = await supabase.from('data_profiles').select('id').eq('name', name).single();
-    if (existing) throw new Error(`Profile with name "${name}" already exists.`);
+  const addUserProfile = async (name: string, email: string, userId: string) => {
+    const { data: existing } = await supabase.from('users').select('id').eq('id', userId).single();
+    if (existing) throw new Error(`User profile for this user already exists.`);
 
-    const { error } = await supabase.from('data_profiles').insert({ name, bottle_price: 100, can_share_report: false });
+    const { error } = await supabase.from('users').insert({ id: userId, name, email, bottle_price: 100, can_share_report: false });
     if (error) throw error;
     await fetchAllAdminData();
   };
 
-  const deleteDataProfile = async (profileId: string) => {
-    const { error } = await supabase.from('data_profiles').delete().eq('id', profileId);
-    if (error) throw error;
-    await fetchAllAdminData();
-  };
-
-  const linkProfileToUser = async (profileId: string, userId: string) => {
-    const { error } = await supabase.from('data_profiles').update({ linked_user_id: userId }).eq('id', profileId);
-    if (error) throw error;
-    await fetchAllAdminData();
-  };
-  
-  const unlinkProfile = async (profileId: string) => {
-    const { error } = await supabase.from('data_profiles').update({ linked_user_id: null }).eq('id', profileId);
+  const deleteUserProfile = async (userId: string) => {
+    const { error } = await supabase.from('users').delete().eq('id', userId);
     if (error) throw error;
     await fetchAllAdminData();
   };
 
   const addUserData = async (data: AddUserDataPayload) => {
-    const { data: profile } = await supabase.from('data_profiles').select('id').eq('name', data.name).single();
-    if (!profile) throw new Error("Data profile does not exist.");
+    const { data: profile } = await supabase.from('users').select('id').eq('name', data.name).single();
+    if (!profile) throw new Error("User profile does not exist.");
 
-    const { error } = await supabase.from('deliveries').insert({ profile_id: profile.id, date: data.date, bottles: data.bottles });
+    const { error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles });
     if (error) throw error;
     await refreshData();
   };
 
-  const updateUserBottlePrice = async (profileName: string, newPrice: number) => {
-    const { error } = await supabase.from('data_profiles').update({ bottle_price: newPrice }).eq('name', profileName);
+  const updateUserBottlePrice = async (userId: string, newPrice: number) => {
+    const { error } = await supabase.from('users').update({ bottle_price: newPrice }).eq('id', userId);
     if (error) throw error;
     await refreshData();
   };
 
-  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "profileId">): Promise<Invoice | undefined> => {
-    const profileToInvoice = dataProfiles.find(p => p.name.toLowerCase() === invoiceData.name.toLowerCase());
+  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId">): Promise<Invoice | undefined> => {
+    const profileToInvoice = userProfiles.find(p => p.name.toLowerCase() === invoiceData.name.toLowerCase());
     if (!profileToInvoice) {
-        throw new Error("Cannot create invoice for non-existent profile.");
+        throw new Error("Cannot create invoice for non-existent user.");
     };
 
     const { data, error } = await supabase
         .from('invoices')
         .insert({
-            profile_id: profileToInvoice.id,
+            user_id: profileToInvoice.id,
             amount: invoiceData.amount,
             month: invoiceData.month,
             payment_method: invoiceData.paymentMethod,
@@ -361,7 +348,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const newInvoice: Invoice = {
         id: data.id,
-        profileId: data.profile_id,
+        userId: data.user_id,
         name: profileToInvoice.name,
         amount: data.amount,
         bottlePrice: profileToInvoice.bottlePrice,
@@ -382,20 +369,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
   }
 
-  const updateProfileDelivery = async (profileId: string, deliveryId: string, newDate: string) => {
-    const { error } = await supabase.from('deliveries').update({ date: newDate }).eq('id', deliveryId);
+  const updateUserDelivery = async (userId: string, deliveryId: string, newDate: string) => {
+    const { error } = await supabase.from('deliveries').update({ date: newDate }).eq('id', deliveryId).eq('user_id', userId);
     if (error) throw error;
     await refreshData();
   };
 
-  const deleteProfileDelivery = async (profileId: string, deliveryId: string) => {
-    const { error } = await supabase.from('deliveries').delete().eq('id', deliveryId);
+  const deleteUserDelivery = async (userId: string, deliveryId: string) => {
+    const { error } = await supabase.from('deliveries').delete().eq('id', deliveryId).eq('user_id', userId);
     if (error) throw error;
     await refreshData();
   }
 
-  const removeDuplicateDeliveries = async (profileId: string) => {
-    const profile = dataProfiles.find(p => p.id === profileId);
+  const removeDuplicateDeliveries = async (userId: string) => {
+    const profile = userProfiles.find(p => p.id === userId);
     if (!profile) return;
 
     const uniqueDeliveries = new Map<string, Delivery>();
@@ -434,18 +421,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     customerData,
     login,
     logout,
-    dataProfiles,
+    userProfiles,
     registeredUsers,
     loading,
     addUserData,
-    addDataProfile,
-    deleteDataProfile,
-    updateProfileDelivery,
-    deleteProfileDelivery,
+    addUserProfile,
+    deleteUserProfile,
+    updateUserDelivery,
+    deleteUserDelivery,
     removeDuplicateDeliveries,
     updateUserBottlePrice,
-    linkProfileToUser,
-    unlinkProfile,
     invoices,
     addInvoice,
     deleteInvoice,
@@ -454,5 +439,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    

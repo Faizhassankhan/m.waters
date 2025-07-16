@@ -6,12 +6,13 @@ export interface Delivery {
   month: string; // Dynamically added on client
 }
 
-export interface DataProfile {
-  id: string; // uuid from supabase
+// This interface now represents the 'users' table which holds all customer info.
+export interface UserProfile {
+  id: string; // uuid from supabase, links to auth.users
   name: string;
+  email?: string;
   bottlePrice: number;
   canShareReport: boolean;
-  linked_user_id: string | null; // uuid of the auth user
   deliveries: Delivery[];
 }
 
@@ -21,15 +22,15 @@ export interface RegisteredUser {
 }
 
 export interface AddUserDataPayload {
-    name: string; // This is the profile name
+    name: string; // This is the user's name
     date: string; // YYYY-MM-DD
     bottles: number;
 }
 
 export interface Invoice {
   id: string; // uuid from supabase
-  profileId: string; // uuid from supabase
-  name: string; // Name of the data profile
+  userId: string; // uuid from supabase, references users table
+  name: string; // Name of the user
   amount: number;
   bottlePrice?: number;
   paymentMethod: 'EasyPaisa' | 'JazzCash' | 'Bank Transfer';
