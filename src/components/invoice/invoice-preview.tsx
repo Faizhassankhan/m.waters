@@ -95,7 +95,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <CardTitle className="font-headline text-3xl flex items-baseline">
-                        M
+                        m
                         <svg
                           viewBox="0 0 24 24"
                           className="h-2 w-2 mx-px inline-block align-baseline"
@@ -103,7 +103,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                         >
                           <path d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z" />
                         </svg>
-                        Waters
+                        waters
                     </CardTitle>
                 </div>
                 <div className="text-right">

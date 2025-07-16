@@ -22,7 +22,7 @@ function ManageRatesPage() {
     
     useEffect(() => {
         const initialRates = users.reduce((acc, user) => {
-            acc[user.name] = user.bottlePrice || 150;
+            acc[user.name] = user.bottlePrice || 100;
             return acc;
         }, {} as Record<string, number>);
         setRates(initialRates);
@@ -98,7 +98,7 @@ function ManageRatesPage() {
                                                     type="number"
                                                     value={rates[user.name] ?? ''}
                                                     onChange={(e) => handleRateChange(user.name, e.target.value)}
-                                                    placeholder="e.g., 150"
+                                                    placeholder="e.g., 100"
                                                 />
                                             </TableCell>
                                             <TableCell className="text-right">

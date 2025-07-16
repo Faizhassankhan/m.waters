@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { getYear, getMonth, format } from "date-fns";
 
-const DEFAULT_BOTTLE_PRICE = 150;
+const DEFAULT_BOTTLE_PRICE = 100;
 
 const months = Array.from({ length: 12 }, (_, i) => ({
     value: i,

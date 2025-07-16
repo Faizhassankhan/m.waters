@@ -15,6 +15,7 @@ interface AppContextType {
   loading: boolean;
   addUserData: (data: AddUserDataPayload) => Promise<void>;
   addUser: (name: string) => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
   updateUserDelivery: (userName: string, deliveryId: string, newDate: string) => Promise<void>;
   deleteUserDelivery: (userName: string, deliveryId: string) => Promise<void>;
   removeDuplicateDeliveries: (userName: string) => Promise<void>;
@@ -33,6 +34,7 @@ export const AppContext = createContext<AppContextType>({
   loading: true,
   addUserData: async () => {},
   addUser: async () => {},
+  deleteUser: async () => {},
   updateUserDelivery: async () => {},
   deleteUserDelivery: async () => {},
   removeDuplicateDeliveries: async () => {},
@@ -179,8 +181,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const { error } = await supabase
         .from('users')
-        .insert({ name: name, bottle_price: 150 }); // default price
+        .insert({ name: name, bottle_price: 100 }); // default price
     
+    if (error) throw error;
+    await fetchAllData();
+  };
+
+  const deleteUser = async (userId: string) => {
+    const { error } = await supabase.from('users').delete().eq('id', userId);
     if (error) throw error;
     await fetchAllData();
   };
@@ -231,7 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!userToInvoice) {
         const { data: newUser, error: userError } = await supabase
             .from('users')
-            .insert({ name: invoiceData.name, bottle_price: 150 })
+            .insert({ name: invoiceData.name, bottle_price: 100 })
             .select('id, name, bottle_price')
             .single();
 
@@ -339,6 +347,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loading,
     addUserData,
     addUser,
+    deleteUser,
     updateUserDelivery,
     deleteUserDelivery,
     removeDuplicateDeliveries,

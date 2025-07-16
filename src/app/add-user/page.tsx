@@ -13,17 +13,29 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { UserData } from "@/lib/types";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
 });
 
 function AddUserPage() {
-  const { addUser, users } = useContext(AppContext);
+  const { addUser, users, deleteUser } = useContext(AppContext);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,85 +64,129 @@ function AddUserPage() {
     }
   }
 
+  const handleDeleteUser = async () => {
+    if (userToDelete) {
+      try {
+        await deleteUser(userToDelete.id);
+        toast({
+          title: "User Deleted",
+          description: `User "${userToDelete.name}" has been removed.`,
+        });
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Error Deleting User",
+          description: error.message || "An unexpected error occurred.",
+        });
+      } finally {
+        setUserToDelete(null);
+      }
+    }
+  };
+
   return (
-    <DashboardLayout>
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center justify-between space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight font-headline">
-            Manage Users
-          </h2>
+    <>
+      <DashboardLayout>
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+          <div className="flex items-center justify-between space-y-2">
+            <h2 className="text-3xl font-bold tracking-tight font-headline">
+              Manage Users
+            </h2>
+          </div>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-5">
+              <div className="lg:col-span-2">
+                   <Card>
+                      <CardHeader>
+                          <CardTitle className="font-headline">Add New User</CardTitle>
+                          <CardDescription>Add a new user to the system. This user will then be available in dropdowns across the app.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                          <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                              <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>User Name</FormLabel>
+                                    <FormControl>
+                                      <Input placeholder="e.g., Jane Doe" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <Button type="submit" disabled={loading}>
+                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                                Add User
+                              </Button>
+                            </form>
+                          </Form>
+                      </CardContent>
+                  </Card>
+              </div>
+              <div className="lg:col-span-3">
+                  <Card>
+                      <CardHeader>
+                          <CardTitle className="font-headline">Existing Users</CardTitle>
+                          <CardDescription>A list of all users currently in the system.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                           <div className="rounded-md border max-h-[60vh] overflow-y-auto">
+                              <Table>
+                                  <TableHeader className="sticky top-0 bg-muted/50">
+                                      <TableRow>
+                                          <TableHead>Name</TableHead>
+                                          <TableHead>Default Rate (PKR)</TableHead>
+                                          <TableHead className="text-right w-[50px]">Actions</TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                      {users.length > 0 ? (
+                                          users.map((user) => (
+                                              <TableRow key={user.id}>
+                                                  <TableCell className="font-medium">{user.name}</TableCell>
+                                                  <TableCell>{user.bottlePrice}</TableCell>
+                                                  <TableCell className="text-right">
+                                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setUserToDelete(user)}>
+                                                          <Trash2 className="h-4 w-4" />
+                                                      </Button>
+                                                  </TableCell>
+                                              </TableRow>
+                                          ))
+                                      ) : (
+                                          <TableRow>
+                                              <TableCell colSpan={3} className="h-24 text-center">
+                                                  No users found. Add one to get started.
+                                              </TableCell>
+                                          </TableRow>
+                                      )}
+                                  </TableBody>
+                              </Table>
+                          </div>
+                      </CardContent>
+                  </Card>
+              </div>
+          </div>
         </div>
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-5">
-            <div className="lg:col-span-2">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline">Add New User</CardTitle>
-                        <CardDescription>Add a new user to the system. This user will then be available in dropdowns across the app.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Form {...form}>
-                          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                            <FormField
-                              control={form.control}
-                              name="name"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>User Name</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="e.g., Jane Doe" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <Button type="submit" disabled={loading}>
-                              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                              Add User
-                            </Button>
-                          </form>
-                        </Form>
-                    </CardContent>
-                </Card>
-            </div>
-            <div className="lg:col-span-3">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline">Existing Users</CardTitle>
-                        <CardDescription>A list of all users currently in the system.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                         <div className="rounded-md border max-h-[60vh] overflow-y-auto">
-                            <Table>
-                                <TableHeader className="sticky top-0 bg-muted/50">
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead className="text-right">Default Rate (PKR)</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {users.length > 0 ? (
-                                        users.map((user) => (
-                                            <TableRow key={user.id}>
-                                                <TableCell className="font-medium">{user.name}</TableCell>
-                                                <TableCell className="text-right">{user.bottlePrice}</TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="h-24 text-center">
-                                                No users found. Add one to get started.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
-      </div>
-    </DashboardLayout>
+      </DashboardLayout>
+      <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the user <span className="font-bold">{userToDelete?.name}</span> and all of their associated delivery data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteUser} className="bg-destructive hover:bg-destructive/90">
+              Yes, delete user
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
