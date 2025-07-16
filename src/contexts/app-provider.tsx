@@ -61,164 +61,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchAllAdminData = useCallback(async () => {
+  const fetchAllData = useCallback(async () => {
+    setLoading(true);
     try {
-        // Step 1: Fetch all user profiles from your 'users' table
-        const { data: profilesData, error: profilesError } = await supabase
-        .from('users')
-        .select('id, name, bottle_price, can_share_report')
-        .order('name', { ascending: true });
+        const { data, error } = await supabase.rpc('get_all_user_data');
 
-        if (profilesError) throw profilesError;
-
-        // Step 2: Fetch all auth users to get their emails
-        const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
-        if (authUsersError) throw authUsersError;
-
-        const emailMap = new Map(authUsers.map(u => [u.id, u.email]));
-
-        // Step 3: Fetch all deliveries
-        const { data: deliveriesData, error: deliveriesError } = await supabase
-        .from('deliveries')
-        .select('id, user_id, date, bottles')
-        .order('date', { ascending: false });
-
-        if (deliveriesError) throw deliveriesError;
-        
-        // Step 4: Map deliveries to their respective profiles and add emails
-        const profilesWithDeliveries = profilesData.map(profile => {
-            const profileDeliveries = (deliveriesData || [])
-                .filter(delivery => delivery.user_id === profile.id)
-                .map(d => ({
-                    id: d.id,
-                    date: d.date,
-                    bottles: d.bottles,
-                    month: format(new Date(d.date), 'MMMM')
-                }));
-
-            return {
-                id: profile.id,
-                name: profile.name,
-                email: emailMap.get(profile.id) || 'No email',
-                bottlePrice: profile.bottle_price,
-                canShareReport: profile.can_share_report,
-                deliveries: profileDeliveries,
-            };
-        });
-        
-        setUserProfiles(profilesWithDeliveries as UserProfile[]);
-
-        // Step 5: Fetch invoices
-        const { data: invoicesData, error: invoicesError } = await supabase
-        .from('invoices')
-        .select('*')
-        .order('created_at', { ascending: false });
-        if (invoicesError) throw invoicesError;
-
-        const formattedInvoices = invoicesData.map(inv => {
-            const associatedProfile = profilesWithDeliveries.find(p => p.id === inv.user_id);
-            const deliveriesForInvoice = associatedProfile?.deliveries.filter(d => {
-                const deliveryDate = new Date(d.date);
-                return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
-            }) || [];
-            return {
-                id: inv.id,
-                userId: inv.user_id,
-                name: associatedProfile?.name || 'Unknown Profile',
-                amount: inv.amount,
-                bottlePrice: associatedProfile?.bottlePrice,
-                paymentMethod: inv.payment_method,
-                recipientNumber: inv.recipient_number,
-                createdAt: inv.created_at,
-                month: inv.month,
-                deliveries: deliveriesForInvoice
-            } as Invoice;
-        })
-        setInvoices(formattedInvoices);
-    } catch(error: any) {
-        if (error.message.includes('relation "public.users" does not exist')) {
-            console.warn(
-                '%cDATABASE SCHEMA NOT DETECTED',
-                'color: #f87171; font-weight: bold; font-size: 14px;',
-                "Please run the provided SQL script in your Supabase SQL Editor to set up the database."
-            );
-            return;
+        if (error) {
+            // Check for a specific error when the function doesn't exist yet
+            if (error.message.includes('function get_all_user_data() does not exist')) {
+                 console.warn(
+                    '%cDATABASE FUNCTION NOT DETECTED',
+                    'color: #f87171; font-weight: bold; font-size: 14px;',
+                    "The database is not set up correctly. Please run the provided SQL script in your Supabase SQL Editor."
+                );
+                // Set empty state to prevent app crash
+                setUserProfiles([]);
+                setInvoices([]);
+                setCustomerData(null);
+                return;
+            }
+            throw error;
         }
-        throw error;
+
+        if (data) {
+            setUserProfiles(data.userProfiles || []);
+            setInvoices(data.invoices || []);
+            setCustomerData(data.customerData || null);
+
+            // Post-process invoices to add delivery details for the preview components
+            const allDeliveries = (data.userProfiles || []).flatMap((p: UserProfile) => p.deliveries);
+            const processedInvoices = (data.invoices || []).map((inv: Invoice) => {
+                const profile = data.userProfiles.find((p: UserProfile) => p.id === inv.userId);
+                const deliveriesForInvoice = profile?.deliveries.filter((d: Delivery) => {
+                    const deliveryDate = new Date(d.date);
+                    return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
+                }) || [];
+                return { ...inv, deliveries: deliveriesForInvoice, bottlePrice: profile?.bottlePrice };
+            });
+            setInvoices(processedInvoices);
+        }
+
+    } catch (e: any) {
+        console.error("Error fetching application data:", e.message || e);
+        // Reset state on error to avoid inconsistent UI
+        setUserProfiles([]);
+        setInvoices([]);
+        setCustomerData(null);
+    } finally {
+        setLoading(false);
     }
-  }, []);
-  
-  const fetchCustomerData = useCallback(async (userId: string, userEmail?: string) => {
-      // For a customer, their profile IS their user record.
-      const { data: profileData, error: profileError } = await supabase
-        .from('users')
-        .select(`id, name, bottle_price, can_share_report`)
-        .eq('id', userId)
-        .single();
-      
-      if (profileError) {
-          if (profileError.code !== 'PGRST116') { // 'PGRST116' means no rows returned
-             console.error("Error fetching customer profile:", profileError);
-          }
-          setCustomerData(null);
-          return;
-      }
+}, []);
 
-      const { data: deliveriesData, error: deliveriesError } = await supabase
-        .from('deliveries')
-        .select('id, date, bottles')
-        .eq('user_id', userId)
-        .order('date', { ascending: false });
-      
-      if (deliveriesError) throw deliveriesError;
-
-      // Also fetch invoices for the customer
-      const { data: invoicesData, error: invoicesError } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (invoicesError) throw invoicesError;
-      
-      const formattedCustomerData = {
-          id: profileData.id,
-          name: profileData.name,
-          email: userEmail || 'N/A',
-          bottlePrice: profileData.bottle_price,
-          canShareReport: profileData.can_share_report,
-          deliveries: (deliveriesData || []).map(d => ({
-              ...d,
-              month: format(new Date(d.date), 'MMMM')
-          })),
-      }
-      setCustomerData(formattedCustomerData as UserProfile);
-      setInvoices((invoicesData || []) as Invoice[]); // Set invoices for the customer
-  }, []);
 
   const handleAuthChange = useCallback(async (_event: string, session: any) => {
-    setLoading(true);
     const currentUser = session?.user ?? null;
     setUser(currentUser);
 
     if (currentUser) {
-        const userType = currentUser.user_metadata?.user_type;
-        try {
-            if (userType === 'admin') {
-                await fetchAllAdminData();
-            } else if (userType === 'customer') {
-                await fetchCustomerData(currentUser.id, currentUser.email);
-            }
-        } catch (error: any) {
-            console.error("Error fetching data on auth change:", error.message || error);
-        }
+        await fetchAllData();
     } else {
+        // Clear all state on logout
         setCustomerData(null);
         setUserProfiles([]);
         setInvoices([]);
+        setLoading(false);
     }
-    setLoading(false);
-  }, [fetchAllAdminData, fetchCustomerData]);
+  }, [fetchAllData]);
 
 
   useEffect(() => {
@@ -323,14 +231,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw insertError;
     }
     
-    await fetchAllAdminData();
+    await fetchAllData();
   };
 
   const deleteUserProfile = async (userId: string) => {
-    // Supabase is set up with cascading deletes, so deleting the auth user will delete the profile.
     const { error } = await supabase.auth.admin.deleteUser(userId);
     if (error) throw error;
-    await fetchAllAdminData();
+    await fetchAllData();
   };
 
   const addUserData = async (data: AddUserDataPayload) => {
@@ -368,20 +275,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (error) throw error;
 
-    const newInvoice: Invoice = {
-        id: data.id,
-        userId: data.user_id,
-        name: profileToInvoice.name,
-        amount: data.amount,
-        bottlePrice: profileToInvoice.bottlePrice,
-        paymentMethod: data.payment_method,
-        recipientNumber: data.recipient_number,
-        createdAt: data.created_at,
-        month: data.month,
-        deliveries: invoiceData.deliveries || []
-    };
-    
-    setInvoices(prev => [newInvoice, ...prev].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    await fetchAllData();
+    const newInvoice = (await supabase.rpc('get_all_user_data')).data.invoices.find((i: Invoice) => i.id === data.id);
     return newInvoice;
   }
   
@@ -424,18 +319,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
   
   const refreshData = async () => {
-    setLoading(true);
-    try {
-        if (user?.user_metadata.user_type === 'customer') {
-            await fetchCustomerData(user.id, user.email);
-        } else if (user?.user_metadata.user_type === 'admin') {
-            await fetchAllAdminData();
-        }
-    } catch(error) {
-        console.error("Failed to refresh data:", error);
-    } finally {
-        setLoading(false);
-    }
+    await fetchAllData();
   }
 
   const value = {
@@ -460,5 +344,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    
