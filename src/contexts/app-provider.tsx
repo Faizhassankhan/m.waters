@@ -77,7 +77,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .select('id, name, bottle_price, can_share_report, linked_user_id')
       .order('name', { ascending: true });
 
-    if (profilesError) throw profilesError;
+    if (profilesError) {
+        if (profilesError.message.includes('relation "public.users" does not exist')) {
+            console.warn(
+                '%cDATABASE SCHEMA NOT DETECTED',
+                'color: #f87171; font-weight: bold; font-size: 14px;',
+                "\nIt looks like your database tables are not set up. Please run the SQL script from schema.sql in your Supabase SQL Editor."
+            );
+            return;
+        }
+        throw profilesError;
+    }
 
     // Step 2: Fetch all deliveries
     const { data: deliveriesData, error: deliveriesError } = await supabase
@@ -149,33 +159,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const fetchCustomerData = useCallback(async (userId: string) => {
-      // Step 1: Find the profile linked to the user
-      const { data: linkedProfile, error: linkError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('linked_user_id', userId)
-          .single();
-
-      if (linkError || !linkedProfile) {
-          if (linkError && linkError.code !== 'PGRST116') console.error(linkError);
-          setCustomerData(null);
-          return;
-      }
-
-      // Step 2: Fetch the full profile data for that linked profile
+      // For customers, their data is directly on their user record.
       const { data: profileData, error: profileError } = await supabase
         .from('users')
         .select(`id, name, bottle_price, can_share_report`)
-        .eq('id', linkedProfile.id)
+        .eq('id', userId)
         .single();
       
-      if (profileError) throw profileError;
+      if (profileError) {
+          // It's normal for a new user to not have a profile row yet.
+          if (profileError.code !== 'PGRST116') {
+             console.error("Error fetching customer profile:", profileError);
+          }
+          setCustomerData(null);
+          return;
+      }
+      
       if (!profileData) {
         setCustomerData(null);
         return;
       }
 
-      // Step 3: Fetch deliveries for that user profile
+      // Fetch deliveries for that user profile
       const { data: deliveriesData, error: deliveriesError } = await supabase
         .from('deliveries')
         .select('id, date, bottles')
@@ -211,15 +216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 await fetchCustomerData(currentUser.id);
             }
         } catch (error: any) {
-            if (error.message.includes('relation "public.users" does not exist')) {
-                 console.warn(
-                    '%cDATABASE SCHEMA NOT DETECTED',
-                    'color: #f87171; font-weight: bold; font-size: 14px;',
-                    '\nIt looks like your database tables are not set up. Please run the SQL script provided to create the required tables.'
-                );
-            } else {
-                console.error("Error fetching data on auth change:", error.message || error);
-            }
+            console.error("Error fetching data on auth change:", error.message || error);
         }
     } else {
         // Clear all state on logout
@@ -415,6 +412,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const unlinkProfile = async (profileId: string) => {
        const { error } = await supabase.from('users').update({ linked_user_id: null }).eq('id', profileId);
+       if (error) throw error;
        await refreshData();
   }
 
