@@ -37,12 +37,14 @@ function VoiceImportPage() {
 
             recognition.onresult = (event: any) => {
                 let finalTranscript = "";
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
+                // Iterate through all results, not just from resultIndex
+                for (let i = 0; i < event.results.length; ++i) {
+                     if (event.results[i].isFinal) {
                         finalTranscript += event.results[i][0].transcript;
                     }
                 }
-                setTranscript(prev => prev + finalTranscript);
+                // Set the transcript directly, not appending
+                setTranscript(finalTranscript.trim());
             };
 
             recognition.onend = () => {
@@ -108,7 +110,8 @@ function VoiceImportPage() {
             };
             processTranscript();
         }
-    }, [isRecording, transcript, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isRecording, transcript]);
 
     const handleSaveData = async () => {
         if (!parsedData || !selectedDate) {
