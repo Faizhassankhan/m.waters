@@ -98,7 +98,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                        <svg width="150" height="70" viewBox="0 0 170 80" className="text-primary-foreground -ml-4">
                             <circle cx="40" cy="40" r="35" fill="hsl(var(--primary-foreground))" stroke="hsl(var(--primary))" strokeWidth="2" />
                             <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="hsl(var(--primary))" textAnchor="middle" dominantBaseline="central">m</text>
-                            <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="hsl(var(--primary))"/>
+                            <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="hsl(var(--primary-foreground))"/>
                             <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="hsl(var(--primary-foreground))" dy=".3em">waters</text>
                             <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--primary-foreground))" dy=".3em">FIT TO LIVE</text>
                         </svg>
