@@ -38,30 +38,36 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          user_type: "customer",
-        },
-      },
-    });
+    try {
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                user_type: "customer",
+                },
+            },
+        });
 
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Registration Failed",
-        description: error.message,
-      });
-    } else {
-      toast({
-        title: "Registration Successful",
-        description: "Please check your email to verify your account.",
-      });
-      router.push("/login");
+        if (error) {
+            throw error;
+        }
+
+        toast({
+            title: "Registration Successful",
+            description: "Please check your email to verify your account.",
+        });
+        router.push("/login");
+
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Registration Failed",
+            description: error.message || "An unexpected error occurred. Please try again.",
+        });
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
