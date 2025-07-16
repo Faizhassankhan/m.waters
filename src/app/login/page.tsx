@@ -75,7 +75,7 @@ export default function LoginPage() {
                 type="text"
                 value={emailOrName}
                 onChange={(e) => setEmailOrName(e.target.value)}
-                placeholder="admin@aquamanager.com or your name"
+                placeholder="Your name or email address"
                 required
               />
             </div>
@@ -100,5 +100,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
