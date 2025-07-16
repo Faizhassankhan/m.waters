@@ -51,7 +51,7 @@ export const AppContext = createContext<AppContextType>({
 
 const ADMIN_EMAIL = "admin@aquamanager.com";
 const ADMIN_PASSWORD = "admin2007";
-const CUSTOMER_PASSWORD = "2025";
+const CUSTOMER_PASSWORD = "112233";
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
