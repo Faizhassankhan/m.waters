@@ -6,16 +6,45 @@ import { useRouter, usePathname } from "next/navigation";
 import { AppContext } from "@/contexts/app-provider";
 import { Loader2 } from "lucide-react";
 
+const ADMIN_ROUTES = ["/", "/add-user", "/invoice", "/invoices", "/manage-rates", "/search-data", "/users-sheet"];
+const CUSTOMER_ROUTES = ["/customer-dashboard"];
+
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useContext(AppContext);
+  const { user, customer, loading } = useContext(AppContext);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user && pathname !== "/login") {
+    if (loading) return;
+
+    const userType = user?.user_metadata?.user_type;
+
+    // If not logged in, redirect to login page
+    if (!user && pathname !== "/login") {
       router.push("/login");
+      return;
     }
-  }, [user, loading, router, pathname]);
+    
+    if (user) {
+        // If logged in, but on the login page, redirect away
+        if (pathname === "/login") {
+            if (userType === 'customer') {
+                router.push("/customer-dashboard");
+            } else {
+                router.push("/");
+            }
+            return;
+        }
+
+        // Route protection
+        if (userType === 'admin' && CUSTOMER_ROUTES.includes(pathname)) {
+             router.push("/");
+        } else if (userType === 'customer' && ADMIN_ROUTES.includes(pathname)) {
+            router.push("/customer-dashboard");
+        }
+    }
+
+  }, [user, customer, loading, router, pathname]);
 
   if (loading || (!user && pathname !== "/login")) {
     return (

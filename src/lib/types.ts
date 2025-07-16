@@ -10,6 +10,7 @@ export interface UserData {
   id: string; // uuid from supabase
   name: string;
   bottlePrice: number;
+  canShareReport: boolean;
   deliveries: Delivery[];
 }
 
@@ -24,6 +25,7 @@ export interface Invoice {
   userId: string; // uuid from supabase
   name: string; // Joined from users table
   amount: number;
+  bottlePrice?: number;
   paymentMethod: 'EasyPaisa' | 'JazzCash' | 'Bank Transfer';
   recipientNumber: string;
   createdAt: string; // timestamp with time zone

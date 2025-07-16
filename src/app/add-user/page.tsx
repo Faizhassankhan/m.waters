@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, Trash2 } from "lucide-react";
+import { Loader2, UserPlus, Trash2, Share2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AlertDialog,
@@ -26,13 +26,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { UserData } from "@/lib/types";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
 });
 
 function AddUserPage() {
-  const { addUser, users, deleteUser } = useContext(AppContext);
+  const { addUser, users, deleteUser, toggleUserSharing } = useContext(AppContext);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
@@ -84,6 +86,22 @@ function AddUserPage() {
     }
   };
 
+  const handleSharingToggle = async (userId: string, currentStatus: boolean) => {
+    try {
+      await toggleUserSharing(userId, !currentStatus);
+       toast({
+        title: "Permission Updated",
+        description: `Sharing permissions have been updated for the user.`,
+      });
+    } catch(error: any) {
+       toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "Could not update sharing permissions.",
+      });
+    }
+  }
+
   return (
     <>
       <DashboardLayout>
@@ -98,7 +116,7 @@ function AddUserPage() {
                    <Card>
                       <CardHeader>
                           <CardTitle className="font-headline">Add New User</CardTitle>
-                          <CardDescription>Add a new user to the system. This user will then be available in dropdowns across the app.</CardDescription>
+                          <CardDescription>Add a new user. They will be able to log in with their name and the default password.</CardDescription>
                       </CardHeader>
                       <CardContent>
                           <Form {...form}>
@@ -137,8 +155,8 @@ function AddUserPage() {
                                   <TableHeader className="sticky top-0 bg-muted/50">
                                       <TableRow>
                                           <TableHead>Name</TableHead>
-                                          <TableHead>Default Rate (PKR)</TableHead>
-                                          <TableHead className="text-right w-[50px]">Actions</TableHead>
+                                          <TableHead>Sharing Enabled</TableHead>
+                                          <TableHead className="text-right w-[100px]">Actions</TableHead>
                                       </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -146,7 +164,19 @@ function AddUserPage() {
                                           users.map((user) => (
                                               <TableRow key={user.id}>
                                                   <TableCell className="font-medium">{user.name}</TableCell>
-                                                  <TableCell>{user.bottlePrice}</TableCell>
+                                                  <TableCell>
+                                                      <div className="flex items-center space-x-2">
+                                                        <Switch
+                                                          id={`share-switch-${user.id}`}
+                                                          checked={user.canShareReport}
+                                                          onCheckedChange={() => handleSharingToggle(user.id, user.canShareReport)}
+                                                        />
+                                                        <Label htmlFor={`share-switch-${user.id}`} className="flex items-center gap-2 cursor-pointer text-xs">
+                                                          <Share2 className="h-3 w-3" />
+                                                          Can Share Report
+                                                        </Label>
+                                                      </div>
+                                                  </TableCell>
                                                   <TableCell className="text-right">
                                                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setUserToDelete(user)}>
                                                           <Trash2 className="h-4 w-4" />
@@ -197,3 +227,5 @@ export default function Home() {
         </AuthGuard>
     );
 }
+
+    

@@ -146,8 +146,9 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="flex justify-end items-center p-2 bg-muted/50 font-bold text-sm">
-                            Total Bottles: {totalBottles}
+                        <div className="flex justify-between items-center p-2 bg-muted/50 font-bold text-sm">
+                            <span>Total Bottles: {totalBottles}</span>
+                            <span>Rate: {invoice.bottlePrice || 'N/A'} PKR</span>
                         </div>
                     </div>
                 </>
@@ -187,3 +188,5 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
     </div>
   );
 }
+
+    

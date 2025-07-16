@@ -18,7 +18,8 @@ import { Droplets, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-  const [password, setPassword] = useState("admin2007");
+  const [emailOrName, setEmailOrName] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useContext(AppContext);
   const router = useRouter();
@@ -26,10 +27,23 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!emailOrName || !password) {
+        toast({
+            variant: "destructive",
+            title: "Missing Information",
+            description: "Please enter your name/email and password.",
+        });
+        return;
+    }
+
     setLoading(true);
-    const { success, error } = await login(password);
+    const { success, error, userType } = await login(emailOrName, password);
     if (success) {
-      router.push("/");
+      if (userType === 'admin') {
+        router.push("/");
+      } else {
+        router.push("/customer-dashboard");
+      }
     } else {
       toast({
         variant: "destructive",
@@ -49,19 +63,20 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-3xl font-headline">AquaManager</CardTitle>
           <CardDescription>
-            Admin Panel Login
+            Admin & Customer Login
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="emailOrName">Email or Name</Label>
               <Input
-                id="email"
-                type="email"
-                value="admin@aquamanager.com"
-                readOnly
-                className="bg-muted"
+                id="emailOrName"
+                type="text"
+                value={emailOrName}
+                onChange={(e) => setEmailOrName(e.target.value)}
+                placeholder="admin@aquamanager.com or your name"
+                required
               />
             </div>
             <div className="space-y-2">

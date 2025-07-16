@@ -9,7 +9,8 @@ import { format } from "date-fns";
 
 interface AppContextType {
   user: User | null;
-  login: (pass: string) => Promise<{ success: boolean; error: string | null }>;
+  customer: UserData | null;
+  login: (emailOrName: string, pass: string) => Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }>;
   logout: () => Promise<void>;
   users: UserData[];
   loading: boolean;
@@ -20,6 +21,7 @@ interface AppContextType {
   deleteUserDelivery: (userName: string, deliveryId: string) => Promise<void>;
   removeDuplicateDeliveries: (userName: string) => Promise<void>;
   updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
+  toggleUserSharing: (userId: string, canShare: boolean) => Promise<void>;
   invoices: Invoice[];
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
@@ -28,7 +30,8 @@ interface AppContextType {
 
 export const AppContext = createContext<AppContextType>({
   user: null,
-  login: async () => ({ success: false, error: "Not implemented" }),
+  customer: null,
+  login: async () => ({ success: false, error: "Not implemented", userType: null }),
   logout: async () => {},
   users: [],
   loading: true,
@@ -39,81 +42,127 @@ export const AppContext = createContext<AppContextType>({
   deleteUserDelivery: async () => {},
   removeDuplicateDeliveries: async () => {},
   updateUserBottlePrice: async () => {},
+  toggleUserSharing: async () => {},
   invoices: [],
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
   refreshData: async () => {},
 });
 
+const ADMIN_EMAIL = "admin@aquamanager.com";
+const CUSTOMER_PASSWORD = "2025";
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [customer, setCustomer] = useState<UserData | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchAllData = async () => {
-    setLoading(true);
-    try {
-      // Fetch users and their deliveries in one go
-      const { data: usersData, error: usersError } = await supabase
+  const fetchAllAdminData = async () => {
+    // Fetch users and their deliveries in one go
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select(`
+        id,
+        name,
+        bottle_price,
+        can_share_report,
+        deliveries (
+          id,
+          date,
+          bottles
+        )
+      `)
+      .order('name', { ascending: true });
+
+    if (usersError) throw usersError;
+
+    const formattedUsers = usersData.map(u => ({
+      id: u.id,
+      name: u.name,
+      bottlePrice: u.bottle_price,
+      canShareReport: u.can_share_report,
+      deliveries: (u.deliveries || []).map(d => ({
+          ...d,
+          month: format(new Date(d.date), 'MMMM')
+      })).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    }));
+    setUsers(formattedUsers as UserData[]);
+
+    // Fetch invoices
+    const { data: invoicesData, error: invoicesError } = await supabase
+      .from('invoices')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (invoicesError) throw invoicesError;
+
+    const formattedInvoices = invoicesData.map(inv => {
+        const associatedUser = formattedUsers.find(u => u.id === inv.user_id);
+        const deliveriesForInvoice = associatedUser?.deliveries.filter(d => {
+            const deliveryDate = new Date(d.date);
+            return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
+        }) || [];
+        return {
+            id: inv.id,
+            userId: inv.user_id,
+            name: associatedUser?.name || 'Unknown User',
+            amount: inv.amount,
+            bottlePrice: associatedUser?.bottlePrice,
+            paymentMethod: inv.payment_method,
+            recipientNumber: inv.recipient_number,
+            createdAt: inv.created_at,
+            month: inv.month,
+            deliveries: deliveriesForInvoice
+        } as Invoice;
+    })
+    setInvoices(formattedInvoices);
+  };
+  
+  const fetchCustomerData = async (customerName: string) => {
+      const { data, error } = await supabase
         .from('users')
         .select(`
-          id,
-          name,
-          bottle_price,
-          deliveries (
-            id,
-            date,
-            bottles
-          )
+            id, name, bottle_price, can_share_report,
+            deliveries (id, date, bottles)
         `)
-        .order('name', { ascending: true });
+        .eq('name', customerName)
+        .single();
+      
+      if (error) throw error;
+      
+      const formattedCustomer = {
+          id: data.id,
+          name: data.name,
+          bottlePrice: data.bottle_price,
+          canShareReport: data.can_share_report,
+          deliveries: (data.deliveries || []).map(d => ({
+              ...d,
+              month: format(new Date(d.date), 'MMMM')
+          })).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      }
+      setCustomer(formattedCustomer as UserData);
+  }
 
-      if (usersError) throw usersError;
+  const loadSession = async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userType = session?.user?.user_metadata?.user_type;
 
-      const formattedUsers = usersData.map(u => ({
-        id: u.id,
-        name: u.name,
-        bottlePrice: u.bottle_price,
-        // Ensure deliveries are sorted by date
-        deliveries: (u.deliveries || []).map(d => ({
-            ...d,
-            month: format(new Date(d.date), 'MMMM') // Add month property dynamically
-        })).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-      }));
-      setUsers(formattedUsers as UserData[]);
-
-      // Fetch invoices
-      const { data: invoicesData, error: invoicesError } = await supabase
-        .from('invoices')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (invoicesError) throw invoicesError;
-
-      const formattedInvoices = invoicesData.map(inv => {
-          const associatedUser = formattedUsers.find(u => u.id === inv.user_id);
-          const deliveriesForInvoice = associatedUser?.deliveries.filter(d => {
-              const deliveryDate = new Date(d.date);
-              return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
-          }) || [];
-          return {
-              id: inv.id,
-              userId: inv.user_id,
-              name: associatedUser?.name || 'Unknown User',
-              amount: inv.amount,
-              paymentMethod: inv.payment_method,
-              recipientNumber: inv.recipient_number,
-              createdAt: inv.created_at,
-              month: inv.month,
-              deliveries: deliveriesForInvoice
-          } as Invoice;
-      })
-
-      setInvoices(formattedInvoices);
-
+      if (userType === 'customer') {
+        const customerName = session?.user?.user_metadata?.name;
+        setUser(session.user);
+        await fetchCustomerData(customerName);
+      } else if (session?.user) {
+        setUser(session.user);
+        await fetchAllAdminData();
+      }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error loading session:", error);
+      // Clear session if there's an error
+      await logout();
     } finally {
       setLoading(false);
     }
@@ -121,24 +170,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    const getSession = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
-        if (session?.user) {
-            await fetchAllData();
-        } else {
-            setLoading(false);
-        }
-    };
-    
-    getSession();
+    loadSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setUser(session?.user ?? null);
+        const userType = session?.user?.user_metadata?.user_type;
         if (session?.user) {
-            fetchAllData();
+            setUser(session.user);
+            if (userType === 'customer') {
+                const customerName = session.user.user_metadata?.name;
+                fetchCustomerData(customerName);
+            } else {
+                fetchAllAdminData();
+            }
         } else {
+            setUser(null);
+            setCustomer(null);
             setUsers([]);
             setInvoices([]);
         }
@@ -150,20 +197,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = async (password: string) => {
-    // Note: It's recommended to create a user in Supabase with this email.
-    const email = "admin@aquamanager.com";
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-        return { success: false, error: error.message };
-    }
-    await fetchAllData();
-    return { success: true, error: null };
+  const login = async (emailOrName: string, password: string) => {
+      // Admin Login
+      if (emailOrName.toLowerCase() === ADMIN_EMAIL) {
+          const { data, error } = await supabase.auth.signInWithPassword({ email: ADMIN_EMAIL, password });
+          if (error) return { success: false, error: error.message, userType: null };
+          await supabase.auth.updateUser({ data: { user_type: 'admin' } });
+          setUser(data.user);
+          await fetchAllAdminData();
+          return { success: true, error: null, userType: 'admin' };
+      }
+      
+      // Customer Login
+      if (password === CUSTOMER_PASSWORD) {
+          const { data: customerData, error: customerError } = await supabase
+              .from('users')
+              .select('id, name')
+              .eq('name', emailOrName)
+              .single();
+
+          if (customerError || !customerData) {
+              return { success: false, error: "Invalid name or password.", userType: null };
+          }
+
+          // Use a dummy email for Supabase auth, as it's required.
+          const customerEmail = `${customerData.name.replace(/\s+/g, '_').toLowerCase()}@aquamanager.customer`;
+          
+          // Sign up the user if they don't exist in auth, or sign them in.
+          let { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+              email: customerEmail,
+              password: password
+          });
+          
+          if (authError?.message.includes("Invalid login credentials")) {
+              // User not in auth, sign them up
+              const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                  email: customerEmail,
+                  password: password,
+                  options: {
+                      data: {
+                          user_type: 'customer',
+                          name: customerData.name
+                      }
+                  }
+              });
+              if (signUpError) return { success: false, error: signUpError.message, userType: null };
+              authData = signUpData;
+          } else if (authError) {
+              return { success: false, error: authError.message, userType: null };
+          }
+          
+          setUser(authData.user);
+          await fetchCustomerData(customerData.name);
+          return { success: true, error: null, userType: 'customer' };
+      }
+
+      return { success: false, error: "Invalid name or password.", userType: null };
   };
+
 
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setCustomer(null);
     setUsers([]);
     setInvoices([]);
   };
@@ -181,20 +277,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const { error } = await supabase
         .from('users')
-        .insert({ name: name, bottle_price: 100 }); // default price
+        .insert({ name: name, bottle_price: 100, can_share_report: false });
     
     if (error) throw error;
-    await fetchAllData();
+    await fetchAllAdminData();
   };
 
   const deleteUser = async (userId: string) => {
     const { error } = await supabase.from('users').delete().eq('id', userId);
     if (error) throw error;
-    await fetchAllData();
+    await fetchAllAdminData();
+  };
+  
+  const toggleUserSharing = async (userId: string, canShare: boolean) => {
+    const { error } = await supabase
+      .from('users')
+      .update({ can_share_report: canShare })
+      .eq('id', userId);
+    if (error) throw error;
+    await fetchAllAdminData();
   };
 
   const addUserData = async (data: AddUserDataPayload) => {
-    // User must exist to add data
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
@@ -205,7 +309,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error("User does not exist. Please add them from the 'Add User' page first.");
     }
 
-    // Add the delivery record
     const { error: deliveryError } = await supabase
       .from('deliveries')
       .insert({
@@ -215,9 +318,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
 
     if (deliveryError) throw deliveryError;
-
-    // Refresh all data to reflect changes
-    await fetchAllData();
+    await fetchAllAdminData();
   };
 
   const updateUserBottlePrice = async (userName: string, newPrice: number) => {
@@ -230,28 +331,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .eq('id', userToUpdate.id);
     
     if (error) throw error;
-    await fetchAllData();
+    await fetchAllAdminData();
   };
 
   const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId">): Promise<Invoice | undefined> => {
     let userToInvoice = users.find(u => u.name.toLowerCase() === invoiceData.name.toLowerCase());
 
     if (!userToInvoice) {
-        const { data: newUser, error: userError } = await supabase
-            .from('users')
-            .insert({ name: invoiceData.name, bottle_price: 100 })
-            .select('id, name, bottle_price')
-            .single();
-
-        if (userError) throw userError;
-        
-        userToInvoice = {
-            id: newUser.id,
-            name: newUser.name,
-            bottlePrice: newUser.bottle_price,
-            deliveries: []
-        };
-        await fetchAllData();
+        throw new Error("Cannot create invoice for non-existent user. Please add them first.");
     }
 
     const { data, error } = await supabase
@@ -273,6 +360,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         userId: data.user_id,
         name: userToInvoice.name,
         amount: data.amount,
+        bottlePrice: userToInvoice.bottlePrice,
         paymentMethod: data.payment_method,
         recipientNumber: data.recipient_number,
         createdAt: data.created_at,
@@ -281,14 +369,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     
     setInvoices(prev => [newInvoice, ...prev]);
-
     return newInvoice;
   }
   
   const deleteInvoice = async (invoiceId: string) => {
       const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
       if (error) throw error;
-      await fetchAllData();
+      await fetchAllAdminData();
   }
 
   const updateUserDelivery = async (userName: string, deliveryId: string, newDate: string) => {
@@ -298,7 +385,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .eq('id', deliveryId);
     
     if (error) throw error;
-    await fetchAllData();
+    await (customer ? fetchCustomerData(customer.name) : fetchAllAdminData());
   };
 
   const deleteUserDelivery = async (userName: string, deliveryId: string) => {
@@ -308,11 +395,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .eq('id', deliveryId);
     
     if (error) throw error;
-    await fetchAllData();
+    await (customer ? fetchCustomerData(customer.name) : fetchAllAdminData());
   }
 
   const removeDuplicateDeliveries = async (userName: string) => {
-    const userToRemoveDuplicates = users.find(u => u.name === userName);
+    const userToRemoveDuplicates = customer || users.find(u => u.name === userName);
     if (!userToRemoveDuplicates) return;
 
     const uniqueDeliveries = new Map<string, Delivery>();
@@ -336,11 +423,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
     }
 
-    await fetchAllData();
+    await (customer ? fetchCustomerData(customer.name) : fetchAllAdminData());
   }
+  
+  const refreshData = async () => {
+    if (customer) {
+        await fetchCustomerData(customer.name);
+    } else {
+        await fetchAllAdminData();
+    }
+  }
+
 
   const value = {
     user,
+    customer,
     login,
     logout,
     users,
@@ -352,11 +449,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteUserDelivery,
     removeDuplicateDeliveries,
     updateUserBottlePrice,
+    toggleUserSharing,
     invoices,
     addInvoice,
     deleteInvoice,
-    refreshData: fetchAllData,
+    refreshData,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
