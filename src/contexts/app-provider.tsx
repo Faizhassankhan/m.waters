@@ -173,6 +173,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .order('date', { ascending: false });
       
       if (deliveriesError) throw deliveriesError;
+
+      // Also fetch invoices for the customer
+      const { data: invoicesData, error: invoicesError } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (invoicesError) throw invoicesError;
       
       const formattedCustomerData = {
           id: profileData.id,
@@ -186,6 +195,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           })),
       }
       setCustomerData(formattedCustomerData as UserProfile);
+      setInvoices(invoicesData as Invoice[]); // Set invoices for the customer
   }, []);
 
   const handleAuthChange = useCallback(async (_event: string, session: any) => {
