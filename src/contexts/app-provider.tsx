@@ -58,8 +58,7 @@ export const AppContext = createContext<AppContextType>({
   refreshData: async () => {},
 });
 
-const ADMIN_USERNAME = "admin";
-const ADMIN_EMAIL = "admin@aquamanager.com";
+const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_PASSWORD = "admin2007";
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -206,7 +205,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = async (emailOrName: string, password: string): Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }> => {
     try {
       // Admin Login
-      if (emailOrName.toLowerCase() === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      if (emailOrName.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
           let { data, error } = await supabase.auth.signInWithPassword({ 
               email: ADMIN_EMAIL, 
               password: ADMIN_PASSWORD 

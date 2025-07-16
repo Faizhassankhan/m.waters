@@ -86,7 +86,7 @@ export default function LoginPage() {
                 type="text"
                 value={emailOrName}
                 onChange={(e) => setEmailOrName(e.target.value)}
-                placeholder="e.g., admin or user@example.com"
+                placeholder="e.g., admin@gmail.com or user@example.com"
                 required
               />
             </div>
