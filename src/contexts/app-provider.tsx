@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { UserProfile, Delivery, Invoice, AddUserDataPayload } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
-import { User, PostgrestError } from "@supabase/supabase-js";
+import { User } from "@supabase/supabase-js";
 import { format } from "date-fns";
 
 interface AppContextType {
