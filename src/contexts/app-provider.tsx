@@ -92,7 +92,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         
         if (data && typeof data === 'object') {
             setUserProfiles(data.userProfiles || []);
-            setInvoices(data.invoices || []);
             
             // Repopulate customer data with full invoice details
             if (data.customerData) {
@@ -338,12 +337,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) throw error;
     
-    // Update local state immediately for better UX
-    setInvoices(prev => prev.map(inv => 
-        inv.id === invoiceId 
-        ? { ...inv, paymentStatus: data.payment_status, showStatusToCustomer: data.show_status_to_customer } 
-        : inv
-    ));
+    await fetchAllData();
   };
   
   const updateInvoiceVisibility = async (invoiceId: string, isVisible: boolean) => {
@@ -356,11 +350,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (error) throw error;
     
-    setInvoices(prev => prev.map(inv => 
-        inv.id === invoiceId 
-        ? { ...inv, paymentStatus: data.payment_status, showStatusToCustomer: data.show_status_to_customer } 
-        : inv
-    ));
+    await fetchAllData();
   }
 
   const updateUserDelivery = async (userId: string, deliveryId: string, newDate: string) => {
