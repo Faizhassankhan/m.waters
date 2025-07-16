@@ -93,7 +93,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (data && typeof data === 'object') {
             setUserProfiles(data.userProfiles || []);
             setInvoices(data.invoices || []);
-            setCustomerData(data.customerData || null);
+            
+            // Repopulate customer data with full invoice details
+            if (data.customerData) {
+                const customerInvoices = (data.invoices || []).filter((inv: Invoice) => inv.userId === data.customerData.id);
+                setCustomerData({ ...data.customerData, invoices: customerInvoices });
+            } else {
+                setCustomerData(null);
+            }
 
             // Post-process invoices to add delivery details for the preview components
             const allDeliveries = (data.userProfiles || []).flatMap((p: UserProfile) => p.deliveries);
