@@ -59,9 +59,9 @@ export default function DashboardLayout({
     <div className="flex h-full flex-col gap-2">
         <div className="flex h-[60px] items-center border-b border-sidebar-border px-6">
             <Link className="flex items-center gap-2 font-semibold font-headline text-lg" href="/">
-                <svg width="140" height="40" viewBox="0 0 170 80" className="text-sidebar-primary">
+                <svg width="150" height="70" viewBox="0 0 170 80" className="text-sidebar-primary">
                     <circle cx="40" cy="40" r="35" fill="currentColor"/>
-                    <text x="40" y="45" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="60" fill="hsl(var(--sidebar-primary-foreground))" textAnchor="middle" dominantBaseline="central">m</text>
+                    <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="hsl(var(--sidebar-primary-foreground))" textAnchor="middle" dominantBaseline="central">m</text>
                     <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="currentColor"/>
                     <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="hsl(var(--sidebar-foreground))" dy=".3em">waters</text>
                     <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--sidebar-foreground))" dy=".3em">FIT TO LIVE</text>
