@@ -59,8 +59,18 @@ export default function DashboardLayout({
     <div className="flex h-full flex-col gap-2">
         <div className="flex h-[60px] items-center border-b border-sidebar-border px-6">
             <Link className="flex items-center gap-2 font-semibold font-headline text-lg" href="/">
-                <Droplets className="h-6 w-6 text-sidebar-primary" />
-                <span>AquaManager</span>
+                 <svg viewBox="0 0 24 24" className="h-6 w-6 text-sidebar-primary"><path fill="currentColor" d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z"></path></svg>
+                <span className="flex items-baseline">
+                    m
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-1.5 w-1.5 mx-px inline-block align-baseline"
+                        style={{ fill: 'hsl(var(--sidebar-primary))', transform: 'rotate(180deg)' }}
+                      >
+                        <path d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z" />
+                      </svg>
+                    waters
+                </span>
             </Link>
         </div>
         <div className="flex-1 overflow-auto py-2">

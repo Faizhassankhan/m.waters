@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AquaManager",
+  title: "m.waters",
   description: "Manage water delivery and invoices efficiently.",
 };
 

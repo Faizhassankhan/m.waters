@@ -70,9 +70,19 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm shadow-2xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex items-center justify-center">
-            <Droplets className="h-12 w-12 text-primary" />
+             <svg viewBox="0 0 24 24" className="h-12 w-12 text-primary"><path fill="currentColor" d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z"></path></svg>
           </div>
-          <CardTitle className="text-3xl font-headline">AquaManager</CardTitle>
+          <CardTitle className="text-3xl font-headline flex items-baseline justify-center">
+              m
+              <svg
+                viewBox="0 0 24 24"
+                className="h-2 w-2 mx-px inline-block align-baseline"
+                style={{ fill: 'hsl(var(--primary))', transform: 'rotate(180deg)' }}
+              >
+                <path d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z" />
+              </svg>
+              waters
+            </CardTitle>
           <CardDescription>
             Admin & Customer Login
           </CardDescription>
