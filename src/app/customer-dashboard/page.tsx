@@ -5,7 +5,7 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, UserCheck, AlertCircle } from "lucide-react";
+import { Loader2, Share2, LogOut, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -40,21 +40,25 @@ function CustomerDashboardPage() {
     const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
     
     useEffect(() => {
-        if (customerData && customerData.deliveries.length > 0) {
+        if (customerData && customerData.deliveries && customerData.deliveries.length > 0) {
             const lastDeliveryDate = new Date(customerData.deliveries[0].date);
             setSelectedMonth(getMonth(lastDeliveryDate));
             setSelectedYear(getYear(lastDeliveryDate));
+        } else {
+            const currentDate = new Date();
+            setSelectedMonth(getMonth(currentDate));
+            setSelectedYear(getYear(currentDate));
         }
     }, [customerData]);
     
     const availableYears = useMemo(() => {
-        if (!customerData) return [];
+        if (!customerData || !customerData.deliveries) return [];
         const years = new Set(customerData.deliveries.map(d => getYear(new Date(d.date))));
         return Array.from(years).sort((a, b) => b - a);
     }, [customerData]);
 
     const filteredDeliveries = useMemo(() => {
-        if (!customerData) return [];
+        if (!customerData || !customerData.deliveries) return [];
         return customerData.deliveries.filter(d => {
             const deliveryDate = new Date(d.date);
             return getYear(deliveryDate) === selectedYear && getMonth(deliveryDate) === selectedMonth;
@@ -142,7 +146,7 @@ function CustomerDashboardPage() {
         );
     }
     
-    const reportTitle = `DELIVERY REPORT - ${months[selectedMonth].label.toUpperCase()} ${selectedYear}`;
+    const reportTitle = `DELIVERY REPORT - ${months[selectedMonth]?.label.toUpperCase() || ''} ${selectedYear}`;
 
     return (
         <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
