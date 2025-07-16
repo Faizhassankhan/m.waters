@@ -36,15 +36,21 @@ function VoiceImportPage() {
             recognition.interimResults = true;
 
             recognition.onresult = (event: any) => {
-                let finalTranscript = "";
-                // Iterate through all results, not just from resultIndex
-                for (let i = 0; i < event.results.length; ++i) {
-                     if (event.results[i].isFinal) {
+                let finalTranscript = '';
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
                         finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
                     }
                 }
-                // Set the transcript directly, not appending
-                setTranscript(finalTranscript.trim());
+                // We only want to set the final, complete transcript.
+                // We can set the final part here. The hook that processes the
+                // transcript will only run when recording stops.
+                if (finalTranscript) {
+                    setTranscript(prev => (prev ? prev + ' ' : '') + finalTranscript.trim());
+                }
             };
 
             recognition.onend = () => {
