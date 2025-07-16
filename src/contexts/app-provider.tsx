@@ -70,37 +70,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchAllAdminData = useCallback(async () => {
-    // Fetch data profiles and their deliveries
+    // Step 1: Fetch all data profiles
     const { data: profilesData, error: profilesError } = await supabase
       .from('data_profiles')
-      .select(`
-        id,
-        name,
-        bottle_price,
-        can_share_report,
-        linked_user_id,
-        deliveries (
-          id,
-          date,
-          bottles
-        )
-      `)
+      .select('id, name, bottle_price, can_share_report, linked_user_id')
       .order('name', { ascending: true });
 
     if (profilesError) throw profilesError;
 
-    const formattedProfiles = profilesData.map(p => ({
-      id: p.id,
-      name: p.name,
-      bottlePrice: p.bottle_price,
-      canShareReport: p.can_share_report,
-      linked_user_id: p.linked_user_id,
-      deliveries: (p.deliveries || []).map(d => ({
-          ...d,
-          month: format(new Date(d.date), 'MMMM')
-      })).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    }));
-    setDataProfiles(formattedProfiles as DataProfile[]);
+    // Step 2: Fetch all deliveries
+    const { data: deliveriesData, error: deliveriesError } = await supabase
+      .from('deliveries')
+      .select('id, profile_id, date, bottles')
+      .order('date', { ascending: false });
+
+    if (deliveriesError) throw deliveriesError;
+    
+    // Step 3: Map deliveries to their respective profiles
+    const profilesWithDeliveries = profilesData.map(profile => {
+        const profileDeliveries = (deliveriesData || [])
+            .filter(delivery => delivery.profile_id === profile.id)
+            .map(d => ({
+                id: d.id,
+                date: d.date,
+                bottles: d.bottles,
+                month: format(new Date(d.date), 'MMMM')
+            }));
+
+        return {
+            id: profile.id,
+            name: profile.name,
+            bottlePrice: profile.bottle_price,
+            canShareReport: profile.can_share_report,
+            linked_user_id: profile.linked_user_id,
+            deliveries: profileDeliveries,
+        };
+    });
+    
+    setDataProfiles(profilesWithDeliveries as DataProfile[]);
 
     // Fetch registered users (customers)
     const { data: registeredUsersData, error: registeredUsersError } = await supabase
@@ -117,7 +124,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (invoicesError) throw invoicesError;
 
     const formattedInvoices = invoicesData.map(inv => {
-        const associatedProfile = formattedProfiles.find(p => p.id === inv.profile_id);
+        const associatedProfile = profilesWithDeliveries.find(p => p.id === inv.profile_id);
         const deliveriesForInvoice = associatedProfile?.deliveries.filter(d => {
             const deliveryDate = new Date(d.date);
             return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
@@ -175,10 +182,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser(session?.user ?? null);
     if (session?.user) {
         const userType = session.user.user_metadata.user_type;
-        if (userType === 'admin') {
-            await fetchAllAdminData();
-        } else if (userType === 'customer') {
-            await fetchCustomerData(session.user.id);
+        try {
+            if (userType === 'admin') {
+                await fetchAllAdminData();
+            } else if (userType === 'customer') {
+                await fetchCustomerData(session.user.id);
+            }
+        } catch (error) {
+            console.error("Error fetching data on auth change:", error);
+            // Optionally set an error state here to show in the UI
         }
     } else {
         // Clear all state on logout
@@ -244,7 +256,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       
       if (data.user?.user_metadata.user_type !== 'customer') {
-        throw new Error("Not a customer account.");
+        await supabase.auth.signOut();
+        throw new Error("This email is not registered as a customer account.");
       }
 
       return { success: true, error: null, userType: 'customer' };
@@ -303,7 +316,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "profileId">): Promise<Invoice | undefined> => {
     const profileToInvoice = dataProfiles.find(p => p.name.toLowerCase() === invoiceData.name.toLowerCase());
     if (!profileToInvoice) {
-        throw "Cannot create invoice for non-existent profile.";
+        throw new Error("Cannot create invoice for non-existent profile.");
     };
 
     const { data, error } = await supabase
@@ -377,12 +390,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const refreshData = async () => {
     setLoading(true);
-    if (user?.user_metadata.user_type === 'customer') {
-        await fetchCustomerData(user.id);
-    } else if (user?.user_metadata.user_type === 'admin') {
-        await fetchAllAdminData();
+    try {
+        if (user?.user_metadata.user_type === 'customer') {
+            await fetchCustomerData(user.id);
+        } else if (user?.user_metadata.user_type === 'admin') {
+            await fetchAllAdminData();
+        }
+    } catch(error) {
+        console.error("Failed to refresh data:", error);
+    } finally {
+        setLoading(false);
     }
-    setLoading(false);
   }
 
   const value = {
