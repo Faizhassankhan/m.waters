@@ -248,7 +248,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deliveries: invoiceData.deliveries || []
     };
 
-    // After successfully creating, trigger a refresh in the background
+    // After successfully creating, trigger a refresh in the background.
+    // We don't await this so the UI can update immediately with the returned invoice.
     fetchAllData();
 
     return newInvoice;
