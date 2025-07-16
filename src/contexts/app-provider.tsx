@@ -61,6 +61,72 @@ export const AppContext = createContext<AppContextType>({
 const ADMIN_EMAIL = "admin@gmail.com";
 const ADMIN_PASSWORD = "admin2007";
 
+
+async function setupDatabaseSchema() {
+    // 1. Create data_profiles table
+    const { error: createProfilesError } = await supabase.rpc('run_sql', {
+        sql: `
+            CREATE TABLE IF NOT EXISTS public.data_profiles (
+                id uuid NOT NULL DEFAULT gen_random_uuid(),
+                name text NOT NULL,
+                bottle_price numeric NULL DEFAULT 100,
+                can_share_report boolean NULL DEFAULT false,
+                linked_user_id uuid NULL,
+                CONSTRAINT data_profiles_pkey PRIMARY KEY (id),
+                CONSTRAINT data_profiles_name_key UNIQUE (name),
+                CONSTRAINT data_profiles_linked_user_id_fkey FOREIGN KEY (linked_user_id) REFERENCES auth.users(id) ON DELETE SET NULL
+            );
+        `
+    });
+    if (createProfilesError) console.error("DB_SETUP: Failed to create data_profiles:", createProfilesError.message);
+
+    // 2. Create deliveries table
+    const { error: createDeliveriesError } = await supabase.rpc('run_sql', {
+        sql: `
+            CREATE TABLE IF NOT EXISTS public.deliveries (
+                id uuid NOT NULL DEFAULT gen_random_uuid(),
+                profile_id uuid NOT NULL,
+                date date NOT NULL,
+                bottles integer NOT NULL,
+                CONSTRAINT deliveries_pkey PRIMARY KEY (id),
+                CONSTRAINT deliveries_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.data_profiles(id) ON DELETE CASCADE
+            );
+        `
+    });
+    if (createDeliveriesError) console.error("DB_SETUP: Failed to create deliveries:", createDeliveriesError.message);
+
+    // 3. Create invoices table
+    const { error: createInvoicesError } = await supabase.rpc('run_sql', {
+        sql: `
+            CREATE TABLE IF NOT EXISTS public.invoices (
+                id uuid NOT NULL DEFAULT gen_random_uuid(),
+                profile_id uuid NOT NULL,
+                amount numeric NOT NULL,
+                month text NOT NULL,
+                payment_method text NULL,
+                recipient_number text NULL,
+                created_at timestamp with time zone NULL DEFAULT now(),
+                CONSTRAINT invoices_pkey PRIMARY KEY (id),
+                CONSTRAINT invoices_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.data_profiles(id) ON DELETE CASCADE
+            );
+        `
+    });
+    if (createInvoicesError) console.error("DB_SETUP: Failed to create invoices:", createInvoicesError.message);
+    
+    // 4. Create users_public view to safely expose user emails
+    const { error: createViewError } = await supabase.rpc('run_sql', {
+        sql: `
+            CREATE OR REPLACE VIEW public.users_public AS
+            SELECT id, email
+            FROM auth.users;
+        `
+    });
+    if (createViewError) console.error("DB_SETUP: Failed to create users_public view:", createViewError.message);
+
+    console.log("Database schema setup complete.");
+}
+
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [customerData, setCustomerData] = useState<DataProfile | null>(null);
@@ -209,15 +275,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [fetchAllAdminData, fetchCustomerData]);
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(handleAuthChange);
-    // Initial load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-        handleAuthChange("INITIAL_SESSION", session)
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
+    const initApp = async () => {
+        await setupDatabaseSchema();
+        const { data: authListener } = supabase.auth.onAuthStateChange(handleAuthChange);
+        await supabase.auth.getSession().then(({ data: { session } }) => {
+            handleAuthChange("INITIAL_SESSION", session)
+        });
+        return () => {
+          authListener.subscription.unsubscribe();
+        };
     };
+    initApp();
   }, [handleAuthChange]);
 
   const login = async (emailOrName: string, password: string): Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }> => {
