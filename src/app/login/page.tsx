@@ -31,7 +31,7 @@ export default function LoginPage() {
         toast({
             variant: "destructive",
             title: "Missing Information",
-            description: "Please enter your name/email and password.",
+            description: "Please enter your name/username and password.",
         });
         return;
     }
@@ -69,13 +69,13 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="emailOrName">Email or Name</Label>
+              <Label htmlFor="emailOrName">Name or Username</Label>
               <Input
                 id="emailOrName"
                 type="text"
                 value={emailOrName}
                 onChange={(e) => setEmailOrName(e.target.value)}
-                placeholder="Your name or email address"
+                placeholder="e.g., admin or Your Name"
                 required
               />
             </div>
