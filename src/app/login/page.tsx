@@ -2,6 +2,7 @@
 "use client";
 
 import { useContext, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppContext } from "@/contexts/app-provider";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -31,27 +33,36 @@ export default function LoginPage() {
         toast({
             variant: "destructive",
             title: "Missing Information",
-            description: "Please enter your name/username and password.",
+            description: "Please enter your identifier and password.",
         });
         return;
     }
 
     setLoading(true);
-    const { success, error, userType } = await login(emailOrName, password);
-    if (success) {
-      if (userType === 'admin') {
-        router.push("/");
+    try {
+      const { success, error, userType } = await login(emailOrName, password);
+      if (success) {
+        if (userType === 'admin') {
+          router.push("/");
+        } else {
+          router.push("/customer-dashboard");
+        }
       } else {
-        router.push("/customer-dashboard");
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: error || "An unexpected error occurred. Please try again.",
+        });
       }
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: error || "An unexpected error occurred. Please try again.",
-      });
+    } catch (e: any) {
+       toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: e.message || "An unexpected error occurred. Please try again.",
+        });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -69,13 +80,13 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="emailOrName">Name or Username</Label>
+              <Label htmlFor="emailOrName">Email or Admin Username</Label>
               <Input
                 id="emailOrName"
                 type="text"
                 value={emailOrName}
                 onChange={(e) => setEmailOrName(e.target.value)}
-                placeholder="e.g., admin or Your Name"
+                placeholder="e.g., admin or user@example.com"
                 required
               />
             </div>
@@ -96,6 +107,14 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
+        <CardFooter className="flex-col gap-4">
+            <div className="text-center text-sm">
+                New customer?{" "}
+                <Link href="/register" className="underline">
+                    Register here
+                </Link>
+            </div>
+        </CardFooter>
       </Card>
     </div>
   );

@@ -29,13 +29,13 @@ import { Loader2 } from "lucide-react";
 import { AddUserDataPayload } from "@/lib/types";
 
 const formSchema = z.object({
-  name: z.string().min(1, "Please select a user."),
+  name: z.string().min(1, "Please select a data profile."),
   date: z.string().min(1, "Date is required."),
   bottles: z.coerce.number().min(1, "At least one bottle is required."),
 });
 
 export function AddDataForm({ onSave, initialName }: { onSave: () => void, initialName?: string }) {
-  const { addUserData, users } = useContext(AppContext);
+  const { addUserData, dataProfiles } = useContext(AppContext);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -49,11 +49,9 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
   });
 
   useEffect(() => {
-    form.reset({
-      name: initialName || "",
-      date: format(new Date(), "yyyy-MM-dd"),
-      bottles: 1,
-    });
+    if (initialName) {
+        form.setValue("name", initialName);
+    }
   }, [initialName, form]);
 
   async function onSubmit(values: AddUserDataPayload) {
@@ -69,7 +67,9 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
           date: format(new Date(), "yyyy-MM-dd"),
           bottles: 1,
       });
-      onSave();
+      if (onSave) {
+        onSave();
+      }
     } catch (error: any) {
         toast({
             variant: "destructive",
@@ -90,17 +90,17 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
-                   <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!initialName}>
+                  <FormLabel>Profile Name</FormLabel>
+                   <Select onValueChange={field.onChange} value={field.value} disabled={!!initialName}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a user" />
+                        <SelectValue placeholder="Select a data profile" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {users.map(user => (
-                        <SelectItem key={user.id} value={user.name}>
-                          {user.name}
+                      {dataProfiles.map(profile => (
+                        <SelectItem key={profile.id} value={profile.name}>
+                          {profile.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -8,26 +8,29 @@ import { Loader2 } from "lucide-react";
 
 const ADMIN_ROUTES = ["/", "/add-user", "/invoice", "/invoices", "/manage-rates", "/search-data", "/users-sheet"];
 const CUSTOMER_ROUTES = ["/customer-dashboard"];
+const PUBLIC_ROUTES = ["/login", "/register"];
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, customer, loading } = useContext(AppContext);
+  const { user, loading } = useContext(AppContext);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     if (loading) return;
 
+    const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
     const userType = user?.user_metadata?.user_type;
 
-    // If not logged in, redirect to login page
-    if (!user && pathname !== "/login") {
+    // If not logged in and not on a public route, redirect to login
+    if (!user && !isPublicRoute) {
       router.push("/login");
       return;
     }
     
+    // If logged in
     if (user) {
-        // If logged in, but on the login page, redirect away
-        if (pathname === "/login") {
+        // If on a public route, redirect away
+        if (isPublicRoute) {
             if (userType === 'customer') {
                 router.push("/customer-dashboard");
             } else {
@@ -36,7 +39,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        // Route protection
+        // Role-based route protection
         if (userType === 'admin' && CUSTOMER_ROUTES.includes(pathname)) {
              router.push("/");
         } else if (userType === 'customer' && ADMIN_ROUTES.includes(pathname)) {
@@ -44,9 +47,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         }
     }
 
-  }, [user, customer, loading, router, pathname]);
+  }, [user, loading, router, pathname]);
 
-  if (loading || (!user && pathname !== "/login")) {
+  // Show loader while checking auth state or if redirecting
+  if (loading || (!user && !PUBLIC_ROUTES.includes(pathname))) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -59,5 +63,3 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
-
-    

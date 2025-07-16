@@ -13,28 +13,29 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 
 function DataManagementPage() {
-  const { users, refreshData } = useContext(AppContext);
+  const { dataProfiles, refreshData } = useContext(AppContext);
   const [searchMonth, setSearchMonth] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const filteredUsers = useMemo(() => {
+  const filteredDataProfiles = useMemo(() => {
     if (!searchMonth) {
-      return users;
+      return dataProfiles;
     }
     const lowercasedMonth = searchMonth.toLowerCase();
-    return users
-      .map((user) => {
-        const matchingDeliveries = user.deliveries.filter((d) =>
+    return dataProfiles
+      .map((profile) => {
+        const matchingDeliveries = profile.deliveries.filter((d) =>
           d.month.toLowerCase().includes(lowercasedMonth)
         );
-        return { ...user, deliveries: matchingDeliveries };
+        return { ...profile, deliveries: matchingDeliveries };
       })
-      .filter((user) => user.deliveries.length > 0);
-  }, [users, searchMonth]);
+      .filter((profile) => profile.deliveries.length > 0);
+  }, [dataProfiles, searchMonth]);
 
   const handleSave = () => {
       refreshData();
-      setShowAddForm(false);
+      // Optional: keep form open if user wants to add more data quickly
+      // setShowAddForm(false); 
   }
 
   return (
@@ -75,7 +76,7 @@ function DataManagementPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable data={filteredUsers} />
+            <DataTable data={filteredDataProfiles} />
           </CardContent>
         </Card>
       </div>
@@ -90,5 +91,3 @@ export default function Home() {
     </AuthGuard>
   );
 }
-
-    

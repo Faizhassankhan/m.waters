@@ -3,7 +3,7 @@
 
 import { useRef, useState, useContext, useEffect, useMemo } from "react";
 import * as htmlToImage from 'html-to-image';
-import { UserData, Delivery } from "@/lib/types";
+import { DataProfile, Delivery } from "@/lib/types";
 import { AppContext } from "@/contexts/app-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,6 @@ import { format, parse, getYear, getMonth } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -36,7 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface UserDataPreviewProps {
-  user: UserData | null;
+  profile: DataProfile | null;
   onRefresh: () => void;
 }
 
@@ -45,25 +43,25 @@ const months = [
     "July", "August", "September", "October", "November", "December",
 ];
 
-export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPreviewProps) {
+export function UserDataPreview({ profile: initialProfile, onRefresh }: UserDataPreviewProps) {
   const dataCardRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [user, setUser] = useState(initialUser);
+  const [profile, setProfile] = useState(initialProfile);
   const [deliveryUpdates, setDeliveryUpdates] = useState<Record<string, string>>({});
   const [deliveryToDelete, setDeliveryToDelete] = useState<Delivery | null>(null);
 
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   
-  const { updateUserDelivery, deleteUserDelivery, removeDuplicateDeliveries, refreshData } = useContext(AppContext);
+  const { updateProfileDelivery, deleteProfileDelivery, removeDuplicateDeliveries } = useContext(AppContext);
   const { toast } = useToast();
 
   useEffect(() => {
-    setUser(initialUser);
-    if (initialUser && initialUser.deliveries.length > 0) {
-        const lastDelivery = [...initialUser.deliveries].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    setProfile(initialProfile);
+    if (initialProfile && initialProfile.deliveries.length > 0) {
+        const lastDelivery = [...initialProfile.deliveries].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
         const lastDeliveryDate = new Date(lastDelivery.date);
         setSelectedMonth(getMonth(lastDeliveryDate));
         setSelectedYear(getYear(lastDeliveryDate));
@@ -72,28 +70,28 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
         setSelectedYear(null);
     }
 
-    if (initialUser && (!initialUser.deliveries || initialUser.deliveries.length === 0)) {
+    if (initialProfile && (!initialProfile.deliveries || initialProfile.deliveries.length === 0)) {
         setIsEditing(false);
     }
-  }, [initialUser]);
+  }, [initialProfile]);
 
   const availableYears = useMemo(() => {
-    if (!user) return [];
-    const years = new Set(user.deliveries.map(d => getYear(new Date(d.date))));
+    if (!profile) return [];
+    const years = new Set(profile.deliveries.map(d => getYear(new Date(d.date))));
     return Array.from(years).sort((a, b) => b - a);
-  }, [user]);
+  }, [profile]);
 
   const filteredDeliveries = useMemo(() => {
-    if (!user) return [];
-    if (selectedYear === null || selectedMonth === null) return user.deliveries;
-    return user.deliveries.filter(d => {
+    if (!profile) return [];
+    if (selectedYear === null || selectedMonth === null) return profile.deliveries;
+    return profile.deliveries.filter(d => {
         const deliveryDate = new Date(d.date);
         return getYear(deliveryDate) === selectedYear && getMonth(deliveryDate) === selectedMonth;
     });
-  }, [user, selectedMonth, selectedYear]);
+  }, [profile, selectedMonth, selectedYear]);
 
   const handleShare = async () => {
-    if (!dataCardRef.current || !user || isEditing) return;
+    if (!dataCardRef.current || !profile || isEditing) return;
 
     setIsSharing(true);
     try {
@@ -104,14 +102,14 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
       
       const blob = await (await fetch(dataUrl)).blob();
       const fileName = selectedMonth !== null && selectedYear !== null 
-        ? `delivery-report-${user.name}-${months[selectedMonth]}-${selectedYear}.png`
-        : `delivery-report-${user.name}.png`;
+        ? `delivery-report-${profile.name}-${months[selectedMonth]}-${selectedYear}.png`
+        : `delivery-report-${profile.name}.png`;
       const file = new File([blob], fileName, { type: blob.type });
 
       const shareData = {
         files: [file],
-        title: `Delivery Report for ${user.name}`,
-        text: `Here is the delivery report for ${user.name}.`,
+        title: `Delivery Report for ${profile.name}`,
+        text: `Here is the delivery report for ${profile.name}.`,
       };
 
       if (navigator.canShare && navigator.canShare(shareData)) {
@@ -144,9 +142,9 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
   };
   
   const confirmDelete = async () => {
-    if (!user || !deliveryToDelete) return;
+    if (!profile || !deliveryToDelete) return;
     try {
-        await deleteUserDelivery(user.name, deliveryToDelete.id);
+        await deleteProfileDelivery(profile.id, deliveryToDelete.id);
         toast({
             title: "Delivery Deleted",
             description: `The delivery on ${format(new Date(deliveryToDelete.date), "MMM dd")} has been removed.`
@@ -163,12 +161,12 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
   }
 
   const handleRemoveDuplicates = async () => {
-    if (!user) return;
+    if (!profile) return;
     try {
-      await removeDuplicateDeliveries(user.name);
+      await removeDuplicateDeliveries(profile.id);
       toast({
           title: "Duplicates Removed",
-          description: `Duplicate delivery entries for ${user.name} have been removed.`,
+          description: `Duplicate delivery entries for ${profile.name} have been removed.`,
       });
     } catch(error: any) {
        toast({
@@ -180,7 +178,7 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
   }
 
   const saveChanges = async () => {
-    if (!user) return;
+    if (!profile) return;
     setIsSaving(true);
     try {
         const updatePromises = Object.entries(deliveryUpdates).map(([deliveryId, newDateStr]) => {
@@ -188,7 +186,7 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
             if (isNaN(parsedDate.getTime())) {
                 throw new Error(`Invalid date format for one of the entries. Please use YYYY-MM-DD.`);
             }
-            return updateUserDelivery(user.name, deliveryId, newDateStr);
+            return updateProfileDelivery(profile.id, deliveryId, newDateStr);
         });
 
         await Promise.all(updatePromises);
@@ -211,11 +209,11 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
   };
 
 
-  if (!user) {
+  if (!profile) {
     return (
       <Card className="h-full flex items-center justify-center border-dashed">
         <div className="text-center text-muted-foreground">
-          <p>Search for a user to see their data.</p>
+          <p>Search for a profile to see its data.</p>
         </div>
       </Card>
     );
@@ -254,7 +252,7 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
             <CardContent className="p-6">
               <div className="mb-6">
                 <p className="text-sm text-muted-foreground">REPORT FOR</p>
-                <p className="font-semibold text-xl">{user.name}</p>
+                <p className="font-semibold text-xl">{profile.name}</p>
               </div>
               
               <ScrollArea className="max-h-[40vh] pr-4">
@@ -351,7 +349,7 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
                     </Button>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Switch id="edit-mode" checked={isEditing} onCheckedChange={setIsEditing} disabled={!user.deliveries || user.deliveries.length === 0} />
+                  <Input type="checkbox" id="edit-mode" checked={isEditing} onCheckedChange={(checked) => setIsEditing(Boolean(checked))} disabled={!profile.deliveries || profile.deliveries.length === 0} className="h-4 w-4 cursor-pointer"/>
                   <Label htmlFor="edit-mode" className="flex items-center gap-2 cursor-pointer">
                       <Pencil className="h-4 w-4" /> Edit
                   </Label>
@@ -383,7 +381,7 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
           <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                  This will permanently delete the delivery of <span className="font-bold">{deliveryToDelete?.bottles} bottles</span> on <span className="font-bold">{deliveryToDelete ? format(new Date(deliveryToDelete.date), "MMMM dd, yyyy") : ""}</span> for <span className="font-bold">{user?.name}</span>. This action cannot be undone.
+                  This will permanently delete the delivery of <span className="font-bold">{deliveryToDelete?.bottles} bottles</span> on <span className="font-bold">{deliveryToDelete ? format(new Date(deliveryToDelete.date), "MMMM dd, yyyy") : ""}</span> for <span className="font-bold">{profile?.name}</span>. This action cannot be undone.
               </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -394,5 +392,3 @@ export function UserDataPreview({ user: initialUser, onRefresh }: UserDataPrevie
     </AlertDialog>
   );
 }
-
-    

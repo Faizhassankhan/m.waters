@@ -30,7 +30,7 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 
 
 function CustomerDashboardPage() {
-    const { customer, logout } = useContext(AppContext);
+    const { customerData, logout } = useContext(AppContext);
     const dataCardRef = useRef<HTMLDivElement>(null);
     const [isSharing, setIsSharing] = useState(false);
     const { toast } = useToast();
@@ -40,29 +40,29 @@ function CustomerDashboardPage() {
     const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
     
     useEffect(() => {
-        if (customer && customer.deliveries.length > 0) {
-            const lastDeliveryDate = new Date(customer.deliveries[0].date);
+        if (customerData && customerData.deliveries.length > 0) {
+            const lastDeliveryDate = new Date(customerData.deliveries[0].date);
             setSelectedMonth(getMonth(lastDeliveryDate));
             setSelectedYear(getYear(lastDeliveryDate));
         }
-    }, [customer]);
+    }, [customerData]);
     
     const availableYears = useMemo(() => {
-        if (!customer) return [];
-        const years = new Set(customer.deliveries.map(d => getYear(new Date(d.date))));
+        if (!customerData) return [];
+        const years = new Set(customerData.deliveries.map(d => getYear(new Date(d.date))));
         return Array.from(years).sort((a, b) => b - a);
-    }, [customer]);
+    }, [customerData]);
 
     const filteredDeliveries = useMemo(() => {
-        if (!customer) return [];
-        return customer.deliveries.filter(d => {
+        if (!customerData) return [];
+        return customerData.deliveries.filter(d => {
             const deliveryDate = new Date(d.date);
             return getYear(deliveryDate) === selectedYear && getMonth(deliveryDate) === selectedMonth;
         });
-    }, [customer, selectedMonth, selectedYear]);
+    }, [customerData, selectedMonth, selectedYear]);
 
     const handleShare = async () => {
-        if (!dataCardRef.current || !customer) return;
+        if (!dataCardRef.current || !customerData) return;
 
         setIsSharing(true);
         try {
@@ -88,7 +88,7 @@ function CustomerDashboardPage() {
         router.push("/login");
     }
 
-    if (!customer) {
+    if (!customerData) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -135,7 +135,7 @@ function CustomerDashboardPage() {
                         <CardContent className="p-6">
                             <div className="mb-6">
                                 <p className="text-sm text-muted-foreground">REPORT FOR</p>
-                                <p className="font-semibold text-xl">{customer.name}</p>
+                                <p className="font-semibold text-xl">{customerData.name}</p>
                             </div>
                             <ScrollArea className="max-h-[40vh] pr-4">
                                 {filteredDeliveries.length > 0 ? (
@@ -205,7 +205,7 @@ function CustomerDashboardPage() {
                             </SelectContent>
                         </Select>
                     </div>
-                    {customer.canShareReport && (
+                    {customerData.canShareReport && (
                         <>
                         <Separator />
                         <Button onClick={handleShare} className="w-full" disabled={isSharing}>
@@ -227,5 +227,3 @@ export default function Home() {
         </AuthGuard>
     )
 }
-
-    

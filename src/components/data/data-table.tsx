@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { UserData } from "@/lib/types";
+import { DataProfile } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -18,26 +18,26 @@ import { Eye, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ProcessedRow {
   type: "month-header" | "user-data";
-  content: string | UserData;
+  content: string | DataProfile;
   deliveries?: string;
   month?: string;
 }
 
-export function DataTable({ data }: { data: UserData[] }) {
+export function DataTable({ data }: { data: DataProfile[] }) {
   const router = useRouter();
   const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
 
   const processedData = useMemo(() => {
-    const groupedByMonth: Record<string, UserData[]> = {};
-    data.forEach(user => {
-      user.deliveries.forEach(delivery => {
+    const groupedByMonth: Record<string, DataProfile[]> = {};
+    data.forEach(profile => {
+      profile.deliveries.forEach(delivery => {
         const monthYear = format(new Date(delivery.date), "MMMM yyyy");
         if (!groupedByMonth[monthYear]) {
           groupedByMonth[monthYear] = [];
         }
-        if (!groupedByMonth[monthYear].some(u => u.name === user.name)) {
-            const monthDeliveries = user.deliveries.filter(d => format(new Date(d.date), "MMMM yyyy") === monthYear) || [];
-            groupedByMonth[monthYear].push({ ...user, deliveries: monthDeliveries });
+        if (!groupedByMonth[monthYear].some(p => p.name === profile.name)) {
+            const monthDeliveries = profile.deliveries.filter(d => format(new Date(d.date), "MMMM yyyy") === monthYear) || [];
+            groupedByMonth[monthYear].push({ ...profile, deliveries: monthDeliveries });
         }
       });
     });
@@ -51,16 +51,16 @@ export function DataTable({ data }: { data: UserData[] }) {
     setExpandedMonths(initialExpandedState);
 
     return sortedMonths.flatMap(month => {
-        const usersInMonth = groupedByMonth[month];
+        const profilesInMonth = groupedByMonth[month];
         const rows: ProcessedRow[] = [
             { type: "month-header", content: month }
         ];
 
-        usersInMonth.forEach(user => {
-            const deliveriesString = user.deliveries.map(d => `${format(new Date(d.date), 'MMM dd')}: ${d.bottles} bottles`).join(', ');
+        profilesInMonth.forEach(profile => {
+            const deliveriesString = profile.deliveries.map(d => `${format(new Date(d.date), 'MMM dd')}: ${d.bottles} bottles`).join(', ');
             rows.push({
                 type: 'user-data',
-                content: user,
+                content: profile,
                 deliveries: deliveriesString,
                 month: month,
             });
@@ -75,8 +75,8 @@ export function DataTable({ data }: { data: UserData[] }) {
     setExpandedMonths(prev => ({...prev, [month]: !prev[month]}));
   }
 
-  const viewUserData = (userName: string) => {
-    router.push(`/search-data?q=${encodeURIComponent(userName)}`);
+  const viewUserData = (profileName: string) => {
+    router.push(`/search-data?q=${encodeURIComponent(profileName)}`);
   }
 
   if (data.length === 0) {
@@ -89,7 +89,7 @@ export function DataTable({ data }: { data: UserData[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[250px]">Name</TableHead>
+              <TableHead className="w-[250px]">Profile Name</TableHead>
               <TableHead>Deliveries</TableHead>
               <TableHead className="w-[120px] text-right">Actions</TableHead>
             </TableRow>
@@ -109,15 +109,15 @@ export function DataTable({ data }: { data: UserData[] }) {
                   </TableRow>
                 );
               }
-              const user = row.content as UserData;
+              const profile = row.content as DataProfile;
               const month = row.month as string;
               if (expandedMonths[month]) {
                  return (
-                    <TableRow key={`${user.id}-${month}`}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableRow key={`${profile.id}-${month}`}>
+                        <TableCell className="font-medium">{profile.name}</TableCell>
                         <TableCell>{row.deliveries}</TableCell>
                         <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => viewUserData(user.name)}>
+                        <Button variant="ghost" size="icon" onClick={() => viewUserData(profile.name)}>
                             <Eye className="h-4 w-4" />
                             <span className="sr-only">View Full Data</span>
                         </Button>
@@ -133,5 +133,3 @@ export function DataTable({ data }: { data: UserData[] }) {
     </>
   );
 }
-
-    
