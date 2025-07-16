@@ -146,33 +146,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   
   const fetchCustomerData = useCallback(async (userId: string) => {
-      const { data, error } = await supabase
+      // Step 1: Fetch the linked data profile
+      const { data: profileData, error: profileError } = await supabase
         .from('data_profiles')
-        .select(`
-            id, name, bottle_price, can_share_report,
-            deliveries (id, date, bottles)
-        `)
+        .select(`id, name, bottle_price, can_share_report`)
         .eq('linked_user_id', userId)
         .single();
       
-      if (error) {
-        // It's not an error if a customer has no linked profile yet
-        if (error.code === 'PGRST116') {
+      if (profileError) {
+        if (profileError.code === 'PGRST116') {
             setCustomerData(null);
             return;
         }
-        throw error;
+        throw profileError;
       };
+
+      // Step 2: Fetch deliveries for that profile
+      const { data: deliveriesData, error: deliveriesError } = await supabase
+        .from('deliveries')
+        .select('id, date, bottles')
+        .eq('profile_id', profileData.id)
+        .order('date', { ascending: false });
+      
+      if (deliveriesError) throw deliveriesError;
       
       const formattedCustomerData = {
-          id: data.id,
-          name: data.name,
-          bottlePrice: data.bottle_price,
-          canShareReport: data.can_share_report,
-          deliveries: (data.deliveries || []).map(d => ({
+          id: profileData.id,
+          name: profileData.name,
+          bottlePrice: profileData.bottle_price,
+          canShareReport: profileData.can_share_report,
+          deliveries: (deliveriesData || []).map(d => ({
               ...d,
               month: format(new Date(d.date), 'MMMM')
-          })).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+          })),
       }
       setCustomerData(formattedCustomerData as DataProfile);
   }, []);
@@ -188,8 +194,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             } else if (userType === 'customer') {
                 await fetchCustomerData(session.user.id);
             }
-        } catch (error) {
-            console.error("Error fetching data on auth change:", error);
+        } catch (error: any) {
+            console.error("Error fetching data on auth change:", error.message || error);
             // Optionally set an error state here to show in the UI
         }
     } else {
