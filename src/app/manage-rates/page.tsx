@@ -14,19 +14,19 @@ import { Save, Loader2 } from "lucide-react";
 
 
 function ManageRatesPage() {
-    const { users, updateUserBottlePrice } = useContext(AppContext);
+    const { userProfiles, updateUserBottlePrice } = useContext(AppContext);
     const [rates, setRates] = useState<Record<string, number | string>>({});
     const [loading, setLoading] = useState<Record<string, boolean>>({});
 
     const { toast } = useToast();
     
     useEffect(() => {
-        const initialRates = users.reduce((acc, user) => {
+        const initialRates = userProfiles.reduce((acc, user) => {
             acc[user.name] = user.bottlePrice || 100;
             return acc;
         }, {} as Record<string, number>);
         setRates(initialRates);
-    }, [users]);
+    }, [userProfiles]);
 
     const handleRateChange = (userName: string, value: string) => {
         const numericValue = value === "" ? "" : Number(value);
@@ -90,7 +90,7 @@ function ManageRatesPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {users.map((user) => (
+                                    {userProfiles.map((user) => (
                                         <TableRow key={user.id}>
                                             <TableCell className="font-medium">{user.name}</TableCell>
                                             <TableCell>
@@ -128,5 +128,3 @@ export default function Home() {
         </AuthGuard>
     );
 }
-
-    

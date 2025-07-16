@@ -9,14 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { UserDataPreview } from "@/components/data/user-data-preview";
 import { AddDataForm } from "@/components/data/add-data-form";
-import { DataProfile } from "@/lib/types";
+import { UserProfile } from "@/lib/types";
 import { useSearchParams } from 'next/navigation'
 
 
 function SearchDataPage() {
-    const { dataProfiles, refreshData } = useContext(AppContext);
+    const { userProfiles, refreshData } = useContext(AppContext);
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedProfile, setSelectedProfile] = useState<DataProfile | null>(null);
+    const [selectedProfile, setSelectedProfile] = useState<UserProfile | null>(null);
     const searchParams = useSearchParams();
 
     // Effect to handle search query from URL (e.g., from Data Table)
@@ -24,10 +24,10 @@ function SearchDataPage() {
         const query = searchParams.get('q');
         if (query) {
             setSearchTerm(query);
-            const foundProfile = dataProfiles.find(profile => profile.name.toLowerCase() === query.toLowerCase());
+            const foundProfile = userProfiles.find(profile => profile.name.toLowerCase() === query.toLowerCase());
             setSelectedProfile(foundProfile || null);
         }
-    }, [searchParams, dataProfiles]);
+    }, [searchParams, userProfiles]);
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const term = e.target.value;
@@ -36,7 +36,7 @@ function SearchDataPage() {
             setSelectedProfile(null);
             return;
         }
-        const foundProfile = dataProfiles.find(profile => profile.name.toLowerCase().includes(term.toLowerCase()));
+        const foundProfile = userProfiles.find(profile => profile.name.toLowerCase().includes(term.toLowerCase()));
         setSelectedProfile(foundProfile || null);
     }
     
@@ -44,10 +44,10 @@ function SearchDataPage() {
     // the currently viewed user is also updated.
     useEffect(() => {
         if (selectedProfile) {
-            const updatedProfile = dataProfiles.find(p => p.id === selectedProfile.id);
+            const updatedProfile = userProfiles.find(p => p.id === selectedProfile.id);
             setSelectedProfile(updatedProfile || null);
         }
-    }, [dataProfiles, selectedProfile?.id]);
+    }, [userProfiles, selectedProfile?.id]);
 
 
     return (

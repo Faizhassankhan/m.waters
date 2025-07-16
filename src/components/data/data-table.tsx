@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { DataProfile } from "@/lib/types";
+import { UserProfile } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -18,17 +18,17 @@ import { Eye, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ProcessedRow {
   type: "month-header" | "user-data";
-  content: string | DataProfile;
+  content: string | UserProfile;
   deliveries?: string;
   month?: string;
 }
 
-export function DataTable({ data }: { data: DataProfile[] }) {
+export function DataTable({ data }: { data: UserProfile[] }) {
   const router = useRouter();
   const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
 
   const processedData = useMemo(() => {
-    const groupedByMonth: Record<string, DataProfile[]> = {};
+    const groupedByMonth: Record<string, UserProfile[]> = {};
     data.forEach(profile => {
       profile.deliveries.forEach(delivery => {
         const monthYear = format(new Date(delivery.date), "MMMM yyyy");
@@ -109,7 +109,7 @@ export function DataTable({ data }: { data: DataProfile[] }) {
                   </TableRow>
                 );
               }
-              const profile = row.content as DataProfile;
+              const profile = row.content as UserProfile;
               const month = row.month as string;
               if (expandedMonths[month]) {
                  return (

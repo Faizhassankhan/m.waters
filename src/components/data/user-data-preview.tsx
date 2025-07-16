@@ -3,7 +3,7 @@
 
 import { useRef, useState, useContext, useEffect, useMemo } from "react";
 import * as htmlToImage from 'html-to-image';
-import { DataProfile, Delivery } from "@/lib/types";
+import { UserProfile, Delivery } from "@/lib/types";
 import { AppContext } from "@/contexts/app-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,9 +32,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 
 interface UserDataPreviewProps {
-  profile: DataProfile | null;
+  profile: UserProfile | null;
   onRefresh: () => void;
 }
 
@@ -55,7 +56,7 @@ export function UserDataPreview({ profile: initialProfile, onRefresh }: UserData
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   
-  const { updateProfileDelivery, deleteProfileDelivery, removeDuplicateDeliveries } = useContext(AppContext);
+  const { updateUserDelivery, deleteUserDelivery, removeDuplicateDeliveries } = useContext(AppContext);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -144,7 +145,7 @@ export function UserDataPreview({ profile: initialProfile, onRefresh }: UserData
   const confirmDelete = async () => {
     if (!profile || !deliveryToDelete) return;
     try {
-        await deleteProfileDelivery(profile.id, deliveryToDelete.id);
+        await deleteUserDelivery(profile.id, deliveryToDelete.id);
         toast({
             title: "Delivery Deleted",
             description: `The delivery on ${format(new Date(deliveryToDelete.date), "MMM dd")} has been removed.`
@@ -186,7 +187,7 @@ export function UserDataPreview({ profile: initialProfile, onRefresh }: UserData
             if (isNaN(parsedDate.getTime())) {
                 throw new Error(`Invalid date format for one of the entries. Please use YYYY-MM-DD.`);
             }
-            return updateProfileDelivery(profile.id, deliveryId, newDateStr);
+            return updateUserDelivery(profile.id, deliveryId, newDateStr);
         });
 
         await Promise.all(updatePromises);
@@ -349,7 +350,7 @@ export function UserDataPreview({ profile: initialProfile, onRefresh }: UserData
                     </Button>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Input type="checkbox" id="edit-mode" checked={isEditing} onCheckedChange={(checked) => setIsEditing(Boolean(checked))} disabled={!profile.deliveries || profile.deliveries.length === 0} className="h-4 w-4 cursor-pointer"/>
+                  <Input type="checkbox" id="edit-mode" checked={isEditing} onChange={(e) => setIsEditing(e.target.checked)} disabled={!profile.deliveries || profile.deliveries.length === 0} className="h-4 w-4 cursor-pointer"/>
                   <Label htmlFor="edit-mode" className="flex items-center gap-2 cursor-pointer">
                       <Pencil className="h-4 w-4" /> Edit
                   </Label>

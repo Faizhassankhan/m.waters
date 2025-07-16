@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Invoice, UserData, Delivery } from "@/lib/types";
+import { Invoice, UserProfile, Delivery } from "@/lib/types";
 import { UserCheck, Loader2 } from "lucide-react";
 import { format, subMonths, getYear, getMonth } from 'date-fns';
 
@@ -49,9 +49,9 @@ const months = Array.from({ length: 12 }, (_, i) => {
 
 
 export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: Invoice) => void }) {
-  const { addInvoice, users, refreshData } = useContext(AppContext);
+  const { addInvoice, userProfiles, refreshData } = useContext(AppContext);
   const { toast } = useToast();
-  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>(format(subMonths(new Date(), 1), 'MMMM'));
   const [deliveriesForInvoice, setDeliveriesForInvoice] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,7 +70,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "name" && value.name) {
-        const foundUser = users.find(u => u.name.toLowerCase() === value.name?.toLowerCase());
+        const foundUser = userProfiles.find(u => u.name.toLowerCase() === value.name?.toLowerCase());
         setSelectedUser(foundUser || null);
       }
       if (name === 'month' && value.month) {
@@ -78,7 +78,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       }
     });
     return () => subscription.unsubscribe();
-  }, [form.watch, users]);
+  }, [form.watch, userProfiles]);
 
   useEffect(() => {
     if (selectedUser && selectedMonth) {

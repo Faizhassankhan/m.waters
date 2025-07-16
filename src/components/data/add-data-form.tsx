@@ -35,7 +35,7 @@ const formSchema = z.object({
 });
 
 export function AddDataForm({ onSave, initialName }: { onSave: () => void, initialName?: string }) {
-  const { addUserData, dataProfiles } = useContext(AppContext);
+  const { addUserData, userProfiles } = useContext(AppContext);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -98,7 +98,7 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {dataProfiles.map(profile => (
+                      {userProfiles.map(profile => (
                         <SelectItem key={profile.id} value={profile.name}>
                           {profile.name}
                         </SelectItem>

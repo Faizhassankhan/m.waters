@@ -22,15 +22,17 @@ interface AppContextType {
   
   // Admin actions
   addUserData: (data: AddUserDataPayload) => Promise<void>;
-  addUserProfile: (name: string, email: string, userId: string) => Promise<void>;
+  addUserProfile: (name: string, userId: string) => Promise<void>;
   deleteUserProfile: (profileId: string) => Promise<void>;
   updateUserDelivery: (userId: string, deliveryId: string, newDate: string) => Promise<void>;
   deleteUserDelivery: (userId: string, deliveryId: string) => Promise<void>;
   removeDuplicateDeliveries: (userId: string) => Promise<void>;
-  updateUserBottlePrice: (userId: string, newPrice: number) => Promise<void>;
+  updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   refreshData: () => Promise<void>;
+  linkProfileToUser: (profileId: string, userId: string) => Promise<void>;
+  unlinkProfile: (profileId: string) => Promise<void>;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -52,6 +54,8 @@ export const AppContext = createContext<AppContextType>({
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
   refreshData: async () => {},
+  linkProfileToUser: async () => {},
+  unlinkProfile: async () => {},
 });
 
 const ADMIN_EMAIL = "admin@gmail.com";
@@ -67,117 +71,111 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchAllAdminData = useCallback(async () => {
-    try {
-      // Step 1: Fetch all user profiles
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('users')
-        .select('id, name, email, bottle_price, can_share_report')
-        .order('name', { ascending: true });
+    // Step 1: Fetch all user profiles
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('users')
+      .select('id, name, bottle_price, can_share_report, linked_user_id')
+      .order('name', { ascending: true });
 
-      if (profilesError) throw profilesError;
+    if (profilesError) throw profilesError;
 
-      // Step 2: Fetch all deliveries
-      const { data: deliveriesData, error: deliveriesError } = await supabase
-        .from('deliveries')
-        .select('id, user_id, date, bottles')
-        .order('date', { ascending: false });
+    // Step 2: Fetch all deliveries
+    const { data: deliveriesData, error: deliveriesError } = await supabase
+      .from('deliveries')
+      .select('id, user_id, date, bottles')
+      .order('date', { ascending: false });
 
-      if (deliveriesError) throw deliveriesError;
-      
-      // Step 3: Map deliveries to their respective profiles
-      const profilesWithDeliveries = profilesData.map(profile => {
-          const profileDeliveries = (deliveriesData || [])
-              .filter(delivery => delivery.user_id === profile.id)
-              .map(d => ({
-                  id: d.id,
-                  date: d.date,
-                  bottles: d.bottles,
-                  month: format(new Date(d.date), 'MMMM')
-              }));
+    if (deliveriesError) throw deliveriesError;
+    
+    // Step 3: Map deliveries to their respective profiles
+    const profilesWithDeliveries = profilesData.map(profile => {
+        const profileDeliveries = (deliveriesData || [])
+            .filter(delivery => delivery.user_id === profile.id)
+            .map(d => ({
+                id: d.id,
+                date: d.date,
+                bottles: d.bottles,
+                month: format(new Date(d.date), 'MMMM')
+            }));
 
-          return {
-              id: profile.id,
-              name: profile.name,
-              email: profile.email,
-              bottlePrice: profile.bottle_price,
-              canShareReport: profile.can_share_report,
-              deliveries: profileDeliveries,
-          };
-      });
-      
-      setUserProfiles(profilesWithDeliveries as UserProfile[]);
+        return {
+            id: profile.id,
+            name: profile.name,
+            bottlePrice: profile.bottle_price,
+            canShareReport: profile.can_share_report,
+            linked_user_id: profile.linked_user_id,
+            deliveries: profileDeliveries,
+        };
+    });
+    
+    setUserProfiles(profilesWithDeliveries as UserProfile[]);
 
-      // Fetch registered users (customers from auth table)
-      const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
-      if (authUsersError) throw authUsersError;
+    // Fetch registered users (customers from auth table)
+    const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
+    if (authUsersError) throw authUsersError;
 
-      const customerUsers = authUsers
-        .filter(u => u.user_metadata?.user_type === 'customer')
-        .map(u => ({ id: u.id, email: u.email || '' }));
-      setRegisteredUsers(customerUsers);
+    const customerUsers = authUsers
+      .filter(u => u.user_metadata?.user_type === 'customer')
+      .map(u => ({ id: u.id, email: u.email || '' }));
+    setRegisteredUsers(customerUsers);
 
-      // Fetch invoices
-      const { data: invoicesData, error: invoicesError } = await supabase
-        .from('invoices')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (invoicesError) throw invoicesError;
+    // Fetch invoices
+    const { data: invoicesData, error: invoicesError } = await supabase
+      .from('invoices')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (invoicesError) throw invoicesError;
 
-      const formattedInvoices = invoicesData.map(inv => {
-          const associatedProfile = profilesWithDeliveries.find(p => p.id === inv.user_id);
-          const deliveriesForInvoice = associatedProfile?.deliveries.filter(d => {
-              const deliveryDate = new Date(d.date);
-              return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
-          }) || [];
-          return {
-              id: inv.id,
-              userId: inv.user_id,
-              name: associatedProfile?.name || 'Unknown Profile',
-              amount: inv.amount,
-              bottlePrice: associatedProfile?.bottlePrice,
-              paymentMethod: inv.payment_method,
-              recipientNumber: inv.recipient_number,
-              createdAt: inv.created_at,
-              month: inv.month,
-              deliveries: deliveriesForInvoice
-          } as Invoice;
-      })
-      setInvoices(formattedInvoices);
-    } catch(err) {
-        const error = err as PostgrestError;
-        if (error.code === '42P01') { // relation does not exist
-            console.warn(
-                '%cDATABASE SCHEMA NOT DETECTED',
-                'color: #f87171; font-weight: bold; font-size: 14px;',
-                '\nIt looks like your database tables are not set up. Please run the SQL script provided to create the required tables.'
-            );
-        } else {
-            console.error("Error fetching admin data:", error.message || error);
-        }
-    }
+    const formattedInvoices = invoicesData.map(inv => {
+        const associatedProfile = profilesWithDeliveries.find(p => p.id === inv.user_id);
+        const deliveriesForInvoice = associatedProfile?.deliveries.filter(d => {
+            const deliveryDate = new Date(d.date);
+            return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
+        }) || [];
+        return {
+            id: inv.id,
+            userId: inv.user_id,
+            name: associatedProfile?.name || 'Unknown Profile',
+            amount: inv.amount,
+            bottlePrice: associatedProfile?.bottlePrice,
+            paymentMethod: inv.payment_method,
+            recipientNumber: inv.recipient_number,
+            createdAt: inv.created_at,
+            month: inv.month,
+            deliveries: deliveriesForInvoice
+        } as Invoice;
+    })
+    setInvoices(formattedInvoices);
   }, []);
   
   const fetchCustomerData = useCallback(async (userId: string) => {
-      // Step 1: Fetch the user profile from 'users' table
+      // Step 1: Find the profile linked to the user
+      const { data: linkedProfile, error: linkError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('linked_user_id', userId)
+          .single();
+
+      if (linkError || !linkedProfile) {
+          if (linkError && linkError.code !== 'PGRST116') console.error(linkError);
+          setCustomerData(null);
+          return;
+      }
+
+      // Step 2: Fetch the full profile data for that linked profile
       const { data: profileData, error: profileError } = await supabase
         .from('users')
         .select(`id, name, bottle_price, can_share_report`)
-        .eq('id', userId)
+        .eq('id', linkedProfile.id)
         .single();
       
-      if (profileError) {
-        if (profileError.code === 'PGRST116' || profileError.code === '42P01') {
-            setCustomerData(null);
-            return;
-        }
-        throw profileError;
-      };
+      if (profileError) throw profileError;
       if (!profileData) {
         setCustomerData(null);
         return;
       }
 
-      // Step 2: Fetch deliveries for that user
+      // Step 3: Fetch deliveries for that user profile
       const { data: deliveriesData, error: deliveriesError } = await supabase
         .from('deliveries')
         .select('id, date, bottles')
@@ -213,7 +211,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 await fetchCustomerData(currentUser.id);
             }
         } catch (error: any) {
-            console.error("Error fetching data on auth change:", error.message || error);
+            if (error.message.includes('relation "public.users" does not exist')) {
+                 console.warn(
+                    '%cDATABASE SCHEMA NOT DETECTED',
+                    'color: #f87171; font-weight: bold; font-size: 14px;',
+                    '\nIt looks like your database tables are not set up. Please run the SQL script provided to create the required tables.'
+                );
+            } else {
+                console.error("Error fetching data on auth change:", error.message || error);
+            }
         }
     } else {
         // Clear all state on logout
@@ -296,11 +302,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  const addUserProfile = async (name: string, email: string, userId: string) => {
-    const { data: existing } = await supabase.from('users').select('id').eq('id', userId).single();
-    if (existing) throw new Error(`User profile for this user already exists.`);
+  const addUserProfile = async (name: string) => {
+    const { data: existing } = await supabase.from('users').select('id').eq('name', name).single();
+    if (existing) throw new Error(`User profile for this name already exists.`);
 
-    const { error } = await supabase.from('users').insert({ id: userId, name, email, bottle_price: 100, can_share_report: false });
+    const { error } = await supabase.from('users').insert({ name, bottle_price: 100, can_share_report: true });
     if (error) throw error;
     await fetchAllAdminData();
   };
@@ -320,8 +326,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshData();
   };
 
-  const updateUserBottlePrice = async (userId: string, newPrice: number) => {
-    const { error } = await supabase.from('users').update({ bottle_price: newPrice }).eq('id', userId);
+  const updateUserBottlePrice = async (userName: string, newPrice: number) => {
+    const { error } = await supabase.from('users').update({ bottle_price: newPrice }).eq('name', userName);
     if (error) throw error;
     await refreshData();
   };
@@ -401,6 +407,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshData();
   }
   
+  const linkProfileToUser = async (profileId: string, userId: string) => {
+      const { error } = await supabase.from('users').update({ linked_user_id: userId }).eq('id', profileId);
+      if (error) throw error;
+      await refreshData();
+  }
+
+  const unlinkProfile = async (profileId: string) => {
+       const { error } = await supabase.from('users').update({ linked_user_id: null }).eq('id', profileId);
+       await refreshData();
+  }
+
   const refreshData = async () => {
     setLoading(true);
     try {
@@ -423,6 +440,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     logout,
     userProfiles,
     registeredUsers,
+    invoices,
     loading,
     addUserData,
     addUserProfile,
@@ -431,10 +449,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteUserDelivery,
     removeDuplicateDeliveries,
     updateUserBottlePrice,
-    invoices,
     addInvoice,
     deleteInvoice,
     refreshData,
+    linkProfileToUser,
+    unlinkProfile,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

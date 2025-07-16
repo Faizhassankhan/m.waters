@@ -13,16 +13,16 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 
 function DataManagementPage() {
-  const { dataProfiles, refreshData } = useContext(AppContext);
+  const { userProfiles, refreshData } = useContext(AppContext);
   const [searchMonth, setSearchMonth] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
   const filteredDataProfiles = useMemo(() => {
     if (!searchMonth) {
-      return dataProfiles;
+      return userProfiles;
     }
     const lowercasedMonth = searchMonth.toLowerCase();
-    return dataProfiles
+    return userProfiles
       .map((profile) => {
         const matchingDeliveries = profile.deliveries.filter((d) =>
           d.month.toLowerCase().includes(lowercasedMonth)
@@ -30,7 +30,7 @@ function DataManagementPage() {
         return { ...profile, deliveries: matchingDeliveries };
       })
       .filter((profile) => profile.deliveries.length > 0);
-  }, [dataProfiles, searchMonth]);
+  }, [userProfiles, searchMonth]);
 
   const handleSave = () => {
       refreshData();

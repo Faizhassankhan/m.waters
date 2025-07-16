@@ -10,10 +10,10 @@ export interface Delivery {
 export interface UserProfile {
   id: string; // uuid from supabase, links to auth.users
   name: string;
-  email?: string;
   bottlePrice: number;
   canShareReport: boolean;
   deliveries: Delivery[];
+  linked_user_id?: string | null;
 }
 
 export interface RegisteredUser {

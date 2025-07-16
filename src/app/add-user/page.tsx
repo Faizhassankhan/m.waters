@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DataProfile, RegisteredUser } from "@/lib/types";
+import { UserProfile, RegisteredUser } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 
@@ -42,22 +42,22 @@ const formSchema = z.object({
 
 function AddUserPage() {
   const { 
-    dataProfiles, 
+    userProfiles, 
     registeredUsers, 
-    addDataProfile, 
-    deleteDataProfile,
+    addUserProfile, 
+    deleteUserProfile,
     linkProfileToUser,
     unlinkProfile,
   } = useContext(AppContext);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [profileToDelete, setProfileToDelete] = useState<DataProfile | null>(null);
-  const [linkingProfile, setLinkingProfile] = useState<DataProfile | null>(null);
+  const [profileToDelete, setProfileToDelete] = useState<UserProfile | null>(null);
+  const [linkingProfile, setLinkingProfile] = useState<UserProfile | null>(null);
   const [selectedRegisteredUserId, setSelectedRegisteredUserId] = useState<string>('');
   
   const unlinkedRegisteredUsers = useMemo(() => {
-    return registeredUsers.filter(ru => !dataProfiles.some(dp => dp.linked_user_id === ru.id))
-  }, [registeredUsers, dataProfiles])
+    return registeredUsers.filter(ru => !userProfiles.some(dp => dp.linked_user_id === ru.id))
+  }, [registeredUsers, userProfiles])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -69,7 +69,7 @@ function AddUserPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-      await addDataProfile(values.name);
+      await addUserProfile(values.name);
       toast({
         title: "Success",
         description: `Data profile for "${values.name}" has been created.`,
@@ -89,7 +89,7 @@ function AddUserPage() {
   const handleDeleteProfile = async () => {
     if (profileToDelete) {
       try {
-        await deleteDataProfile(profileToDelete.id);
+        await deleteUserProfile(profileToDelete.id);
         toast({
           title: "Profile Deleted",
           description: `Profile "${profileToDelete.name}" has been removed.`,
@@ -135,7 +135,7 @@ function AddUserPage() {
     }
   }
   
-  const getLinkedUserEmail = (userId: string | null) => {
+  const getLinkedUserEmail = (userId: string | null | undefined) => {
     if (!userId) return null;
     return registeredUsers.find(ru => ru.id === userId)?.email;
   }
@@ -199,8 +199,8 @@ function AddUserPage() {
                           </TableRow>
                       </TableHeader>
                       <TableBody>
-                          {dataProfiles.length > 0 ? (
-                              dataProfiles.map((profile) => (
+                          {userProfiles.length > 0 ? (
+                              userProfiles.map((profile) => (
                                   <TableRow key={profile.id}>
                                       <TableCell className="font-medium">{profile.name}</TableCell>
                                       <TableCell>
@@ -263,7 +263,7 @@ function AddUserPage() {
                                     <TableRow key={rUser.id}>
                                         <TableCell className="font-medium">{rUser.email}</TableCell>
                                         <TableCell>
-                                            {dataProfiles.some(dp => dp.linked_user_id === rUser.id) ? (
+                                            {userProfiles.some(dp => dp.linked_user_id === rUser.id) ? (
                                                 <span className="text-sm text-green-600 font-semibold">Linked</span>
                                             ) : (
                                                 <span className="text-xs text-muted-foreground italic">Unlinked</span>

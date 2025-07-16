@@ -24,19 +24,19 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 function UsersSheetPage() {
-    const { users } = useContext(AppContext);
+    const { userProfiles } = useContext(AppContext);
     const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(new Date()));
     const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
     
     const availableYears = useMemo(() => {
         const years = new Set<number>();
-        users.forEach(user => {
+        userProfiles.forEach(user => {
             user.deliveries.forEach(delivery => {
                 years.add(getYear(new Date(delivery.date)));
             });
         });
         return Array.from(years).sort((a, b) => b - a);
-    }, [users]);
+    }, [userProfiles]);
 
     // Set initial year if available years are loaded
     useEffect(() => {
@@ -46,7 +46,7 @@ function UsersSheetPage() {
     }, [availableYears, selectedYear]);
 
     const usersSummary = useMemo(() => {
-        return users.map(user => {
+        return userProfiles.map(user => {
             const filteredDeliveries = user.deliveries.filter(delivery => {
                 const deliveryDate = new Date(delivery.date);
                 return getMonth(deliveryDate) === selectedMonth && getYear(deliveryDate) === selectedYear;
@@ -64,7 +64,7 @@ function UsersSheetPage() {
         })
         .filter(user => user.totalBottles > 0) // Only show users with deliveries in the selected period
         .sort((a, b) => b.totalBottles - a.totalBottles);
-    }, [users, selectedMonth, selectedYear]);
+    }, [userProfiles, selectedMonth, selectedYear]);
 
     return (
         <DashboardLayout>
