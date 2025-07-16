@@ -338,7 +338,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let userToInvoice = users.find(u => u.name.toLowerCase() === invoiceData.name.toLowerCase());
 
     if (!userToInvoice) {
-        throw new Error("Cannot create invoice for non-existent user. Please add them first.");
+        throw "Cannot create invoice for non-existent user. Please add them first.";
     }
 
     const { data, error } = await supabase
@@ -458,5 +458,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    

@@ -135,7 +135,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
         toast({
             variant: "destructive",
             title: "Error Creating Invoice",
-            description: error.message || "An unexpected error occurred."
+            description: typeof error === 'string' ? error : error.message || "An unexpected error occurred."
         });
     } finally {
         setLoading(false);
