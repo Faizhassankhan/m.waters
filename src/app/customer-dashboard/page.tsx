@@ -5,7 +5,7 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut } from "lucide-react";
+import { Loader2, Share2, LogOut, UserCheck, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -67,10 +67,30 @@ function CustomerDashboardPage() {
         setIsSharing(true);
         try {
             const dataUrl = await htmlToImage.toPng(dataCardRef.current, { quality: 0.95, backgroundColor: 'hsl(var(--background))' });
-            const link = document.createElement('a');
-            link.href = `https://wa.me/?text=${encodeURIComponent(`Check out my delivery report: ${dataUrl}`)}`;
-            link.target = '_blank';
-            link.click();
+            
+            const blob = await (await fetch(dataUrl)).blob();
+            const fileName = `delivery-report-${customerData.name}-${months[selectedMonth].label}-${selectedYear}.png`;
+            const file = new File([blob], fileName, { type: blob.type });
+
+            const shareData = {
+                files: [file],
+                title: `Delivery Report for ${customerData.name}`,
+                text: `Here is the delivery report for ${customerData.name}.`,
+            };
+
+            if (navigator.canShare && navigator.canShare(shareData)) {
+                await navigator.share(shareData);
+            } else {
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = fileName;
+                link.click();
+                toast({
+                    title: "Image downloaded",
+                    description: "Your browser doesn't support direct sharing. The report image has been downloaded for you to share manually.",
+                });
+            }
+
         } catch (error) {
             console.error('oops, something went wrong!', error);
             toast({
@@ -88,10 +108,36 @@ function CustomerDashboardPage() {
         router.push("/login");
     }
 
+    const renderHeader = () => (
+        <header className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-2 font-semibold font-headline text-lg">
+                <svg viewBox="0 0 24 24" className="h-6 w-6 text-primary"><path fill="currentColor" d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z"></path></svg>
+                <span>m.waters Portal</span>
+            </div>
+             <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+            </Button>
+        </header>
+    );
+
     if (!customerData) {
         return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+             <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
+                {renderHeader()}
+                <main className="max-w-2xl mx-auto">
+                    <Card className="text-center p-8">
+                        <CardHeader>
+                            <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <CardTitle className="mt-4 font-headline">Access Pending</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-muted-foreground">
+                                Your data is not yet available. Please contact the administrator to get access to your delivery reports.
+                            </p>
+                        </CardContent>
+                    </Card>
+                </main>
             </div>
         );
     }
@@ -100,16 +146,7 @@ function CustomerDashboardPage() {
 
     return (
         <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
-            <header className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-2 font-semibold font-headline text-lg">
-                    <svg viewBox="0 0 24 24" className="h-6 w-6 text-primary"><path fill="currentColor" d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z"></path></svg>
-                    <span>m.waters Portal</span>
-                </div>
-                 <Button onClick={handleLogout} variant="outline" size="sm">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                </Button>
-            </header>
+            {renderHeader()}
             <main className="max-w-2xl mx-auto">
                 <div ref={dataCardRef} className="bg-background">
                      <Card style={{ boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.25)' }} className="animate-in fade-in-50 bg-white text-card-foreground">
@@ -210,7 +247,7 @@ function CustomerDashboardPage() {
                         <Separator />
                         <Button onClick={handleShare} className="w-full" disabled={isSharing}>
                             {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
-                            {isSharing ? 'Generating...' : 'Share Report on WhatsApp'}
+                            {isSharing ? 'Generating...' : 'Share Report as Image'}
                         </Button>
                         </>
                     )}
@@ -227,3 +264,5 @@ export default function Home() {
         </AuthGuard>
     )
 }
+
+    
