@@ -276,6 +276,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               return { success: false, error: authError.message, userType: null };
           }
           
+          if (!authData.user) {
+            return { success: false, error: "Could not authenticate customer.", userType: null };
+          }
+          
           setUser(authData.user);
           await fetchCustomerData(customerData.name);
           return { success: true, error: null, userType: 'customer' };
@@ -487,3 +491,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
