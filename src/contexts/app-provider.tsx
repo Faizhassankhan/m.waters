@@ -53,7 +53,6 @@ export const AppContext = createContext<AppContextType>({
   updateUserBottlePrice: async () => {},
   linkProfileToUser: async () => {},
   unlinkProfile: async () => {},
-  invoices: [],
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
   refreshData: async () => {},
@@ -205,6 +204,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [handleAuthChange]);
 
   const login = async (emailOrName: string, password: string): Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }> => {
+    try {
       // Admin Login
       if (emailOrName.toLowerCase() === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
           let { data, error } = await supabase.auth.signInWithPassword({ 
@@ -219,13 +219,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
                   password: ADMIN_PASSWORD,
                   options: { data: { user_type: 'admin' } }
               });
-              if (signUpError) return { success: false, error: signUpError.message, userType: null };
+              if (signUpError) throw signUpError;
               data = signUpData;
           } else if (error) {
-              return { success: false, error: error.message, userType: null };
+              throw error;
           }
           
-          if (!data.user) return { success: false, error: "Could not authenticate admin user.", userType: null };
+          if (!data.user) throw new Error("Could not authenticate admin user.");
           
           // Ensure user_type is set correctly
           if (data.user.user_metadata.user_type !== 'admin') {
@@ -242,12 +242,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
           password: password,
       });
 
-      if (error) return { success: false, error: error.message, userType: null };
+      if (error) throw error;
+      
       if (data.user?.user_metadata.user_type !== 'customer') {
-        return { success: false, error: "Not a customer account.", userType: null };
+        throw new Error("Not a customer account.");
       }
 
       return { success: true, error: null, userType: 'customer' };
+
+    } catch (error: any) {
+        return { success: false, error: error.message || "An unexpected error occurred.", userType: null };
+    }
   };
 
   const logout = async () => {
@@ -258,7 +263,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data: existing } = await supabase.from('data_profiles').select('id').eq('name', name).single();
     if (existing) throw new Error(`Profile with name "${name}" already exists.`);
 
-    const { error } = await supabase.from('data_profiles').insert({ name, bottle_price: 100 });
+    const { error } = await supabase.from('data_profiles').insert({ name, bottle_price: 100, can_share_report: false });
     if (error) throw error;
     await fetchAllAdminData();
   };
@@ -298,7 +303,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "profileId">): Promise<Invoice | undefined> => {
     const profileToInvoice = dataProfiles.find(p => p.name.toLowerCase() === invoiceData.name.toLowerCase());
-    if (!profileToInvoice) throw new Error("Cannot create invoice for non-existent profile.");
+    if (!profileToInvoice) {
+        throw "Cannot create invoice for non-existent profile.";
+    };
 
     const { data, error } = await supabase
         .from('invoices')

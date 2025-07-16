@@ -58,7 +58,7 @@ export default function LoginPage() {
        toast({
           variant: "destructive",
           title: "Login Failed",
-          description: e.message || "An unexpected error occurred. Please try again.",
+          description: "An unexpected error occurred during login.",
         });
     } finally {
       setLoading(false);
