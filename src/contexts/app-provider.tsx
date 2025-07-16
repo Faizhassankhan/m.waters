@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { UserProfile, RegisteredUser, Delivery, Invoice, AddUserDataPayload } from "@/lib/types";
+import { UserProfile, Delivery, Invoice, AddUserDataPayload } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
 import { User, PostgrestError } from "@supabase/supabase-js";
 import { format } from "date-fns";
@@ -15,14 +15,13 @@ interface AppContextType {
   
   // Admin-specific data
   userProfiles: UserProfile[];
-  registeredUsers: RegisteredUser[];
   invoices: Invoice[];
   
   loading: boolean;
   
   // Admin actions
   addUserData: (data: AddUserDataPayload) => Promise<void>;
-  addUserProfile: (name: string, userId: string) => Promise<void>;
+  addUserProfile: (name: string, email: string) => Promise<void>;
   deleteUserProfile: (profileId: string) => Promise<void>;
   updateUserDelivery: (userId: string, deliveryId: string, newDate: string) => Promise<void>;
   deleteUserDelivery: (userId: string, deliveryId: string) => Promise<void>;
@@ -31,8 +30,6 @@ interface AppContextType {
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   refreshData: () => Promise<void>;
-  linkProfileToUser: (profileId: string, userId: string) => Promise<void>;
-  unlinkProfile: (profileId: string) => Promise<void>;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -41,7 +38,6 @@ export const AppContext = createContext<AppContextType>({
   login: async () => ({ success: false, error: "Not implemented", userType: null }),
   logout: async () => {},
   userProfiles: [],
-  registeredUsers: [],
   invoices: [],
   loading: true,
   addUserData: async () => {},
@@ -54,8 +50,6 @@ export const AppContext = createContext<AppContextType>({
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
   refreshData: async () => {},
-  linkProfileToUser: async () => {},
-  unlinkProfile: async () => {},
 });
 
 const ADMIN_EMAIL = "admin@gmail.com";
@@ -66,7 +60,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [customerData, setCustomerData] = useState<UserProfile | null>(null);
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
-  const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -74,7 +67,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Step 1: Fetch all user profiles
     const { data: profilesData, error: profilesError } = await supabase
       .from('users')
-      .select('id, name, bottle_price, can_share_report, linked_user_id')
+      .select('id, name, email, bottle_price, can_share_report')
       .order('name', { ascending: true });
 
     if (profilesError) {
@@ -82,7 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             console.warn(
                 '%cDATABASE SCHEMA NOT DETECTED',
                 'color: #f87171; font-weight: bold; font-size: 14px;',
-                "\nIt looks like your database tables are not set up. Please run the SQL script from schema.sql in your Supabase SQL Editor."
+                "\nPlease run the provided SQL script in your Supabase SQL Editor to set up the database."
             );
             return;
         }
@@ -111,25 +104,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return {
             id: profile.id,
             name: profile.name,
+            email: profile.email,
             bottlePrice: profile.bottle_price,
             canShareReport: profile.can_share_report,
-            linked_user_id: profile.linked_user_id,
             deliveries: profileDeliveries,
         };
     });
     
     setUserProfiles(profilesWithDeliveries as UserProfile[]);
 
-    // Fetch registered users (customers from auth table)
-    const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
-    if (authUsersError) throw authUsersError;
-
-    const customerUsers = authUsers
-      .filter(u => u.user_metadata?.user_type === 'customer')
-      .map(u => ({ id: u.id, email: u.email || '' }));
-    setRegisteredUsers(customerUsers);
-
-    // Fetch invoices
+    // Step 4: Fetch invoices
     const { data: invoicesData, error: invoicesError } = await supabase
       .from('invoices')
       .select('*')
@@ -162,12 +146,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // For customers, their data is directly on their user record.
       const { data: profileData, error: profileError } = await supabase
         .from('users')
-        .select(`id, name, bottle_price, can_share_report`)
+        .select(`id, name, email, bottle_price, can_share_report`)
         .eq('id', userId)
         .single();
       
       if (profileError) {
-          // It's normal for a new user to not have a profile row yet.
           if (profileError.code !== 'PGRST116') {
              console.error("Error fetching customer profile:", profileError);
           }
@@ -192,6 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const formattedCustomerData = {
           id: profileData.id,
           name: profileData.name,
+          email: profileData.email,
           bottlePrice: profileData.bottle_price,
           canShareReport: profileData.can_share_report,
           deliveries: (deliveriesData || []).map(d => ({
@@ -223,7 +207,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCustomerData(null);
         setUserProfiles([]);
         setInvoices([]);
-        setRegisteredUsers([]);
     }
     setLoading(false);
   }, [fetchAllAdminData, fetchCustomerData]);
@@ -287,6 +270,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
         throw new Error("This email is not registered as a customer account.");
       }
+      
+      const { data: userProfile } = await supabase.from('users').select('id').eq('id', data.user.id).single();
+      if (!userProfile) {
+          const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email, email: data.user.email });
+          if(insertError) throw insertError;
+      }
+
 
       return { success: true, error: null, userType: 'customer' };
 
@@ -299,11 +289,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
-  const addUserProfile = async (name: string) => {
+  const addUserProfile = async (name: string, email: string) => {
     const { data: existing } = await supabase.from('users').select('id').eq('name', name).single();
-    if (existing) throw new Error(`User profile for this name already exists.`);
+    if (existing) throw new Error(`User with this name already exists.`);
 
-    const { error } = await supabase.from('users').insert({ name, bottle_price: 100, can_share_report: true });
+    const { data: existingEmail } = await supabase.from('users').select('id').eq('email', email).single();
+    if (existingEmail) throw new Error(`User with this email already exists.`);
+
+    const { error } = await supabase.from('users').insert({ name, email, bottle_price: 100, can_share_report: true });
     if (error) throw error;
     await fetchAllAdminData();
   };
@@ -316,7 +309,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addUserData = async (data: AddUserDataPayload) => {
     const { data: profile } = await supabase.from('users').select('id').eq('name', data.name).single();
-    if (!profile) throw new Error("User profile does not exist.");
+    if (!profile) throw new Error("User does not exist.");
 
     const { error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles });
     if (error) throw error;
@@ -404,18 +397,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshData();
   }
   
-  const linkProfileToUser = async (profileId: string, userId: string) => {
-      const { error } = await supabase.from('users').update({ linked_user_id: userId }).eq('id', profileId);
-      if (error) throw error;
-      await refreshData();
-  }
-
-  const unlinkProfile = async (profileId: string) => {
-       const { error } = await supabase.from('users').update({ linked_user_id: null }).eq('id', profileId);
-       if (error) throw error;
-       await refreshData();
-  }
-
   const refreshData = async () => {
     setLoading(true);
     try {
@@ -437,7 +418,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     userProfiles,
-    registeredUsers,
     invoices,
     loading,
     addUserData,
@@ -450,8 +430,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addInvoice,
     deleteInvoice,
     refreshData,
-    linkProfileToUser,
-    unlinkProfile,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
