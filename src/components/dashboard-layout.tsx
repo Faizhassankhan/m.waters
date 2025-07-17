@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, FileText, LogOut, PanelLeft, Search, Users, Tags, FileSpreadsheet, UserPlus, CreditCard } from "lucide-react";
+import { LayoutDashboard, FileText, LogOut, PanelLeft, Search, Users, Tags, FileSpreadsheet, UserPlus, CreditCard, DollarSign } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Data", icon: LayoutDashboard },
@@ -40,6 +40,7 @@ const navItems = [
   { href: "/manage-rates", label: "Manage Rates", icon: Tags },
   { href: "/users-sheet", label: "Users Sheet", icon: FileSpreadsheet },
   { href: "/manage-payments", label: "Manage Payments", icon: CreditCard },
+  { href: "/customer-payments", label: "Customer Payments", icon: DollarSign },
 ];
 
 export default function DashboardLayout({
@@ -140,3 +141,4 @@ export default function DashboardLayout({
     </div>
   );
 }
+    

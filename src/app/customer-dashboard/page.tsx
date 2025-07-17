@@ -6,7 +6,7 @@ import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
 import { Loader2, Share2, LogOut, AlertCircle, CheckCircle, XCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { format, getYear, getMonth } from "date-fns";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { BillingRecord } from "@/lib/types";
 
 
 const months = Array.from({ length: 12 }, (_, i) => ({
@@ -56,7 +57,6 @@ function CustomerDashboardPage() {
         if (customerData && customerData.deliveries) {
             customerData.deliveries.forEach(d => years.add(getYear(new Date(d.date))));
         }
-        // Hamesha maujooda saal ko shamil karein
         years.add(getYear(new Date()));
         return Array.from(years).sort((a, b) => b - a);
     }, [customerData]);
@@ -74,6 +74,17 @@ function CustomerDashboardPage() {
         const statusEntry = customerData.monthlyStatuses.find(s => s.month === selectedMonth && s.year === selectedYear);
         return statusEntry ? statusEntry.status : 'not_paid_yet';
     }, [customerData, selectedMonth, selectedYear]);
+    
+    const billingRecordForPeriod = useMemo((): (BillingRecord & { balance: number }) | null => {
+        if (!customerData || !customerData.billingRecords) return null;
+        const record = customerData.billingRecords.find(r => r.month === selectedMonth && r.year === selectedYear);
+        if (!record) return null;
+        return {
+            ...record,
+            balance: record.total_bill - record.amount_paid
+        };
+    }, [customerData, selectedMonth, selectedYear]);
+
 
     const handleShare = async () => {
         if (!dataCardRef.current || !customerData) return;
@@ -168,7 +179,7 @@ function CustomerDashboardPage() {
     return (
         <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
             {renderHeader()}
-            <main className="max-w-2xl mx-auto">
+            <main className="max-w-2xl mx-auto space-y-6">
                 <div ref={dataCardRef} className="bg-background">
                      <Card style={{ boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.25)' }} className="animate-in fade-in-50 bg-white text-card-foreground">
                         <CardHeader className="bg-primary text-primary-foreground rounded-t-lg p-6">
@@ -227,66 +238,87 @@ function CustomerDashboardPage() {
                         </CardContent>
                     </Card>
                 </div>
-                <CardFooter className="p-6 pt-4 bg-background rounded-b-lg flex-col items-start gap-4">
-                     <div className="flex w-full gap-2 mt-1">
-                        <Select 
-                            value={String(selectedMonth)} 
-                            onValueChange={(value) => setSelectedMonth(Number(value))}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Month" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {months.map(month => (
-                                    <SelectItem key={month.value} value={String(month.value)}>
-                                        {month.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select 
-                            value={String(selectedYear)} 
-                            onValueChange={(value) => setSelectedYear(Number(value))}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Year" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableYears.map(year => (
-                                    <SelectItem key={year} value={String(year)}>
-                                        {year}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <Separator className="w-full" />
-                    
-                    <div className="flex justify-between items-center w-full">
-                        <h3 className="font-headline text-lg">Bill Status</h3>
-                        {currentBillStatus === 'paid' && (
-                           <div className="inline-block border-2 border-green-600 text-green-600 font-bold uppercase text-center transform -rotate-12 p-2 text-sm rounded-md">
-                                Paid
+                <Card>
+                    <CardHeader className="p-6 pb-4">
+                        <div className="flex w-full gap-2">
+                            <Select 
+                                value={String(selectedMonth)} 
+                                onValueChange={(value) => setSelectedMonth(Number(value))}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Month" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {months.map(month => (
+                                        <SelectItem key={month.value} value={String(month.value)}>
+                                            {month.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select 
+                                value={String(selectedYear)} 
+                                onValueChange={(value) => setSelectedYear(Number(value))}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Year" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableYears.map(year => (
+                                        <SelectItem key={year} value={String(year)}>
+                                            {year}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6 pt-0">
+                         {billingRecordForPeriod ? (
+                            <div className="space-y-4">
+                                <Separator />
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-headline text-lg">Billing Summary</h3>
+                                    {currentBillStatus === 'paid' ? (
+                                    <div className="inline-block border-2 border-green-600 text-green-600 font-bold uppercase text-center transform -rotate-12 p-2 text-sm rounded-md">
+                                            Paid
+                                        </div>
+                                    ) : (
+                                    <div className="inline-block border-2 border-red-600 text-red-600 font-bold uppercase text-center transform -rotate-12 p-2 text-sm rounded-md">
+                                            Unpaid
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-3 gap-4 text-center">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Total Bill</p>
+                                        <p className="font-semibold text-lg">{billingRecordForPeriod.total_bill.toLocaleString()} PKR</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Amount Paid</p>
+                                        <p className="font-semibold text-lg text-green-600">{billingRecordForPeriod.amount_paid.toLocaleString()} PKR</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Balance</p>
+                                        <p className="font-semibold text-lg text-red-600">{billingRecordForPeriod.balance.toLocaleString()} PKR</p>
+                                    </div>
+                                </div>
                             </div>
-                        )}
-                         {currentBillStatus === 'not_paid_yet' && (
-                           <div className="inline-block border-2 border-red-600 text-red-600 font-bold uppercase text-center transform -rotate-12 p-2 text-sm rounded-md">
-                                Unpaid
-                            </div>
-                        )}
-                    </div>
-
-                    {customerData.canShareReport && (
-                        <>
-                        <Separator className="my-4" />
-                        <Button onClick={handleShare} className="w-full" disabled={isSharing}>
-                            {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
-                            {isSharing ? 'Generating...' : 'Share Report as Image'}
-                        </Button>
-                        </>
-                    )}
-                </CardFooter>
+                         ) : (
+                             <div className="text-center text-muted-foreground py-4">
+                                No billing record found for this period.
+                             </div>
+                         )}
+                    </CardContent>
+                    <CardFooter className="p-6 pt-0">
+                         {customerData.canShareReport && (
+                            <Button onClick={handleShare} className="w-full" disabled={isSharing}>
+                                {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
+                                {isSharing ? 'Generating...' : 'Share Report as Image'}
+                            </Button>
+                         )}
+                    </CardFooter>
+                </Card>
             </main>
         </div>
     );
@@ -299,3 +331,5 @@ export default function Home() {
         </AuthGuard>
     )
 }
+
+    

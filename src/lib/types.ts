@@ -3,13 +3,22 @@ export interface Delivery {
   id: string; // uuid from supabase
   date: string; // YYYY-MM-DD
   bottles: number;
-  month: string; // Dynamically added on client
 }
 
 export interface MonthlyStatus {
     month: number;
     year: number;
     status: 'paid' | 'not_paid_yet';
+}
+
+export interface BillingRecord {
+    id?: string;
+    user_id: string;
+    month: number;
+    year: number;
+    amount_paid: number;
+    total_bill: number;
+    created_at: string;
 }
 
 // This interface now represents the 'users' table which holds all customer info.
@@ -22,6 +31,7 @@ export interface UserProfile {
   deliveries: Delivery[];
   invoices?: Invoice[];
   monthlyStatuses: MonthlyStatus[];
+  billingRecords: BillingRecord[];
 }
 
 export interface AddUserDataPayload {
@@ -42,3 +52,5 @@ export interface Invoice {
   month: string;
   deliveries?: Delivery[]; // Joined from deliveries table
 }
+
+    

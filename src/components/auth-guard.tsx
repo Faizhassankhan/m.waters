@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { AppContext } from "@/contexts/app-provider";
 import { Loader2 } from "lucide-react";
 
-const ADMIN_ROUTES = ["/", "/add-user", "/invoice", "/invoices", "/manage-rates", "/search-data", "/users-sheet", "/manage-users", "/manage-payments"];
+const ADMIN_ROUTES = ["/", "/add-user", "/invoice", "/invoices", "/manage-rates", "/search-data", "/users-sheet", "/manage-users", "/manage-payments", "/customer-payments"];
 const CUSTOMER_ROUTES = ["/customer-dashboard"];
 const PUBLIC_ROUTES = ["/login", "/register"];
 
@@ -63,3 +63,5 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
+
+    

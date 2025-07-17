@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus } from "@/lib/types";
+import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus, BillingRecord } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { format } from "date-fns";
@@ -30,6 +30,8 @@ interface AppContextType {
   deleteInvoice: (invoiceId: string) => Promise<void>;
   saveMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
   deleteMonthlyStatus: (userId: string, month: number, year: number) => Promise<void>;
+  saveBillingRecord: (record: { userId: string, month: number, year: number, amountPaid: number, totalBill: number }) => Promise<void>;
+  deleteBillingRecord: (recordId: string) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -53,6 +55,8 @@ export const AppContext = createContext<AppContextType>({
   deleteInvoice: async () => {},
   saveMonthlyStatus: async () => {},
   deleteMonthlyStatus: async () => {},
+  saveBillingRecord: async () => {},
+  deleteBillingRecord: async () => {},
   refreshData: async () => {},
 });
 
@@ -73,14 +77,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.rpc('get_all_user_data');
 
         if (error) {
-            // Check for a specific error when the function doesn't exist yet
             if (error.message.includes('function get_all_user_data() does not exist')) {
                  console.warn(
                     '%cDATABASE FUNCTION NOT DETECTED',
                     'color: #f87171; font-weight: bold; font-size: 14px;',
                     "The database function is not set up correctly. Please run the provided SQL script in your Supabase SQL Editor."
                 );
-                // Set empty state to prevent app crash
                 setUserProfiles([]);
                 setInvoices([]);
                 setCustomerData(null);
@@ -96,11 +98,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const processedUserProfiles = (data.userProfiles || []).map((profile: UserProfile) => ({
               ...profile,
               deliveries: profile.deliveries || [],
-              monthlyStatuses: profile.monthlyStatuses || [], // Ensure it's always an array
+              monthlyStatuses: profile.monthlyStatuses || [],
+              billingRecords: profile.billingRecords || [],
             }));
             
             setUserProfiles(processedUserProfiles);
-            setInvoices(allInvoices); // The RPC now returns invoices with all data included.
+            setInvoices(allInvoices);
 
             const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === user?.id);
             if (currentUserProfile) {
@@ -118,7 +121,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     } catch (e: any) {
         console.error("Error fetching application data:", e.message || e);
-        // Reset state on error to avoid inconsistent UI
         setUserProfiles([]);
         setInvoices([]);
         setCustomerData(null);
@@ -136,7 +138,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (currentUser) {
         await fetchAllData();
     } else {
-        // Clear all state on logout
         setCustomerData(null);
         setUserProfiles([]);
         setInvoices([]);
@@ -206,7 +207,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       
       const { data: userProfile, error: profileError } = await supabase.from('users').select('id').eq('id', data.user.id).single();
-      if (profileError && profileError.code === 'PGRST116') { // No profile exists, create one
+      if (profileError && profileError.code === 'PGRST116') { 
           const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email?.split('@')[0] || 'New User' });
           if(insertError) throw insertError;
       } else if (profileError) {
@@ -351,7 +352,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw error;
     }
     
-    // After a successful database operation, refresh all data to ensure consistency.
     await fetchAllData();
   };
 
@@ -365,6 +365,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Error deleting status:", error);
         throw error;
     }
+    await fetchAllData();
+  }
+
+  const saveBillingRecord = async (record: { userId: string, month: number, year: number, amountPaid: number, totalBill: number }) => {
+    const { error } = await supabase
+        .from('billing_records')
+        .upsert(
+            { 
+                user_id: record.userId, 
+                month: record.month, 
+                year: record.year, 
+                amount_paid: record.amountPaid,
+                total_bill: record.totalBill
+            },
+            { onConflict: 'user_id,month,year' }
+        );
+    if (error) throw error;
+    await fetchAllData();
+  };
+
+  const deleteBillingRecord = async (recordId: string) => {
+      const { error } = await supabase
+        .from('billing_records')
+        .delete()
+        .eq('id', recordId);
+    if (error) throw error;
     await fetchAllData();
   }
 
@@ -394,6 +420,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteInvoice,
     saveMonthlyStatus,
     deleteMonthlyStatus,
+    saveBillingRecord,
+    deleteBillingRecord,
     refreshData,
   };
 
