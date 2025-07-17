@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { LogOut, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { format, getYear, getMonth, setMonth, setYear } from "date-fns";
+import { format, getYear, getMonth, setMonth, setYear, parse } from "date-fns";
 
 function BillStatusPage() {
     const { customerData, logout } = useContext(AppContext);
@@ -28,7 +28,6 @@ function BillStatusPage() {
     const billHistory = useMemo(() => {
         if (!customerData) return [];
 
-        const history: { month: string; year: number; status: 'paid' | 'not_paid_yet' | 'pending'; totalBottles: number; totalBill: number }[] = [];
         const deliveryMonths = new Set<string>();
 
         // Get all unique month-year combos from deliveries
@@ -37,7 +36,7 @@ function BillStatusPage() {
             deliveryMonths.add(`${getMonth(date)}-${getYear(date)}`);
         });
 
-        deliveryMonths.forEach(monthYearStr => {
+        const history = Array.from(deliveryMonths).map(monthYearStr => {
             const [month, year] = monthYearStr.split('-').map(Number);
             
             const deliveriesInMonth = customerData.deliveries.filter(d => {
@@ -45,29 +44,26 @@ function BillStatusPage() {
                 return getMonth(date) === month && getYear(date) === year;
             });
 
-            if (deliveriesInMonth.length > 0) {
-                const totalBottles = deliveriesInMonth.reduce((sum, d) => sum + d.bottles, 0);
-                const bottlePrice = customerData.bottlePrice || 100;
-                const totalBill = totalBottles * bottlePrice;
+            const totalBottles = deliveriesInMonth.reduce((sum, d) => sum + d.bottles, 0);
+            const bottlePrice = customerData.bottlePrice || 100;
+            const totalBill = totalBottles * bottlePrice;
 
-                const statusEntry = customerData.monthlyStatuses.find(s => s.month === month && s.year === year);
-                const status = statusEntry ? statusEntry.status : 'pending';
+            const monthlyStatuses = customerData.monthlyStatuses || [];
+            const statusEntry = monthlyStatuses.find(s => s.month === month && s.year === year);
+            const status = statusEntry ? statusEntry.status : 'pending';
 
-                history.push({
-                    month: format(setMonth(new Date(), month), 'MMMM'),
-                    year: year,
-                    status,
-                    totalBottles,
-                    totalBill,
-                });
-            }
+            return {
+                date: setYear(setMonth(new Date(), month), year),
+                status,
+                totalBottles,
+                totalBill,
+            };
         });
 
         // Sort by most recent first
-        return history.sort((a, b) => new Date(b.year, months.indexOf(b.month)).getTime() - new Date(a.year, months.indexOf(a.month)).getTime());
+        return history.sort((a, b) => b.date.getTime() - a.date.getTime());
     }, [customerData]);
 
-    const months = Array.from({ length: 12 }, (_, i) => format(new Date(0, i), "MMMM"));
 
     const renderHeader = () => (
         <header className="flex justify-between items-center mb-6">
@@ -119,7 +115,7 @@ function BillStatusPage() {
                                 {billHistory.length > 0 ? (
                                     billHistory.map((item, index) => (
                                         <TableRow key={index}>
-                                            <TableCell className="font-medium">{item.month}, {item.year}</TableCell>
+                                            <TableCell className="font-medium">{format(item.date, 'MMMM, yyyy')}</TableCell>
                                             <TableCell className="text-center">{item.totalBottles}</TableCell>
                                             <TableCell className="text-center font-semibold">{item.totalBill.toLocaleString()}</TableCell>
                                             <TableCell className="text-right">
