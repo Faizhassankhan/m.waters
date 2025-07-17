@@ -95,11 +95,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const processedUserProfiles = (data.userProfiles || []).map((profile: UserProfile) => ({
               ...profile,
-              invoices: allInvoices.filter((inv: Invoice) => inv.userId === profile.id),
+              deliveries: profile.deliveries || [],
               monthlyStatuses: profile.monthlyStatuses || [], // Ensure it's always an array
             }));
             
             setUserProfiles(processedUserProfiles);
+            setInvoices(allInvoices); // The RPC now returns invoices with all data included.
 
             const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === user?.id);
             if (currentUserProfile) {
@@ -107,16 +108,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             } else {
                 setCustomerData(null);
             }
-
-            const processedInvoices = allInvoices.map((inv: Invoice) => {
-                const profile = processedUserProfiles.find((p: UserProfile) => p.id === inv.userId);
-                const deliveriesForInvoice = profile?.deliveries.filter((d: Delivery) => {
-                    const deliveryDate = new Date(d.date);
-                    return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
-                }) || [];
-                return { ...inv, name: profile?.name || inv.name, deliveries: deliveriesForInvoice, bottlePrice: profile?.bottlePrice };
-            });
-            setInvoices(processedInvoices);
 
         } else {
              setUserProfiles([]);
@@ -408,3 +399,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
