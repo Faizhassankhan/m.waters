@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Share2, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -79,6 +79,12 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
       </Card>
     );
   }
+  
+  const getSafeDate = (dateString: string | undefined) => {
+    if (!dateString) return new Date();
+    const date = parseISO(dateString);
+    return isValid(date) ? date : new Date();
+  }
 
   const totalBottles = invoice.deliveries?.reduce((sum, d) => sum + d.bottles, 0) || 0;
 
@@ -118,7 +124,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
               </div>
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">DATE</p>
-                <p className="font-semibold">{format(new Date(invoice.createdAt), "MMMM dd, yyyy")}</p>
+                <p className="font-semibold">{format(getSafeDate(invoice.createdAt), "MMMM dd, yyyy")}</p>
               </div>
             </div>
             

@@ -107,7 +107,13 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   async function onSubmit(values: InvoiceFormValues) {
     setLoading(true);
     try {
-        const newInvoice = await addInvoice({ ...values, deliveries: deliveriesForInvoice });
+        const invoicePayload = {
+            ...values,
+            createdAt: new Date().toISOString(), // Ensure createdAt is set
+            deliveries: deliveriesForInvoice,
+        };
+
+        const newInvoice = await addInvoice(invoicePayload);
         if (newInvoice) {
             onInvoiceCreated(newInvoice);
             toast({
