@@ -259,14 +259,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data: newDelivery, error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles }).select().single();
     if (error) throw error;
     if (!newDelivery) throw new Error("Failed to save data.");
-
-    setUserProfiles(prevProfiles =>
-      prevProfiles.map(p =>
-        p.id === profile.id
-          ? { ...p, deliveries: [newDelivery as Delivery, ...p.deliveries] }
-          : p
-      )
-    );
+    
+    await fetchAllData();
   };
 
   const updateUserBottlePrice = async (userName: string, newPrice: number) => {
