@@ -14,7 +14,7 @@ import { PlusCircle } from "lucide-react";
 import { format } from "date-fns";
 
 function DataManagementPage() {
-  const { userProfiles, refreshData } = useContext(AppContext);
+  const { userProfiles } = useContext(AppContext);
   const [searchMonth, setSearchMonth] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -39,12 +39,6 @@ function DataManagementPage() {
       .filter((profile) => profile.deliveries.length > 0);
   }, [userProfiles, searchMonth]);
 
-  const handleSave = () => {
-      refreshData();
-      // Optional: keep form open if user wants to add more data quickly
-      // setShowAddForm(false); 
-  }
-
   return (
     <DashboardLayout>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -64,7 +58,7 @@ function DataManagementPage() {
               <CardTitle className="font-headline">Add New Delivery</CardTitle>
             </CardHeader>
             <CardContent>
-              <AddDataForm onSave={handleSave} />
+              <AddDataForm />
             </CardContent>
           </Card>
         )}

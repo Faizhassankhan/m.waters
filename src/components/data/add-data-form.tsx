@@ -34,7 +34,7 @@ const formSchema = z.object({
   bottles: z.coerce.number().min(1, "At least one bottle is required."),
 });
 
-export function AddDataForm({ onSave, initialName }: { onSave: () => void, initialName?: string }) {
+export function AddDataForm({ initialName }: { initialName?: string }) {
   const { addUserData, userProfiles } = useContext(AppContext);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -67,9 +67,6 @@ export function AddDataForm({ onSave, initialName }: { onSave: () => void, initi
           date: format(new Date(), "yyyy-MM-dd"),
           bottles: 1,
       });
-      if (onSave) {
-        onSave();
-      }
     } catch (error: any) {
         toast({
             variant: "destructive",

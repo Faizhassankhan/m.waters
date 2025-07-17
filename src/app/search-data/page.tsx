@@ -79,7 +79,7 @@ function SearchDataPage() {
                                     <CardTitle className="font-headline">Add Delivery for {selectedProfile.name}</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <AddDataForm onSave={refreshData} initialName={selectedProfile.name} />
+                                    <AddDataForm initialName={selectedProfile.name} />
                                 </CardContent>
                             </Card>
                         )}

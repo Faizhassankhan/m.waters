@@ -253,12 +253,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserData = async (data: AddUserDataPayload) => {
-    const { data: profile } = await supabase.from('users').select('id').eq('name', data.name).single();
+    const profile = userProfiles.find(p => p.name === data.name);
     if (!profile) throw new Error("User does not exist.");
 
-    const { error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles });
+    const { data: newDelivery, error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles }).select().single();
     if (error) throw error;
-    await refreshData();
+    if (!newDelivery) throw new Error("Failed to save data.");
+
+    setUserProfiles(prevProfiles =>
+      prevProfiles.map(p =>
+        p.id === profile.id
+          ? { ...p, deliveries: [newDelivery as Delivery, ...p.deliveries] }
+          : p
+      )
+    );
   };
 
   const updateUserBottlePrice = async (userName: string, newPrice: number) => {
@@ -274,13 +282,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId">): Promise<Invoice | undefined> => {
-    const profileToInvoice = userProfiles.find(p => p.name.toLowerCase() === invoiceData.name.toLowerCase());
-    if (!profileToInvoice) {
-        throw new Error("Cannot create invoice for non-existent user.");
-    }
-
     const { data, error } = await supabase.rpc('create_invoice_and_get_details', {
-        p_user_name: profileToInvoice.name,
+        p_user_name: invoiceData.name,
         p_amount: invoiceData.amount,
         p_month: invoiceData.month,
         p_payment_method: invoiceData.paymentMethod,
@@ -297,7 +300,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to create invoice: No data returned from function.");
     }
     
-    await fetchAllData();
+    setInvoices(prevInvoices => [data as Invoice, ...prevInvoices]);
     return data as Invoice;
   }
   
@@ -427,5 +430,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    
