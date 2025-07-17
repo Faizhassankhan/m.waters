@@ -41,10 +41,10 @@ function ManagePaymentsPage() {
     const allStatuses = useMemo(() => {
         return userProfiles
             .flatMap(user => 
-                user.monthlyStatuses.map(status => ({
+                (user.monthlyStatuses || []).map(status => ({
                     ...status,
                     userName: user.name,
-                    // Create a unique ID for react key and deletion
+                    user_id: user.id, // Ensure user_id is available
                     statusId: `${user.id}-${status.year}-${status.month}`
                 }))
             )
@@ -115,7 +115,7 @@ function ManagePaymentsPage() {
                         <CardContent className="space-y-6">
                             <div className="space-y-2">
                                 <Label className="flex items-center gap-2"><User className="w-4 h-4 text-muted-foreground" /> Select User</Label>
-                                <Select onValueChange={setSelectedUserId} value={selectedUserId || undefined}>
+                                <Select onValueChange={setSelectedUserId} value={selectedUserId || ""}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Choose a user..." />
                                     </SelectTrigger>
@@ -252,4 +252,3 @@ export default function Home() {
         </AuthGuard>
     );
 }
-

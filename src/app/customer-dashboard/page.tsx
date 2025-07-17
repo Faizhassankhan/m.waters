@@ -52,14 +52,14 @@ function CustomerDashboardPage() {
     }, [customerData]);
     
     const availableYears = useMemo(() => {
-        if (!customerData || !customerData.deliveries) return [];
+        if (!customerData || !customerData.deliveries) return [getYear(new Date())];
         const years = new Set(customerData.deliveries.map(d => getYear(new Date(d.date))));
         // Also add current year if not present
-        const allYears = Array.from(years);
-        if (!allYears.includes(getYear(new Date()))) {
-            allYears.push(getYear(new Date()));
+        const currentYear = getYear(new Date());
+        if (!years.has(currentYear)) {
+            years.add(currentYear)
         }
-        return allYears.sort((a, b) => b - a);
+        return Array.from(years).sort((a, b) => b - a);
     }, [customerData]);
 
     const filteredDeliveries = useMemo(() => {
