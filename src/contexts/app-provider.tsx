@@ -352,11 +352,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
             { onConflict: 'user_id,month,year' }
         );
 
-    if (error) throw error;
-    await refreshData();
+    if (error) {
+        throw error;
+    }
+
+    // Directly fetch fresh data after the update is successful
+    await fetchAllData();
   };
 
   const refreshData = async () => {
+    setLoading(true);
     await fetchAllData();
   }
 
@@ -384,3 +389,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
