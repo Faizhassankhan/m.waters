@@ -6,7 +6,7 @@ import AuthGuard from "@/components/auth-guard";
 import DashboardLayout from "@/components/dashboard-layout";
 import { AppContext } from "@/contexts/app-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getYear, getMonth, format } from "date-fns";
+import { getYear, getMonth, format, getDate } from "date-fns";
 
 const DEFAULT_BOTTLE_PRICE = 100;
 
@@ -23,10 +23,14 @@ const months = Array.from({ length: 12 }, (_, i) => ({
     label: format(new Date(0, i), "MMMM"),
 }));
 
+const dates = Array.from({ length: 31 }, (_, i) => i + 1);
+
+
 function UsersSheetPage() {
     const { userProfiles } = useContext(AppContext);
     const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(new Date()));
     const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
+    const [selectedDate, setSelectedDate] = useState<string>("all");
     
     const availableYears = useMemo(() => {
         const years = new Set<number>();
@@ -35,12 +39,10 @@ function UsersSheetPage() {
                 years.add(getYear(new Date(delivery.date)));
             });
         });
-        // Hamesha maujooda saal ko shamil karein
         years.add(getYear(new Date()));
         return Array.from(years).sort((a, b) => b - a);
     }, [userProfiles]);
 
-    // Set initial year if available years are loaded
     useEffect(() => {
         if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
             setSelectedYear(availableYears[0]);
@@ -51,7 +53,11 @@ function UsersSheetPage() {
         return userProfiles.map(user => {
             const filteredDeliveries = user.deliveries.filter(delivery => {
                 const deliveryDate = new Date(delivery.date);
-                return getMonth(deliveryDate) === selectedMonth && getYear(deliveryDate) === selectedYear;
+                const isMonthMatch = getMonth(deliveryDate) === selectedMonth;
+                const isYearMatch = getYear(deliveryDate) === selectedYear;
+                const isDateMatch = selectedDate === "all" || getDate(deliveryDate) === Number(selectedDate);
+                
+                return isMonthMatch && isYearMatch && isDateMatch;
             });
 
             const totalBottles = filteredDeliveries.reduce((sum, delivery) => sum + delivery.bottles, 0);
@@ -64,9 +70,17 @@ function UsersSheetPage() {
                 totalBill
             };
         })
-        .filter(user => user.totalBottles > 0) // Only show users with deliveries in the selected period
-        .sort((a, b) => b.totalBottles - a.totalBottles);
-    }, [userProfiles, selectedMonth, selectedYear]);
+        .filter(user => user.totalBottles > 0)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }, [userProfiles, selectedMonth, selectedYear, selectedDate]);
+    
+    const grandTotalBottles = useMemo(() => {
+        return usersSummary.reduce((sum, user) => sum + user.totalBottles, 0);
+    }, [usersSummary]);
+    
+    const grandTotalBill = useMemo(() => {
+        return usersSummary.reduce((sum, user) => sum + user.totalBill, 0);
+    }, [usersSummary]);
 
     return (
         <DashboardLayout>
@@ -80,7 +94,7 @@ function UsersSheetPage() {
                     <CardHeader>
                         <CardTitle className="font-headline">Monthly User Summary</CardTitle>
                         <CardDescription>
-                            A summary of total bottles and billings for each user for a selected month.
+                            A summary of total bottles and billings for each user for a selected period.
                         </CardDescription>
                          <div className="flex items-center space-x-2 pt-4">
                             <Select 
@@ -109,6 +123,22 @@ function UsersSheetPage() {
                                     {availableYears.map(year => (
                                         <SelectItem key={year} value={String(year)}>
                                             {year}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                             <Select 
+                                value={selectedDate} 
+                                onValueChange={setSelectedDate}
+                            >
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue placeholder="Select Date" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                     <SelectItem value="all">All Dates</SelectItem>
+                                    {dates.map(date => (
+                                        <SelectItem key={date} value={String(date)}>
+                                            {date}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -142,6 +172,15 @@ function UsersSheetPage() {
                                         </TableRow>
                                     )}
                                 </TableBody>
+                                 {usersSummary.length > 0 && (
+                                    <TableFooter>
+                                        <TableRow className="bg-muted/50 font-bold hover:bg-muted/50">
+                                            <TableCell>Grand Total</TableCell>
+                                            <TableCell className="text-right text-lg">{grandTotalBottles.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right text-lg">{grandTotalBill.toLocaleString()}</TableCell>
+                                        </TableRow>
+                                    </TableFooter>
+                                )}
                             </Table>
                         </div>
                     </CardContent>
