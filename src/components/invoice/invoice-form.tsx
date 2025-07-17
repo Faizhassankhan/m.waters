@@ -72,7 +72,6 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       if (name === "name" && value.name) {
         const foundUser = userProfiles.find(u => u.name.toLowerCase() === value.name?.toLowerCase());
         setSelectedUser(foundUser || null);
-        // Fix: Only set value if it's different to prevent infinite loop
         if(foundUser && form.getValues("name") !== foundUser.name){
             form.setValue("name", foundUser.name);
         }
@@ -114,7 +113,6 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
         const invoicePayload = {
             ...values,
             name: selectedUser?.name || values.name, // Ensure correct name casing is used
-            createdAt: new Date().toISOString(),
             deliveries: deliveriesForInvoice,
             bottlePrice: selectedUser?.bottlePrice || DEFAULT_BOTTLE_PRICE,
         };

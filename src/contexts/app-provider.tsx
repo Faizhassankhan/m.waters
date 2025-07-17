@@ -285,37 +285,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const profileToInvoice = userProfiles.find(p => p.name.toLowerCase() === invoiceData.name.toLowerCase());
     if (!profileToInvoice) {
         throw new Error("Cannot create invoice for non-existent user.");
-    };
+    }
 
-    const { data, error } = await supabase
-        .from('invoices')
-        .insert({
-            user_id: profileToInvoice.id,
-            amount: invoiceData.amount,
-            month: invoiceData.month,
-            payment_method: invoiceData.paymentMethod,
-            recipient_number: invoiceData.recipientNumber,
-        })
-        .select()
-        .single();
+    const { data, error } = await supabase.rpc('create_invoice_and_get_details', {
+        p_user_name: profileToInvoice.name,
+        p_amount: invoiceData.amount,
+        p_month: invoiceData.month,
+        p_payment_method: invoiceData.paymentMethod,
+        p_recipient_number: invoiceData.recipientNumber,
+        p_deliveries: invoiceData.deliveries || []
+    });
+
+    if (error) {
+        console.error("RPC Error:", error);
+        throw new Error(`Failed to create invoice: ${error.message}`);
+    }
+
+    if (!data) {
+        throw new Error("Failed to create invoice: No data returned from function.");
+    }
     
-    if (error) throw error;
-
-    // Immediately after insertion, refresh all data to get the complete invoice details
     await fetchAllData();
-    
-    // After refreshing, find the newly created invoice from the updated local state
-    const newInvoice = invoices.find((i: Invoice) => i.id === data.id);
-    if(newInvoice) return newInvoice;
-    
-    // Fallback in case the invoice is not in the list yet
-    return {
-        ...data,
-        name: profileToInvoice.name,
-        deliveries: invoiceData.deliveries,
-        bottlePrice: invoiceData.bottlePrice,
-        userId: profileToInvoice.id
-    };
+    return data as Invoice;
   }
   
   const deleteInvoice = async (invoiceId: string) => {
