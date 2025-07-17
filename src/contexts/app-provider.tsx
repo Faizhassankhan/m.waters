@@ -101,9 +101,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             
             setUserProfiles(processedUserProfiles);
 
-            const customerProfile = processedUserProfiles.find((p: UserProfile) => p.id === user?.id);
-            if (customerProfile) {
-                setCustomerData(customerProfile);
+            const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === user?.id);
+            if (currentUserProfile) {
+                setCustomerData(currentUserProfile);
             } else {
                 setCustomerData(null);
             }
@@ -114,7 +114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     const deliveryDate = new Date(d.date);
                     return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
                 }) || [];
-                return { ...inv, deliveries: deliveriesForInvoice, bottlePrice: profile?.bottlePrice };
+                return { ...inv, name: profile?.name || inv.name, deliveries: deliveriesForInvoice, bottlePrice: profile?.bottlePrice };
             });
             setInvoices(processedInvoices);
 
@@ -301,11 +301,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     if (error) throw error;
 
+    // Immediately after insertion, refresh all data to get the complete invoice details
     await fetchAllData();
-    const { data: allData } = await supabase.rpc('get_all_user_data');
-    if (!allData || !('invoices' in allData)) return undefined;
-    const newInvoice = (allData.invoices as Invoice[]).find((i: Invoice) => i.id === data.id);
-    return newInvoice;
+    
+    // After refreshing, find the newly created invoice from the updated local state
+    const newInvoice = invoices.find((i: Invoice) => i.id === data.id);
+    if(newInvoice) return newInvoice;
+    
+    // Fallback in case the invoice is not in the list yet
+    return {
+        ...data,
+        name: profileToInvoice.name,
+        deliveries: invoiceData.deliveries,
+        bottlePrice: invoiceData.bottlePrice,
+        userId: profileToInvoice.id
+    };
   }
   
   const deleteInvoice = async (invoiceId: string) => {
