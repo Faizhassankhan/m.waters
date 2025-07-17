@@ -361,6 +361,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await fetchAllData();
   };
 
+
   const refreshData = async () => {
     setLoading(true);
     await fetchAllData();
