@@ -130,8 +130,8 @@ function CustomerDashboardPage() {
                     <circle cx="40" cy="40" r="35" fill="currentColor"/>
                     <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="hsl(var(--primary-foreground))" textAnchor="middle" dominantBaseline="central">m</text>
                     <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="currentColor"/>
-                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="40" fill="currentColor" dy=".3em">waters</text>
-                    <text x="115" y="68" fontFamily="sans-serif" fontSize="20" fill="hsl(var(--muted-foreground))" dy=".3em">FIT TO LIVE</text>
+                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="35" fill="currentColor" dy=".3em">waters</text>
+                    <text x="115" y="68" fontFamily="sans-serif" fontSize="12" fill="hsl(var(--muted-foreground))" dy=".3em">FIT TO LIVE</text>
                 </svg>
             </div>
              <div className="flex items-center gap-2">
@@ -179,8 +179,8 @@ function CustomerDashboardPage() {
                                         <circle cx="40" cy="40" r="35" fill="hsl(var(--primary-foreground))" stroke="hsl(var(--primary))" strokeWidth="2" />
                                         <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="hsl(var(--primary))" textAnchor="middle" dominantBaseline="central">m</text>
                                         <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="hsl(var(--primary-foreground))"/>
-                                        <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="40" fill="hsl(var(--primary-foreground))" dy=".3em">waters</text>
-                                        <text x="115" y="68" fontFamily="sans-serif" fontSize="20" fill="hsl(var(--primary-foreground))" dy=".3em">FIT TO LIVE</text>
+                                        <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="35" fill="hsl(var(--primary-foreground))" dy=".3em">waters</text>
+                                        <text x="115" y="68" fontFamily="sans-serif" fontSize="12" fill="hsl(var(--primary-foreground))" dy=".3em">FIT TO LIVE</text>
                                     </svg>
                                 </CardTitle>
                                 <div className="text-right">
