@@ -72,13 +72,16 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       if (name === "name" && value.name) {
         const foundUser = userProfiles.find(u => u.name.toLowerCase() === value.name?.toLowerCase());
         setSelectedUser(foundUser || null);
+        if(foundUser){
+            form.setValue("name", foundUser.name);
+        }
       }
       if (name === 'month' && value.month) {
         setSelectedMonth(value.month);
       }
     });
     return () => subscription.unsubscribe();
-  }, [form.watch, userProfiles]);
+  }, [form, userProfiles]);
 
   useEffect(() => {
     if (selectedUser && selectedMonth) {

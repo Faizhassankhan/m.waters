@@ -141,8 +141,8 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sortedDeliveries.map(d => (
-                                        <TableRow key={d.id}>
+                                    {sortedDeliveries.map((d, index) => (
+                                        <TableRow key={d.id || index}>
                                             <TableCell>{format(new Date(d.date), 'MMMM dd, yyyy')}</TableCell>
                                             <TableCell className="text-right font-medium">{d.bottles}</TableCell>
                                         </TableRow>
