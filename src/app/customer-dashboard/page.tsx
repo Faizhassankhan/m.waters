@@ -5,7 +5,7 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, AlertCircle } from "lucide-react";
+import { Loader2, Share2, LogOut, AlertCircle, Receipt } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -112,6 +112,10 @@ function CustomerDashboardPage() {
         router.push("/login");
     }
 
+    const handleGoToBillStatus = () => {
+        router.push("/bill-status");
+    }
+
     const renderHeader = () => (
         <header className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2 font-semibold font-headline text-lg">
@@ -123,10 +127,16 @@ function CustomerDashboardPage() {
                     <text x="115" y="68" fontFamily="sans-serif" fontSize="20" fill="hsl(var(--muted-foreground))" dy=".3em">FIT TO LIVE</text>
                 </svg>
             </div>
-             <Button onClick={handleLogout} variant="outline" size="sm">
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-            </Button>
+             <div className="flex items-center gap-2">
+                <Button onClick={handleGoToBillStatus} variant="outline" size="sm">
+                    <Receipt className="mr-2 h-4 w-4" />
+                    Bill Status
+                </Button>
+                <Button onClick={handleLogout} variant="outline" size="sm">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                </Button>
+            </div>
         </header>
     );
 

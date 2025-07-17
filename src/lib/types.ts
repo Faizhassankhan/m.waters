@@ -6,6 +6,12 @@ export interface Delivery {
   month: string; // Dynamically added on client
 }
 
+export interface MonthlyStatus {
+  month: number; // 0-11
+  year: number;
+  status: 'paid' | 'not_paid_yet';
+}
+
 // This interface now represents the 'users' table which holds all customer info.
 export interface UserProfile {
   id: string; // uuid from supabase, links to auth.users
@@ -15,6 +21,7 @@ export interface UserProfile {
   canShareReport: boolean;
   deliveries: Delivery[];
   invoices?: Invoice[]; // Now includes invoices for customer dashboard
+  monthlyStatuses: MonthlyStatus[];
 }
 
 export interface AddUserDataPayload {

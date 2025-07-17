@@ -26,6 +26,7 @@ interface AppContextType {
   removeDuplicateDeliveries: (userId: string) => Promise<void>;
   updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
   updateUserName: (userId: string, newName: string) => Promise<void>;
+  updateMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   refreshData: () => Promise<void>;
@@ -47,6 +48,7 @@ export const AppContext = createContext<AppContextType>({
   removeDuplicateDeliveries: async () => {},
   updateUserBottlePrice: async () => {},
   updateUserName: async () => {},
+  updateMonthlyStatus: async () => {},
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
   refreshData: async () => {},
@@ -341,6 +343,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshData();
   }
   
+  const updateMonthlyStatus = async (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => {
+    const { error } = await supabase
+        .from('monthly_statuses')
+        .upsert(
+            { user_id: userId, month, year, status },
+            { onConflict: 'user_id, month, year' }
+        );
+
+    if (error) throw new Error(`Could not update status: ${error.message}`);
+    
+    await refreshData();
+  };
+  
   const refreshData = async () => {
     await fetchAllData();
   }
@@ -361,6 +376,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     removeDuplicateDeliveries,
     updateUserBottlePrice,
     updateUserName,
+    updateMonthlyStatus,
     addInvoice,
     deleteInvoice,
     refreshData,
