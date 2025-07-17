@@ -237,45 +237,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserProfile = async (name: string, email: string, password: string) => {
-    const { data: { session: adminSession } } = await supabase.auth.getSession();
-    if (!adminSession) {
-        throw new Error("Admin not logged in. Cannot create user.");
-    }
-    
-    const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-            data: { user_type: 'customer' }
-        }
+    const { data: { user }, error } = await supabase.rpc('create_new_user', {
+        user_email: email,
+        user_password: password,
+        user_name: name
     });
 
-    if (signUpError) {
-        await supabase.auth.setSession(adminSession);
-        throw new Error(`Failed to create user auth account: ${signUpError.message}`);
+    if (error) {
+        throw new Error(`Failed to create user: ${error.message}`);
     }
-    if (!user) {
-        await supabase.auth.setSession(adminSession);
-        throw new Error("User object was not returned after sign up.");
-    }
-
-    const { error: insertError } = await supabase
-        .from('users')
-        .insert({ id: user.id, name: name });
-
-    if (insertError) {
-        console.error("Failed to create user profile, but auth user was created:", user.id);
-        throw new Error(`User auth account was created, but profile failed: ${insertError.message}`);
-    }
-    
-    await supabase.auth.setSession(adminSession);
     
     await fetchAllData();
   };
 
   const deleteUserProfile = async (userId: string) => {
-    const { error } = await supabase.auth.admin.deleteUser(userId);
-    if (error) throw error;
+    const { error } = await supabase.rpc('delete_user_by_id', { user_id_to_delete: userId });
+    if (error) {
+        console.error('RPC Error:', error);
+        throw new Error(`Failed to delete user: ${error.message}`);
+    }
     await fetchAllData();
   };
 
@@ -418,3 +398,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
