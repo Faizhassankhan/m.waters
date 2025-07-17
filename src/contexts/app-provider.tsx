@@ -336,10 +336,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .single();
 
     if (error) throw error;
-    
-    setInvoices(prevInvoices => prevInvoices.map(inv => 
-        inv.id === invoiceId ? { ...inv, paymentStatus: status } : inv
-    ));
     await fetchAllData();
   };
   
@@ -352,10 +348,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .single();
     
     if (error) throw error;
-    
-    setInvoices(prevInvoices => prevInvoices.map(inv => 
-        inv.id === invoiceId ? { ...inv, showStatusToCustomer: isVisible } : inv
-    ));
     await fetchAllData();
   }
 

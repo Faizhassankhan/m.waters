@@ -5,7 +5,7 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Share2, LogOut, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -163,8 +163,7 @@ function CustomerDashboardPage() {
     const paymentStatus = currentInvoice?.paymentStatus;
     const showPaymentStatus = currentInvoice?.showStatusToCustomer;
     const paymentStatusText = paymentStatus === 'paid' ? 'Paid' : 'Not Paid Yet';
-    const PaymentStatusIcon = paymentStatus === 'paid' ? CheckCircle2 : XCircle;
-
+    
     return (
         <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
             {renderHeader()}
@@ -218,16 +217,7 @@ function CustomerDashboardPage() {
                                 )}
                             </ScrollArea>
                             <Separator className="my-6" />
-                             <div className="flex justify-between items-center text-right">
-                                {currentInvoice && showPaymentStatus && (
-                                     <div>
-                                        <p className="text-sm text-muted-foreground text-left">PAYMENT STATUS</p>
-                                        <Badge variant={paymentStatus === 'paid' ? 'success' : 'destructive'} className="text-lg">
-                                            <PaymentStatusIcon className="mr-2 h-4 w-4" />
-                                            {paymentStatusText}
-                                        </Badge>
-                                    </div>
-                                )}
+                             <div className="flex justify-end items-center text-right">
                                 <div>
                                     <p className="text-sm text-muted-foreground">TOTAL BOTTLES (IN PERIOD)</p>
                                     <p className="font-bold text-3xl font-headline text-primary">{filteredDeliveries.reduce((sum, d) => sum + d.bottles, 0)}</p>
@@ -270,6 +260,19 @@ function CustomerDashboardPage() {
                             </SelectContent>
                         </Select>
                     </div>
+                    
+                    {currentInvoice && showPaymentStatus && (
+                        <div className="w-full pt-4">
+                            <Separator />
+                            <div className="flex justify-center items-center pt-4">
+                                <Badge variant={paymentStatus === 'paid' ? 'success' : 'destructive'} className="text-lg">
+                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                    {paymentStatusText}
+                                </Badge>
+                            </div>
+                        </div>
+                    )}
+
                     {customerData.canShareReport && (
                         <>
                         <Separator />
