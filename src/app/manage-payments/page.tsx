@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useContext, useEffect } from "react";
+import { useState, useMemo, useContext } from "react";
 import AuthGuard from "@/components/auth-guard";
 import DashboardLayout from "@/components/dashboard-layout";
 import { AppContext } from "@/contexts/app-provider";
@@ -34,22 +34,27 @@ function ManagePaymentsPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
+    // New states for filtering the list
+    const [filterMonth, setFilterMonth] = useState<number>(getMonth(new Date()));
+    const [filterYear, setFilterYear] = useState<number>(getYear(new Date()));
+
     const sortedUsers = useMemo(() => {
         return [...userProfiles].sort((a, b) => a.name.localeCompare(b.name));
     }, [userProfiles]);
 
-    const allStatuses = useMemo(() => {
+    const filteredStatuses = useMemo(() => {
         return userProfiles
-            .flatMap(user => 
+            .flatMap(user =>
                 (user.monthlyStatuses || []).map(status => ({
                     ...status,
                     userName: user.name,
-                    user_id: user.id, // Ensure user_id is available
+                    user_id: user.id,
                     statusId: `${user.id}-${status.year}-${status.month}`
                 }))
             )
-            .sort((a, b) => new Date(b.year, b.month).getTime() - new Date(a.year, a.month).getTime());
-    }, [userProfiles]);
+            .filter(status => status.month === filterMonth && status.year === filterYear)
+            .sort((a, b) => a.userName.localeCompare(b.userName));
+    }, [userProfiles, filterMonth, filterYear]);
 
     const handleSave = async () => {
         if (!selectedUserId) {
@@ -62,7 +67,7 @@ function ManagePaymentsPage() {
             const userName = userProfiles.find(u => u.id === selectedUserId)?.name || 'the user';
             toast({
                 title: "Status Saved",
-                description: `${userName}'s bill for ${months[selectedMonth].label} ${selectedYear} has been saved as ${statusToSave === 'paid' ? 'Paid' : 'Not Paid Yet'}.`,
+                description: `${userName}'s bill for ${months[selectedMonth].label} ${selectedYear} has been saved as ${statusToSave === 'paid' ? 'Paid' : 'Unpaid'}.`,
             });
         } catch (error: any) {
             toast({
@@ -180,11 +185,43 @@ function ManagePaymentsPage() {
                          <CardHeader>
                             <CardTitle className="font-headline">Saved Statuses</CardTitle>
                             <CardDescription>
-                                A list of all payment statuses you have saved.
+                                A list of all payment statuses you have saved for a specific month.
                             </CardDescription>
+                             <div className="flex items-center space-x-2 pt-4">
+                                <Select 
+                                    value={String(filterMonth)} 
+                                    onValueChange={(value) => setFilterMonth(Number(value))}
+                                >
+                                    <SelectTrigger className="w-[180px]">
+                                        <SelectValue placeholder="Filter by Month" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {months.map(month => (
+                                            <SelectItem key={month.value} value={String(month.value)}>
+                                                {month.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Select 
+                                    value={String(filterYear)} 
+                                    onValueChange={(value) => setFilterYear(Number(value))}
+                                >
+                                    <SelectTrigger className="w-[120px]">
+                                        <SelectValue placeholder="Filter by Year" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {years.map(year => (
+                                            <SelectItem key={year} value={String(year)}>
+                                                {year}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <ScrollArea className="h-[50vh] rounded-md border">
+                            <ScrollArea className="h-[40vh] rounded-md border">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -201,8 +238,8 @@ function ManagePaymentsPage() {
                                                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
                                                 </TableCell>
                                             </TableRow>
-                                        ) : allStatuses.length > 0 ? (
-                                            allStatuses.map(s => (
+                                        ) : filteredStatuses.length > 0 ? (
+                                            filteredStatuses.map(s => (
                                                 <TableRow key={s.statusId}>
                                                     <TableCell className="font-medium">{s.userName}</TableCell>
                                                     <TableCell>{months[s.month].label}, {s.year}</TableCell>
@@ -230,7 +267,7 @@ function ManagePaymentsPage() {
                                         ) : (
                                              <TableRow>
                                                 <TableCell colSpan={4} className="h-24 text-center">
-                                                    No statuses have been saved yet.
+                                                    No statuses saved for the selected period.
                                                 </TableCell>
                                             </TableRow>
                                         )}
