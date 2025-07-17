@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { UserProfile, Delivery, Invoice, AddUserDataPayload } from "@/lib/types";
+import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { format } from "date-fns";
@@ -28,6 +28,7 @@ interface AppContextType {
   updateUserName: (userId: string, newName: string) => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
+  updateMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -49,6 +50,7 @@ export const AppContext = createContext<AppContextType>({
   updateUserName: async () => {},
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
+  updateMonthlyStatus: async () => {},
   refreshData: async () => {},
 });
 
@@ -91,14 +93,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const processedUserProfiles = (data.userProfiles || []).map((profile: UserProfile) => ({
               ...profile,
-              invoices: allInvoices.filter((inv: Invoice) => inv.userId === profile.id)
+              invoices: allInvoices.filter((inv: Invoice) => inv.userId === profile.id),
+              monthlyStatuses: profile.monthlyStatuses || [], // Ensure it's always an array
             }));
             
             setUserProfiles(processedUserProfiles);
 
             if (data.customerData) {
                 const customerInvoices = allInvoices.filter((inv: Invoice) => inv.userId === data.customerData.id);
-                setCustomerData({ ...data.customerData, invoices: customerInvoices });
+                setCustomerData({ ...data.customerData, invoices: customerInvoices, monthlyStatuses: data.customerData.monthlyStatuses || [] });
             } else {
                 setCustomerData(null);
             }
@@ -341,6 +344,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshData();
   }
   
+  const updateMonthlyStatus = async (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => {
+    const { error } = await supabase
+        .from('monthly_statuses')
+        .upsert(
+            { user_id: userId, month, year, status },
+            { onConflict: 'user_id,month,year' }
+        );
+
+    if (error) throw error;
+    await refreshData();
+  };
+
   const refreshData = async () => {
     await fetchAllData();
   }
@@ -363,6 +378,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateUserName,
     addInvoice,
     deleteInvoice,
+    updateMonthlyStatus,
     refreshData,
   };
 

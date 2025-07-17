@@ -5,7 +5,7 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, AlertCircle } from "lucide-react";
+import { Loader2, Share2, LogOut, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -54,7 +54,12 @@ function CustomerDashboardPage() {
     const availableYears = useMemo(() => {
         if (!customerData || !customerData.deliveries) return [];
         const years = new Set(customerData.deliveries.map(d => getYear(new Date(d.date))));
-        return Array.from(years).sort((a, b) => b - a);
+        // Also add current year if not present
+        const allYears = Array.from(years);
+        if (!allYears.includes(getYear(new Date()))) {
+            allYears.push(getYear(new Date()));
+        }
+        return allYears.sort((a, b) => b - a);
     }, [customerData]);
 
     const filteredDeliveries = useMemo(() => {
@@ -63,6 +68,12 @@ function CustomerDashboardPage() {
             const deliveryDate = new Date(d.date);
             return getYear(deliveryDate) === selectedYear && getMonth(deliveryDate) === selectedMonth;
         });
+    }, [customerData, selectedMonth, selectedYear]);
+    
+    const currentBillStatus = useMemo(() => {
+        if (!customerData || !customerData.monthlyStatuses) return 'not_paid_yet';
+        const statusEntry = customerData.monthlyStatuses.find(s => s.month === selectedMonth && s.year === selectedYear);
+        return statusEntry ? statusEntry.status : 'not_paid_yet';
     }, [customerData, selectedMonth, selectedYear]);
 
     const handleShare = async () => {
@@ -237,7 +248,6 @@ function CustomerDashboardPage() {
                         <Select 
                             value={String(selectedYear)} 
                             onValueChange={(value) => setSelectedYear(Number(value))}
-                            disabled={availableYears.length === 0}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Select Year" />
@@ -250,6 +260,22 @@ function CustomerDashboardPage() {
                                 ))}
                             </SelectContent>
                         </Select>
+                    </div>
+
+                    <Separator className="w-full" />
+                    
+                    <div className="flex justify-between items-center w-full">
+                        <h3 className="font-headline text-lg">Bill Status</h3>
+                        {currentBillStatus === 'paid' && (
+                           <div className="inline-block border-2 border-green-600 text-green-600 font-bold uppercase text-center transform -rotate-12 p-2 text-sm rounded-md">
+                                Paid
+                            </div>
+                        )}
+                         {currentBillStatus === 'not_paid_yet' && (
+                           <div className="inline-block border-2 border-red-600 text-red-600 font-bold uppercase text-center transform -rotate-12 p-2 text-sm rounded-md">
+                                Unpaid
+                            </div>
+                        )}
                     </div>
 
                     {customerData.canShareReport && (
