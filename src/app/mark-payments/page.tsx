@@ -38,7 +38,8 @@ function MarkPaymentsPage() {
                 })
             )
             .map(user => {
-                const statusEntry = user.monthlyStatuses.find(s => s.month === selectedMonth && s.year === selectedYear);
+                const statuses = user.monthlyStatuses || []; // Safety check here
+                const statusEntry = statuses.find(s => s.month === selectedMonth && s.year === selectedYear);
                 return {
                     id: user.id,
                     name: user.name,
