@@ -37,7 +37,7 @@ const navItems = [
   { href: "/manage-users", label: "Manage Users", icon: Users },
   { href: "/invoice", label: "Create Invoice", icon: FileText },
   { href: "/invoices", label: "Search Invoices", icon: FileText },
-  { href: "/mark-payments", label: "Mark Payments", icon: CreditCard },
+  { href: "/mark-payments", label: "Payment Status", icon: CreditCard },
   { href: "/manage-rates", label: "Manage Rates", icon: Tags },
   { href: "/users-sheet", label: "Users Sheet", icon: FileSpreadsheet },
 ];
@@ -64,8 +64,8 @@ export default function DashboardLayout({
                     <circle cx="40" cy="40" r="35" fill="currentColor"/>
                     <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="hsl(var(--sidebar-primary-foreground))" textAnchor="middle" dominantBaseline="central">m</text>
                     <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="currentColor"/>
-                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="hsl(var(--sidebar-foreground))" dy=".3em">waters</text>
-                    <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--sidebar-foreground))" dy=".3em">FIT TO LIVE</text>
+                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="40" fill="hsl(var(--sidebar-foreground))" dy=".3em">waters</text>
+                    <text x="115" y="68" fontFamily="sans-serif" fontSize="20" fill="hsl(var(--sidebar-foreground))" dy=".3em">FIT TO LIVE</text>
                 </svg>
             </Link>
         </div>
@@ -140,5 +140,3 @@ export default function DashboardLayout({
     </div>
   );
 }
-
-    

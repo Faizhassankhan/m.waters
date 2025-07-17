@@ -5,7 +5,7 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Share2, LogOut, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,14 +66,14 @@ function CustomerDashboardPage() {
         });
     }, [customerData, selectedMonth, selectedYear]);
 
-    const currentInvoice = useMemo(() => {
-        if (!customerData || !customerData.invoices) return null;
-        const monthName = months[selectedMonth].label;
-        const currentYear = new Date(selectedYear, 0).getFullYear();
+    const monthlyStatus = useMemo(() => {
+        if (!customerData || !customerData.monthlyStatuses) return null;
         
-        return customerData.invoices.find(inv => 
-            inv.month === monthName && new Date(inv.createdAt).getFullYear() === currentYear
+        const statusRecord = customerData.monthlyStatuses.find(
+            s => s.month === selectedMonth && s.year === selectedYear
         );
+
+        return statusRecord?.status;
     }, [customerData, selectedMonth, selectedYear]);
 
 
@@ -131,8 +131,8 @@ function CustomerDashboardPage() {
                     <circle cx="40" cy="40" r="35" fill="currentColor"/>
                     <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="hsl(var(--primary-foreground))" textAnchor="middle" dominantBaseline="central">m</text>
                     <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="currentColor"/>
-                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="currentColor" dy=".3em">waters</text>
-                    <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--muted-foreground))" dy=".3em">FIT TO LIVE</text>
+                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="40" fill="currentColor" dy=".3em">waters</text>
+                    <text x="115" y="68" fontFamily="sans-serif" fontSize="20" fill="hsl(var(--muted-foreground))" dy=".3em">FIT TO LIVE</text>
                 </svg>
             </div>
              <Button onClick={handleLogout} variant="outline" size="sm">
@@ -165,11 +165,6 @@ function CustomerDashboardPage() {
     
     const reportTitle = `DELIVERY REPORT - ${months[selectedMonth]?.label.toUpperCase() || ''} ${selectedYear}`;
     
-    const paymentStatus = currentInvoice?.paymentStatus;
-    const showPaymentStatus = currentInvoice?.showStatusToCustomer;
-    const paymentStatusText = paymentStatus === 'paid' ? 'Paid' : 'Not Paid Yet';
-    const PaymentStatusIcon = paymentStatus === 'paid' ? CheckCircle2 : XCircle;
-
     return (
         <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
             {renderHeader()}
@@ -183,8 +178,8 @@ function CustomerDashboardPage() {
                                         <circle cx="40" cy="40" r="35" fill="hsl(var(--primary-foreground))" stroke="hsl(var(--primary))" strokeWidth="2" />
                                         <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="hsl(var(--primary))" textAnchor="middle" dominantBaseline="central">m</text>
                                         <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="hsl(var(--primary-foreground))"/>
-                                        <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="hsl(var(--primary-foreground))" dy=".3em">waters</text>
-                                        <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--primary-foreground))" dy=".3em">FIT TO LIVE</text>
+                                        <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="40" fill="hsl(var(--primary-foreground))" dy=".3em">waters</text>
+                                        <text x="115" y="68" fontFamily="sans-serif" fontSize="20" fill="hsl(var(--primary-foreground))" dy=".3em">FIT TO LIVE</text>
                                     </svg>
                                 </CardTitle>
                                 <div className="text-right">
@@ -267,13 +262,25 @@ function CustomerDashboardPage() {
                         </Select>
                     </div>
                     
-                    {currentInvoice && showPaymentStatus && (
+                    {monthlyStatus === 'paid' && (
                          <div className="w-full pt-4">
                             <Separator />
                             <div className="flex justify-center items-center pt-4">
-                                <Badge variant={paymentStatus === 'paid' ? 'success' : 'destructive'} className="text-lg">
-                                    <PaymentStatusIcon className="mr-2 h-4 w-4" />
-                                    {paymentStatusText}
+                                <Badge variant='success' className="text-lg">
+                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                    Status: Paid
+                                </Badge>
+                            </div>
+                        </div>
+                    )}
+                    
+                     {monthlyStatus === 'not_paid_yet' && (
+                         <div className="w-full pt-4">
+                            <Separator />
+                            <div className="flex justify-center items-center pt-4">
+                                <Badge variant='destructive' className="text-lg">
+                                    <AlertCircle className="mr-2 h-4 w-4" />
+                                    Status: Not Paid Yet
                                 </Badge>
                             </div>
                         </div>
@@ -281,7 +288,7 @@ function CustomerDashboardPage() {
 
                     {customerData.canShareReport && (
                         <>
-                        <Separator />
+                        <Separator className="my-4" />
                         <Button onClick={handleShare} className="w-full" disabled={isSharing}>
                             {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
                             {isSharing ? 'Generating...' : 'Share Report as Image'}

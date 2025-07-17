@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { UserProfile, Delivery, Invoice, AddUserDataPayload } from "@/lib/types";
+import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { format } from "date-fns";
@@ -28,8 +28,7 @@ interface AppContextType {
   updateUserName: (userId: string, newName: string) => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
-  updateInvoiceStatus: (invoiceId: string, status: 'paid' | 'not_paid_yet') => Promise<void>;
-  updateInvoiceVisibility: (invoiceId: string, isVisible: boolean) => Promise<void>;
+  updateMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -51,8 +50,7 @@ export const AppContext = createContext<AppContextType>({
   updateUserName: async () => {},
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
-  updateInvoiceStatus: async () => {},
-  updateInvoiceVisibility: async () => {},
+  updateMonthlyStatus: async () => {},
   refreshData: async () => {},
 });
 
@@ -313,25 +311,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await fetchAllData();
   }
   
-  const updateInvoiceStatus = async (invoiceId: string, status: 'paid' | 'not_paid_yet') => {
+  const updateMonthlyStatus = async (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => {
     const { error } = await supabase
-        .from('invoices')
-        .update({ payment_status: status })
-        .eq('id', invoiceId);
+        .from('monthly_statuses')
+        .upsert(
+            { user_id: userId, month, year, status },
+            { onConflict: 'user_id, month, year' }
+        );
     
     if (error) throw error;
-    await fetchAllData();
+    await refreshData();
   };
-  
-  const updateInvoiceVisibility = async (invoiceId: string, isVisible: boolean) => {
-    const { error } = await supabase
-        .from('invoices')
-        .update({ show_status_to_customer: isVisible })
-        .eq('id', invoiceId);
-    
-    if (error) throw error;
-    await fetchAllData();
-  }
 
   const updateUserDelivery = async (userId: string, deliveryId: string, newDate: string) => {
     const { error } = await supabase.from('deliveries').update({ date: newDate }).eq('id', deliveryId).eq('user_id', userId);
@@ -387,8 +377,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateUserName,
     addInvoice,
     deleteInvoice,
-    updateInvoiceStatus,
-    updateInvoiceVisibility,
+    updateMonthlyStatus,
     refreshData,
   };
 
