@@ -88,7 +88,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             throw error;
         }
         
-        if (data && typeof data === 'object') {
+        if (data && typeof data === 'object' && 'userProfiles' in data) {
             const allInvoices = (data.invoices || []).sort((a: Invoice, b: Invoice) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
             const processedUserProfiles = (data.userProfiles || []).map((profile: UserProfile) => ({
@@ -99,9 +99,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             
             setUserProfiles(processedUserProfiles);
 
-            if (data.customerData) {
-                const customerInvoices = allInvoices.filter((inv: Invoice) => inv.userId === data.customerData.id);
-                setCustomerData({ ...data.customerData, invoices: customerInvoices, monthlyStatuses: data.customerData.monthlyStatuses || [] });
+            const customerProfile = processedUserProfiles.find((p: UserProfile) => p.id === user?.id);
+            if (customerProfile) {
+                setCustomerData(customerProfile);
             } else {
                 setCustomerData(null);
             }
@@ -132,7 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
         setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
 
   const handleAuthChange = useCallback(async (_event: string, session: any) => {
@@ -301,8 +301,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await fetchAllData();
     const { data: allData } = await supabase.rpc('get_all_user_data');
-    if (!allData) return undefined;
-    const newInvoice = allData.invoices.find((i: Invoice) => i.id === data.id);
+    if (!allData || !('invoices' in allData)) return undefined;
+    const newInvoice = (allData.invoices as Invoice[]).find((i: Invoice) => i.id === data.id);
     return newInvoice;
   }
   
@@ -345,19 +345,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
   
   const updateMonthlyStatus = async (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => {
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('monthly_statuses')
         .upsert(
             { user_id: userId, month, year, status },
-            { onConflict: 'user_id,month,year' }
-        );
+            { onConflict: 'user_id,month,year', ignoreDuplicates: false }
+        )
+        .select()
+        .single();
 
     if (error) {
         throw error;
     }
 
-    // Directly fetch fresh data after the update is successful
-    await fetchAllData();
+    if (data) {
+        // Manually update the local state for instant UI feedback
+        const updateUserState = (profiles: UserProfile[]) =>
+            profiles.map(p => {
+                if (p.id === userId) {
+                    const newStatuses = [...p.monthlyStatuses.filter(s => !(s.month === month && s.year === year))];
+                    newStatuses.push({ month, year, status });
+                    return { ...p, monthlyStatuses: newStatuses };
+                }
+                return p;
+            });
+        
+        setUserProfiles(currentProfiles => updateUserState(currentProfiles));
+
+        if (customerData && customerData.id === userId) {
+            setCustomerData(currentCustomerData => {
+                if (!currentCustomerData) return null;
+                const newStatuses = [...currentCustomerData.monthlyStatuses.filter(s => !(s.month === month && s.year === year))];
+                newStatuses.push({ month, year, status });
+                return { ...currentCustomerData, monthlyStatuses: newStatuses };
+            });
+        }
+    }
   };
 
   const refreshData = async () => {
