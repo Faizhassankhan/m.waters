@@ -52,13 +52,12 @@ function CustomerDashboardPage() {
     }, [customerData]);
     
     const availableYears = useMemo(() => {
-        if (!customerData || !customerData.deliveries) return [getYear(new Date())];
-        const years = new Set(customerData.deliveries.map(d => getYear(new Date(d.date))));
-        // Also add current year if not present
-        const currentYear = getYear(new Date());
-        if (!years.has(currentYear)) {
-            years.add(currentYear)
+        const years = new Set<number>();
+        if (customerData && customerData.deliveries) {
+            customerData.deliveries.forEach(d => years.add(getYear(new Date(d.date))));
         }
+        // Hamesha maujooda saal ko shamil karein
+        years.add(getYear(new Date()));
         return Array.from(years).sort((a, b) => b - a);
     }, [customerData]);
 
