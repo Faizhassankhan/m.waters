@@ -237,7 +237,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserProfile = async (name: string, email: string, password: string) => {
-    const { data: { user }, error } = await supabase.rpc('create_new_user', {
+    const { data, error } = await supabase.rpc('create_new_user', {
         user_email: email,
         user_password: password,
         user_name: name
@@ -314,24 +314,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
   
   const updateInvoiceStatus = async (invoiceId: string, status: 'paid' | 'not_paid_yet') => {
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('invoices')
         .update({ payment_status: status })
-        .eq('id', invoiceId)
-        .select()
-        .single();
-
+        .eq('id', invoiceId);
+    
     if (error) throw error;
     await fetchAllData();
   };
   
   const updateInvoiceVisibility = async (invoiceId: string, isVisible: boolean) => {
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('invoices')
         .update({ show_status_to_customer: isVisible })
-        .eq('id', invoiceId)
-        .select()
-        .single();
+        .eq('id', invoiceId);
     
     if (error) throw error;
     await fetchAllData();
@@ -398,5 +394,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    
