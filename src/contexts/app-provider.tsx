@@ -28,7 +28,8 @@ interface AppContextType {
   updateUserName: (userId: string, newName: string) => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
-  updateMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
+  saveMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
+  deleteMonthlyStatus: (userId: string, month: number, year: number) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -50,7 +51,8 @@ export const AppContext = createContext<AppContextType>({
   updateUserName: async () => {},
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
-  updateMonthlyStatus: async () => {},
+  saveMonthlyStatus: async () => {},
+  deleteMonthlyStatus: async () => {},
   refreshData: async () => {},
 });
 
@@ -344,7 +346,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshData();
   }
   
-  const updateMonthlyStatus = async (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => {
+  const saveMonthlyStatus = async (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => {
     const { error } = await supabase
         .from('monthly_statuses')
         .upsert(
@@ -353,13 +355,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
 
     if (error) {
-        console.error("Error updating status:", error);
+        console.error("Error saving status:", error);
         throw error;
     }
     
     // After a successful database operation, refresh all data to ensure consistency.
     await fetchAllData();
   };
+
+  const deleteMonthlyStatus = async (userId: string, month: number, year: number) => {
+      const { error } = await supabase
+        .from('monthly_statuses')
+        .delete()
+        .match({ user_id: userId, month: month, year: year });
+
+    if (error) {
+        console.error("Error deleting status:", error);
+        throw error;
+    }
+    await fetchAllData();
+  }
 
 
   const refreshData = async () => {
@@ -385,7 +400,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateUserName,
     addInvoice,
     deleteInvoice,
-    updateMonthlyStatus,
+    saveMonthlyStatus,
+    deleteMonthlyStatus,
     refreshData,
   };
 
