@@ -6,12 +6,6 @@ export interface Delivery {
   month: string; // Dynamically added on client
 }
 
-export interface MonthlyStatus {
-  month: number;
-  year: number;
-  status: 'paid' | 'not_paid_yet';
-}
-
 // This interface now represents the 'users' table which holds all customer info.
 export interface UserProfile {
   id: string; // uuid from supabase, links to auth.users
@@ -21,7 +15,6 @@ export interface UserProfile {
   canShareReport: boolean;
   deliveries: Delivery[];
   invoices?: Invoice[]; // Now includes invoices for customer dashboard
-  monthlyStatuses?: MonthlyStatus[]; // Holds payment statuses
 }
 
 export interface AddUserDataPayload {
@@ -37,8 +30,6 @@ export interface Invoice {
   amount: number;
   bottlePrice?: number;
   paymentMethod: 'EasyPaisa' | 'JazzCash' | 'Bank Transfer';
-  paymentStatus?: 'paid' | 'not_paid_yet';
-  showStatusToCustomer?: boolean; // New field to control visibility
   recipientNumber: string;
   createdAt: string; // timestamp with time zone
   month: string;

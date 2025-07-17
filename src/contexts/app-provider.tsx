@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus } from "@/lib/types";
+import { UserProfile, Delivery, Invoice, AddUserDataPayload } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { format } from "date-fns";
@@ -28,7 +28,6 @@ interface AppContextType {
   updateUserName: (userId: string, newName: string) => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
-  updateMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -50,7 +49,6 @@ export const AppContext = createContext<AppContextType>({
   updateUserName: async () => {},
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
-  updateMonthlyStatus: async () => {},
   refreshData: async () => {},
 });
 
@@ -310,18 +308,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       await fetchAllData();
   }
-  
-  const updateMonthlyStatus = async (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => {
-    const { error } = await supabase
-        .from('monthly_statuses')
-        .upsert(
-            { user_id: userId, month, year, status },
-            { onConflict: 'user_id, month, year' }
-        );
-    
-    if (error) throw error;
-    await refreshData();
-  };
 
   const updateUserDelivery = async (userId: string, deliveryId: string, newDate: string) => {
     const { error } = await supabase.from('deliveries').update({ date: newDate }).eq('id', deliveryId).eq('user_id', userId);
@@ -377,7 +363,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateUserName,
     addInvoice,
     deleteInvoice,
-    updateMonthlyStatus,
     refreshData,
   };
 

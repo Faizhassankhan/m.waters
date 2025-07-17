@@ -5,9 +5,8 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, Share2, LogOut, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { format, getYear, getMonth } from "date-fns";
@@ -65,17 +64,6 @@ function CustomerDashboardPage() {
             return getYear(deliveryDate) === selectedYear && getMonth(deliveryDate) === selectedMonth;
         });
     }, [customerData, selectedMonth, selectedYear]);
-
-    const monthlyStatus = useMemo(() => {
-        if (!customerData || !customerData.monthlyStatuses) return null;
-        
-        const statusRecord = customerData.monthlyStatuses.find(
-            s => s.month === selectedMonth && s.year === selectedYear
-        );
-
-        return statusRecord?.status;
-    }, [customerData, selectedMonth, selectedYear]);
-
 
     const handleShare = async () => {
         if (!dataCardRef.current || !customerData) return;
@@ -261,30 +249,6 @@ function CustomerDashboardPage() {
                             </SelectContent>
                         </Select>
                     </div>
-                    
-                    {monthlyStatus === 'paid' && (
-                         <div className="w-full pt-4">
-                            <Separator />
-                            <div className="flex justify-center items-center pt-4">
-                                <Badge variant='success' className="text-lg">
-                                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                                    Status: Paid
-                                </Badge>
-                            </div>
-                        </div>
-                    )}
-                    
-                     {monthlyStatus === 'not_paid_yet' && (
-                         <div className="w-full pt-4">
-                            <Separator />
-                            <div className="flex justify-center items-center pt-4">
-                                <Badge variant='destructive' className="text-lg">
-                                    <AlertCircle className="mr-2 h-4 w-4" />
-                                    Status: Not Paid Yet
-                                </Badge>
-                            </div>
-                        </div>
-                    )}
 
                     {customerData.canShareReport && (
                         <>
