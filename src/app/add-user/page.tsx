@@ -32,6 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address."),
+  password: z.string().min(6, "Password must be at least 6 characters."),
 });
 
 function AddUserPage() {
@@ -49,16 +50,17 @@ function AddUserPage() {
     defaultValues: {
       name: "",
       email: "",
+      password: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-      await addUserProfile(values.name, values.email);
+      await addUserProfile(values.name, values.email, values.password);
       toast({
         title: "Success",
-        description: `Customer "${values.name}" has been created and an invitation has been sent to ${values.email}.`,
+        description: `Customer "${values.name}" has been created. They can now log in with the password you set.`,
       });
       form.reset();
     } catch (error: any) {
@@ -133,6 +135,19 @@ function AddUserPage() {
                             <FormLabel>Customer Email</FormLabel>
                             <FormControl>
                               <Input placeholder="e.g., jane.doe@example.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                       <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Set Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Set an initial password" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

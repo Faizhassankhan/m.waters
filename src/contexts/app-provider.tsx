@@ -19,7 +19,7 @@ interface AppContextType {
   loading: boolean;
   
   addUserData: (data: AddUserDataPayload) => Promise<void>;
-  addUserProfile: (name: string, email: string) => Promise<void>;
+  addUserProfile: (name: string, email: string, password: string) => Promise<void>;
   deleteUserProfile: (profileId: string) => Promise<void>;
   updateUserDelivery: (userId: string, deliveryId: string, newDate: string) => Promise<void>;
   deleteUserDelivery: (userId: string, deliveryId: string) => Promise<void>;
@@ -236,16 +236,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setInvoices([]);
   };
 
-  const addUserProfile = async (name: string, email: string) => {
+  const addUserProfile = async (name: string, email: string, password: string) => {
     const { data: { session: adminSession } } = await supabase.auth.getSession();
     if (!adminSession) {
         throw new Error("Admin not logged in. Cannot create user.");
     }
     
-    const randomPassword = Math.random().toString(36).slice(-8);
     const { data: { user }, error: signUpError } = await supabase.auth.signUp({
         email: email,
-        password: randomPassword,
+        password: password,
         options: {
             data: { user_type: 'customer' }
         }
@@ -322,14 +321,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
 
     await fetchAllData();
-    const newInvoice = (await supabase.rpc('get_all_user_data')).data.invoices.find((i: Invoice) => i.id === data.id);
+    const { data: allData } = await supabase.rpc('get_all_user_data');
+    if (!allData) return undefined;
+    const newInvoice = allData.invoices.find((i: Invoice) => i.id === data.id);
     return newInvoice;
   }
   
   const deleteInvoice = async (invoiceId: string) => {
       const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
       if (error) throw error;
-      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+      await fetchAllData();
   }
   
   const updateInvoiceStatus = async (invoiceId: string, status: 'paid' | 'not_paid_yet') => {
