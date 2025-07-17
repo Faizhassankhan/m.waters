@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
+import { format } from "date-fns";
 
 function DataManagementPage() {
   const { userProfiles, refreshData } = useContext(AppContext);
@@ -24,9 +25,15 @@ function DataManagementPage() {
     const lowercasedMonth = searchMonth.toLowerCase();
     return userProfiles
       .map((profile) => {
-        const matchingDeliveries = profile.deliveries.filter((d) =>
-          d.month.toLowerCase().includes(lowercasedMonth)
-        );
+        // Guard against profile.deliveries being null or undefined
+        if (!profile.deliveries) {
+          return { ...profile, deliveries: [] };
+        }
+        const matchingDeliveries = profile.deliveries.filter((d) => {
+          // Safely get the month name from the date property
+          const deliveryMonth = format(new Date(d.date), "MMMM");
+          return deliveryMonth.toLowerCase().includes(lowercasedMonth);
+        });
         return { ...profile, deliveries: matchingDeliveries };
       })
       .filter((profile) => profile.deliveries.length > 0);
