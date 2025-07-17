@@ -91,27 +91,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         
         if (data && typeof data === 'object') {
-            setUserProfiles(data.userProfiles || []);
+            const allInvoices = (data.invoices || []).sort((a: Invoice, b: Invoice) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+            const processedUserProfiles = (data.userProfiles || []).map((profile: UserProfile) => ({
+              ...profile,
+              invoices: allInvoices.filter((inv: Invoice) => inv.userId === profile.id)
+            }));
             
-            // Repopulate customer data with full invoice details
+            setUserProfiles(processedUserProfiles);
+
             if (data.customerData) {
-                const customerInvoices = (data.invoices || []).filter((inv: Invoice) => inv.userId === data.customerData.id);
+                const customerInvoices = allInvoices.filter((inv: Invoice) => inv.userId === data.customerData.id);
                 setCustomerData({ ...data.customerData, invoices: customerInvoices });
             } else {
                 setCustomerData(null);
             }
 
-            // Post-process invoices to add delivery details for the preview components
-            const allDeliveries = (data.userProfiles || []).flatMap((p: UserProfile) => p.deliveries);
-            const processedInvoices = (data.invoices || []).map((inv: Invoice) => {
-                const profile = data.userProfiles.find((p: UserProfile) => p.id === inv.userId);
+            const processedInvoices = allInvoices.map((inv: Invoice) => {
+                const profile = processedUserProfiles.find((p: UserProfile) => p.id === inv.userId);
                 const deliveriesForInvoice = profile?.deliveries.filter((d: Delivery) => {
                     const deliveryDate = new Date(d.date);
                     return deliveryDate.toLocaleString('default', { month: 'long' }) === inv.month;
                 }) || [];
                 return { ...inv, deliveries: deliveriesForInvoice, bottlePrice: profile?.bottlePrice };
             });
-            setInvoices(processedInvoices.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            setInvoices(processedInvoices);
+
         } else {
              setUserProfiles([]);
              setInvoices([]);

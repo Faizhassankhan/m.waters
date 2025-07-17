@@ -5,7 +5,7 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, Share2, LogOut, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,8 +69,13 @@ function CustomerDashboardPage() {
     const currentInvoice = useMemo(() => {
         if (!customerData || !customerData.invoices) return null;
         const monthName = months[selectedMonth].label;
-        return customerData.invoices.find(inv => inv.month === monthName && getYear(new Date(inv.createdAt)) === selectedYear);
+        const currentYear = new Date(selectedYear, 0).getFullYear();
+        
+        return customerData.invoices.find(inv => 
+            inv.month === monthName && new Date(inv.createdAt).getFullYear() === currentYear
+        );
     }, [customerData, selectedMonth, selectedYear]);
+
 
     const handleShare = async () => {
         if (!dataCardRef.current || !customerData) return;
@@ -163,7 +168,8 @@ function CustomerDashboardPage() {
     const paymentStatus = currentInvoice?.paymentStatus;
     const showPaymentStatus = currentInvoice?.showStatusToCustomer;
     const paymentStatusText = paymentStatus === 'paid' ? 'Paid' : 'Not Paid Yet';
-    
+    const PaymentStatusIcon = paymentStatus === 'paid' ? CheckCircle2 : XCircle;
+
     return (
         <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
             {renderHeader()}
@@ -262,11 +268,11 @@ function CustomerDashboardPage() {
                     </div>
                     
                     {currentInvoice && showPaymentStatus && (
-                        <div className="w-full pt-4">
+                         <div className="w-full pt-4">
                             <Separator />
                             <div className="flex justify-center items-center pt-4">
                                 <Badge variant={paymentStatus === 'paid' ? 'success' : 'destructive'} className="text-lg">
-                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                    <PaymentStatusIcon className="mr-2 h-4 w-4" />
                                     {paymentStatusText}
                                 </Badge>
                             </div>
@@ -295,5 +301,3 @@ export default function Home() {
         </AuthGuard>
     )
 }
-
-    
