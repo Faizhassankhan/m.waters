@@ -72,7 +72,8 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       if (name === "name" && value.name) {
         const foundUser = userProfiles.find(u => u.name.toLowerCase() === value.name?.toLowerCase());
         setSelectedUser(foundUser || null);
-        if(foundUser){
+        // Fix: Only set value if it's different to prevent infinite loop
+        if(foundUser && form.getValues("name") !== foundUser.name){
             form.setValue("name", foundUser.name);
         }
       }
@@ -112,8 +113,10 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     try {
         const invoicePayload = {
             ...values,
-            createdAt: new Date().toISOString(), // Ensure createdAt is set
+            name: selectedUser?.name || values.name, // Ensure correct name casing is used
+            createdAt: new Date().toISOString(),
             deliveries: deliveriesForInvoice,
+            bottlePrice: selectedUser?.bottlePrice || DEFAULT_BOTTLE_PRICE,
         };
 
         const newInvoice = await addInvoice(invoicePayload);
@@ -132,7 +135,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             });
             setSelectedUser(null);
             setDeliveriesForInvoice([]);
-            refreshData(); // Manually refresh data after success
+            refreshData();
         } else {
              toast({
                 variant: "destructive",
