@@ -345,42 +345,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
   
   const updateMonthlyStatus = async (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => {
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('monthly_statuses')
         .upsert(
             { user_id: userId, month, year, status },
-            { onConflict: 'user_id,month,year', ignoreDuplicates: false }
-        )
-        .select()
-        .single();
+            { onConflict: 'user_id,month,year' }
+        );
 
     if (error) {
+        console.error("Error updating status:", error);
         throw error;
     }
-
-    if (data) {
-        // Manually update the local state for instant UI feedback
-        const updateUserState = (profiles: UserProfile[]) =>
-            profiles.map(p => {
-                if (p.id === userId) {
-                    const newStatuses = [...p.monthlyStatuses.filter(s => !(s.month === month && s.year === year))];
-                    newStatuses.push({ month, year, status });
-                    return { ...p, monthlyStatuses: newStatuses };
-                }
-                return p;
-            });
-        
-        setUserProfiles(currentProfiles => updateUserState(currentProfiles));
-
-        if (customerData && customerData.id === userId) {
-            setCustomerData(currentCustomerData => {
-                if (!currentCustomerData) return null;
-                const newStatuses = [...currentCustomerData.monthlyStatuses.filter(s => !(s.month === month && s.year === year))];
-                newStatuses.push({ month, year, status });
-                return { ...currentCustomerData, monthlyStatuses: newStatuses };
-            });
-        }
-    }
+    
+    // After a successful database operation, refresh all data to ensure consistency.
+    await fetchAllData();
   };
 
   const refreshData = async () => {
