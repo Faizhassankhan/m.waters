@@ -291,7 +291,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       p_payment_method: invoiceData.paymentMethod,
       p_recipient_number: invoiceData.recipientNumber,
       p_deliveries: invoiceData.deliveries || [],
-      p_previous_balance: invoiceData.previousBalance || 0
+      p_previous_balance: invoiceData.previousBalance || 0,
+      p_bottle_price: invoiceData.bottlePrice || 100
     };
     
     const { data, error } = await supabase.rpc('create_invoice_and_get_details', rpcPayload);
