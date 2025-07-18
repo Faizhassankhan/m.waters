@@ -251,7 +251,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             <FormItem>
               <FormLabel>Previous Month Remaining PKR</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g., 500" {...field} />
+                <Input type="number" placeholder="e.g., 500" {...field} value={field.value || 0} />
               </FormControl>
               <FormMessage />
             </FormItem>
