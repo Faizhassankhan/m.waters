@@ -66,7 +66,7 @@ function CustomerDashboardPage() {
         return customerData.deliveries.filter(d => {
             const deliveryDate = new Date(d.date);
             return getYear(deliveryDate) === selectedYear && getMonth(deliveryDate) === selectedMonth;
-        });
+        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [customerData, selectedMonth, selectedYear]);
     
     const currentBillStatus = useMemo(() => {
@@ -145,6 +145,9 @@ function CustomerDashboardPage() {
                 </svg>
             </div>
              <div className="flex items-center gap-2">
+                <Button onClick={() => router.push('/bill-status')} variant="outline" size="sm">
+                    Bill Status
+                </Button>
                 <Button onClick={handleLogout} variant="outline" size="sm">
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
