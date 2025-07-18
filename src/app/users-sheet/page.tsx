@@ -14,6 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Filter } from "lucide-react";
 import { getYear, getMonth, format, getDate } from "date-fns";
 
 const DEFAULT_BOTTLE_PRICE = 100;
@@ -31,6 +41,13 @@ function UsersSheetPage() {
     const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(new Date()));
     const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
     const [selectedDate, setSelectedDate] = useState<string>("all");
+    const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (userProfiles.length > 0) {
+            setSelectedUserIds(new Set(userProfiles.map(u => u.id)));
+        }
+    }, [userProfiles]);
     
     const availableYears = useMemo(() => {
         const years = new Set<number>();
@@ -50,7 +67,9 @@ function UsersSheetPage() {
     }, [availableYears, selectedYear]);
 
     const usersSummary = useMemo(() => {
-        return userProfiles.map(user => {
+        return userProfiles
+        .filter(user => selectedUserIds.has(user.id)) // Filter based on selected users
+        .map(user => {
             const filteredDeliveries = user.deliveries.filter(delivery => {
                 const deliveryDate = new Date(delivery.date);
                 const isMonthMatch = getMonth(deliveryDate) === selectedMonth;
@@ -72,7 +91,7 @@ function UsersSheetPage() {
         })
         .filter(user => user.totalBottles > 0)
         .sort((a, b) => a.name.localeCompare(b.name));
-    }, [userProfiles, selectedMonth, selectedYear, selectedDate]);
+    }, [userProfiles, selectedMonth, selectedYear, selectedDate, selectedUserIds]);
     
     const grandTotalBottles = useMemo(() => {
         return usersSummary.reduce((sum, user) => sum + user.totalBottles, 0);
@@ -81,6 +100,16 @@ function UsersSheetPage() {
     const grandTotalBill = useMemo(() => {
         return usersSummary.reduce((sum, user) => sum + user.totalBill, 0);
     }, [usersSummary]);
+
+    const handleUserSelection = (userId: string, isSelected: boolean) => {
+        const newUserIds = new Set(selectedUserIds);
+        if (isSelected) {
+            newUserIds.add(userId);
+        } else {
+            newUserIds.delete(userId);
+        }
+        setSelectedUserIds(newUserIds);
+    };
 
     return (
         <DashboardLayout>
@@ -143,6 +172,28 @@ function UsersSheetPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline">
+                                        <Filter className="mr-2 h-4 w-4" />
+                                        Filter Users
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-56">
+                                    <DropdownMenuLabel>Show Users</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {userProfiles.sort((a,b) => a.name.localeCompare(b.name)).map(user => (
+                                        <DropdownMenuCheckboxItem
+                                            key={user.id}
+                                            checked={selectedUserIds.has(user.id)}
+                                            onCheckedChange={(isSelected) => handleUserSelection(user.id, isSelected)}
+                                            onSelect={(e) => e.preventDefault()} // Prevents menu from closing
+                                        >
+                                            {user.name}
+                                        </DropdownMenuCheckboxItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -167,7 +218,7 @@ function UsersSheetPage() {
                                     ) : (
                                         <TableRow>
                                             <TableCell colSpan={3} className="h-24 text-center">
-                                                No data found for the selected period.
+                                                No data found for the selected filters.
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -197,3 +248,5 @@ export default function Home() {
         </AuthGuard>
     );
 }
+
+    
