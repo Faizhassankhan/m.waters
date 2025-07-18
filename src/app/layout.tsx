@@ -6,6 +6,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "m.waters",
   description: "Manage water delivery and invoices efficiently.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
