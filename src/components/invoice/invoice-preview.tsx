@@ -86,11 +86,11 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
     return isValid(date) ? date : new Date();
   }
 
-  const totalBottles = invoice.deliveries?.reduce((sum, d) => sum + d.bottles, 0) || 0;
-
   const sortedDeliveries = invoice.deliveries 
     ? [...invoice.deliveries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     : [];
+
+  const totalBottles = sortedDeliveries.reduce((sum, d) => sum + d.bottles, 0);
     
   const currentMonthBill = invoice.amount;
   const previousBalance = invoice.previousBalance || 0;
@@ -157,7 +157,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                         </div>
                         <div className="flex justify-between items-center p-2 bg-muted/50 font-bold text-sm">
                             <span>Total Bottles: {totalBottles}</span>
-                            <span>Rate: {invoice.bottlePrice || 'N/A'} PKR</span>
+                            <span>Rate: {invoice.bottlePrice || '100'} PKR</span>
                         </div>
                     </div>
                 </>
