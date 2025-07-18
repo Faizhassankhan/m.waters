@@ -51,7 +51,7 @@ const previousMonthYear = getYear(subMonths(new Date(), 1));
 
 
 export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: Invoice) => void }) {
-  const { addInvoice, userProfiles } = useContext(AppContext);
+  const { addInvoice, userProfiles, refreshData } = useContext(AppContext);
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [deliveriesForInvoice, setDeliveriesForInvoice] = useState<Delivery[]>([]);
@@ -301,5 +301,3 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     </Form>
   );
 }
-
-    

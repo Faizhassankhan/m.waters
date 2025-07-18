@@ -296,7 +296,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to create invoice: No data returned from function.");
     }
     
-    setInvoices(prevInvoices => [data as Invoice, ...prevInvoices]);
+    await fetchAllData();
     return data as Invoice;
   }
   
@@ -426,5 +426,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    
