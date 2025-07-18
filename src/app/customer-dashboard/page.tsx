@@ -204,7 +204,7 @@ function CustomerDashboardPage() {
                                 <p className="text-sm text-muted-foreground">REPORT FOR</p>
                                 <p className="font-semibold text-xl">{customerData.name}</p>
                             </div>
-                            <ScrollArea className="max-h-[40vh] pr-4">
+                            <ScrollArea className="h-[250px] pr-4">
                                 {filteredDeliveries.length > 0 ? (
                                     <Table>
                                         <TableHeader>
@@ -335,3 +335,4 @@ export default function Home() {
     
 
     
+
