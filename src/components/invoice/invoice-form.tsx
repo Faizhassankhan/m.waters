@@ -51,7 +51,7 @@ const previousMonthYear = getYear(subMonths(new Date(), 1));
 
 
 export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: Invoice) => void }) {
-  const { addInvoice, userProfiles } = useContext(AppContext);
+  const { addInvoice, userProfiles, refreshData } = useContext(AppContext);
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [deliveriesForInvoice, setDeliveriesForInvoice] = useState<Delivery[]>([]);
@@ -70,24 +70,21 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     },
   });
   
+  const selectedName = form.watch("name");
   const selectedMonth = form.watch("month");
   const selectedYear = form.watch("year");
 
   useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === "name" && value.name) {
-        const foundUser = userProfiles.find(u => u.name.toLowerCase() === value.name?.toLowerCase());
-        setSelectedUser(foundUser || null);
-        if(foundUser && form.getValues("name") !== foundUser.name){
-            form.setValue("name", foundUser.name);
-        }
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form, userProfiles]);
+    if (selectedName) {
+      const foundUser = userProfiles.find(u => u.name.toLowerCase() === selectedName.toLowerCase());
+      setSelectedUser(foundUser || null);
+    } else {
+      setSelectedUser(null);
+    }
+  }, [selectedName, userProfiles]);
 
   useEffect(() => {
-    if (selectedUser && selectedMonth && selectedYear) {
+    if (selectedUser) {
         const monthIndex = months.indexOf(selectedMonth);
         
         const userDeliveries = selectedUser.deliveries.filter(d => {
@@ -137,19 +134,12 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
                 year: previousMonthYear,
             });
             setSelectedUser(null);
-            setDeliveriesForInvoice([]);
-        } else {
-             toast({
-                variant: "destructive",
-                title: "Error",
-                description: `Could not create invoice. Ensure user exists.`,
-            });
         }
     } catch (error: any) {
         toast({
             variant: "destructive",
             title: "Error Creating Invoice",
-            description: error.message || "An unexpected error occurred."
+            description: `Failed to create invoice: ${error.message}`
         });
     } finally {
         setLoading(false);
@@ -302,3 +292,5 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     </Form>
   );
 }
+
+    

@@ -256,18 +256,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const profile = userProfiles.find(p => p.name === data.name);
     if (!profile) throw new Error("User does not exist.");
 
-    const { data: newDelivery, error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles }).select().single();
+    const { error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles });
     if (error) throw error;
     
-    setUserProfiles(prevProfiles => {
-        return prevProfiles.map(p => {
-            if (p.id === profile.id) {
-                const updatedDeliveries = [...p.deliveries, newDelivery as Delivery].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                return { ...p, deliveries: updatedDeliveries };
-            }
-            return p;
-        });
-    });
+    await fetchAllData();
   };
 
   const updateUserBottlePrice = async (userName: string, newPrice: number) => {
@@ -302,13 +294,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error(`Failed to create invoice: ${error.message}`);
     }
 
-    if (!data) {
-        throw new Error("Failed to create invoice: No data returned from function.");
+    if (!data || (data as any).error) {
+        throw new Error(`Failed to create invoice: ${(data as any).error || 'No data returned from function.'}`);
     }
     
     const newInvoice = data as Invoice;
-
-    setInvoices(prevInvoices => [newInvoice, ...prevInvoices].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    
+    await fetchAllData();
     
     return newInvoice;
   }
@@ -439,3 +431,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
