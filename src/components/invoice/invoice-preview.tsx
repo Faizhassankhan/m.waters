@@ -91,6 +91,11 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
   const sortedDeliveries = invoice.deliveries 
     ? [...invoice.deliveries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     : [];
+    
+  const currentMonthBill = invoice.amount;
+  const previousBalance = invoice.previousBalance || 0;
+  const grandTotal = currentMonthBill + previousBalance;
+
 
   return (
     <div className="flex flex-col h-full">
@@ -173,10 +178,21 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
             
             <Separator className="my-6" />
 
-            <div className="flex justify-end items-center text-right">
-                <div>
-                    <p className="text-sm text-muted-foreground">TOTAL AMOUNT</p>
-                    <p className="font-bold text-3xl font-headline text-primary">PKR {invoice.amount.toLocaleString()}</p>
+            <div className="flex justify-end items-start text-right">
+                <div className="grid gap-2 w-full max-w-xs">
+                     <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Current Bill</span>
+                        <span className="font-medium">PKR {currentMonthBill.toLocaleString()}</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Previous Balance</span>
+                        <span className="font-medium">PKR {previousBalance.toLocaleString()}</span>
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="flex justify-between items-center">
+                        <p className="font-bold text-lg">Grand Total</p>
+                        <p className="font-bold text-3xl font-headline text-primary">PKR {grandTotal.toLocaleString()}</p>
+                    </div>
                 </div>
             </div>
           </CardContent>

@@ -32,6 +32,7 @@ import { format, subMonths, getYear, getMonth } from 'date-fns';
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   amount: z.coerce.number().positive("Amount must be positive."),
+  previousBalance: z.coerce.number().optional(),
   paymentMethod: z.enum(["EasyPaisa", "JazzCash", "Bank Transfer"]),
   recipientNumber: z.string().regex(/^03\d{9}$/, "Enter a valid Pakistani mobile number (03xxxxxxxxx)."),
   month: z.string().min(1, "Month is required."),
@@ -61,6 +62,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     defaultValues: {
       name: "",
       amount: 0,
+      previousBalance: 0,
       paymentMethod: "EasyPaisa",
       recipientNumber: "",
       month: previousMonth,
@@ -115,6 +117,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             name: selectedUser?.name || values.name, // Ensure correct name casing is used
             deliveries: deliveriesForInvoice,
             bottlePrice: selectedUser?.bottlePrice || DEFAULT_BOTTLE_PRICE,
+            previousBalance: values.previousBalance || 0,
         };
 
         const newInvoice = await addInvoice(invoicePayload);
@@ -127,6 +130,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             form.reset({
                 name: "",
                 amount: 0,
+                previousBalance: 0,
                 paymentMethod: "EasyPaisa",
                 recipientNumber: "",
                 month: previousMonth,
@@ -239,6 +243,21 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="previousBalance"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Previous Month Remaining PKR</FormLabel>
+              <FormControl>
+                <Input type="number" placeholder="e.g., 500" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="paymentMethod"

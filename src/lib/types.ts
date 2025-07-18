@@ -52,4 +52,5 @@ export interface Invoice {
   month: string;
   year: number;
   deliveries?: Delivery[]; // Joined from deliveries table
+  previousBalance?: number;
 }
