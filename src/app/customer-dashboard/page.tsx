@@ -31,7 +31,7 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 
 
 function CustomerDashboardPage() {
-    const { customerData, logout } = useContext(AppContext);
+    const { customerData, logout, loading } = useContext(AppContext);
     const dataCardRef = useRef<HTMLDivElement>(null);
     const [isSharing, setIsSharing] = useState(false);
     const { toast } = useToast();
@@ -153,23 +153,15 @@ function CustomerDashboardPage() {
         </header>
     );
 
-    if (!customerData) {
+    if (loading || !customerData) {
+        // AuthGuard already shows a loader, so we can show a minimal one here
+        // or nothing at all, relying on AuthGuard's loader.
+        // Returning null is also an option if AuthGuard's loader is sufficient.
         return (
-             <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
-                {renderHeader()}
-                <main className="max-w-2xl mx-auto">
-                    <Card className="text-center p-8">
-                        <CardHeader>
-                            <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <CardTitle className="mt-4 font-headline">Access Pending</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-muted-foreground">
-                                Your data is not yet available. Please contact the administrator to get access to your delivery reports.
-                            </p>
-                        </CardContent>
-                    </Card>
-                </main>
+            <div className="flex h-screen w-full items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
             </div>
         );
     }
@@ -331,8 +323,3 @@ export default function Home() {
         </AuthGuard>
     )
 }
-
-    
-
-    
-
