@@ -67,6 +67,7 @@ export function InvoiceList({ invoices }: { invoices: Invoice[] }) {
                             <TableHead className="w-[150px]">Invoice ID</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Month</TableHead>
+                            <TableHead className="text-right">Prev. Balance</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead className="text-center">Method</TableHead>
                             <TableHead className="w-[120px] text-right">Actions</TableHead>
@@ -77,8 +78,9 @@ export function InvoiceList({ invoices }: { invoices: Invoice[] }) {
                             <TableRow key={invoice.id}>
                                 <TableCell className="font-mono text-xs">{invoice.id}</TableCell>
                                 <TableCell className="font-medium">{invoice.name}</TableCell>
-                                <TableCell>{invoice.month}</TableCell>
-                                <TableCell className="text-right">PKR {invoice.amount.toLocaleString()}</TableCell>
+                                <TableCell>{invoice.month}, {invoice.year}</TableCell>
+                                <TableCell className="text-right">PKR {(invoice.previousBalance || 0).toLocaleString()}</TableCell>
+                                <TableCell className="text-right font-semibold">PKR {invoice.amount.toLocaleString()}</TableCell>
                                 <TableCell className="text-center">
                                     <Badge variant="secondary">{invoice.paymentMethod}</Badge>
                                 </TableCell>
@@ -122,5 +124,3 @@ export function InvoiceList({ invoices }: { invoices: Invoice[] }) {
         </>
     );
 }
-
-    
