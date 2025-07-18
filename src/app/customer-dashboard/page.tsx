@@ -145,9 +145,6 @@ function CustomerDashboardPage() {
                 </svg>
             </div>
              <div className="flex items-center gap-2">
-                <Button onClick={() => router.push('/bill-status')} variant="outline" size="sm">
-                    Bill Status
-                </Button>
                 <Button onClick={handleLogout} variant="outline" size="sm">
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
@@ -334,5 +331,7 @@ export default function Home() {
         </AuthGuard>
     )
 }
+
+    
 
     
