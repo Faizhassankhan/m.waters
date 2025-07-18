@@ -290,8 +290,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       p_year: invoiceData.year,
       p_payment_method: invoiceData.paymentMethod,
       p_recipient_number: invoiceData.recipientNumber,
-      p_previous_balance: invoiceData.previousBalance || 0,
-      p_bottle_price: invoiceData.bottlePrice || 100 // Default price
+      p_deliveries: invoiceData.deliveries || [],
+      p_previous_balance: invoiceData.previousBalance || 0
     };
     
     const { data, error } = await supabase.rpc('create_invoice_and_get_details', rpcPayload);
@@ -305,13 +305,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to create invoice: No data returned from function.");
     }
     
-    // The RPC now returns the full invoice object, so we don't need to manually construct it.
-    // The returned object has the correct deliveries attached from the database side.
-    const newInvoice = {
-        ...data,
-        deliveries: invoiceData.deliveries || [] // We keep the deliveries from the form for the preview
-    } as Invoice;
-
+    const newInvoice = data as Invoice;
 
     setInvoices(prevInvoices => [newInvoice, ...prevInvoices].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     
