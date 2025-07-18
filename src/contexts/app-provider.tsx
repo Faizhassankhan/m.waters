@@ -258,9 +258,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const { data: newDelivery, error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles }).select().single();
     if (error) throw error;
-    if (!newDelivery) throw new Error("Failed to save data.");
     
-    await fetchAllData();
+    setUserProfiles(prevProfiles => {
+        return prevProfiles.map(p => {
+            if (p.id === profile.id) {
+                const updatedDeliveries = [...p.deliveries, newDelivery as Delivery].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                return { ...p, deliveries: updatedDeliveries };
+            }
+            return p;
+        });
+    });
   };
 
   const updateUserBottlePrice = async (userName: string, newPrice: number) => {
@@ -276,16 +283,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId">): Promise<Invoice | undefined> => {
-    const { data, error } = await supabase.rpc('create_invoice_and_get_details', {
-        p_user_name: invoiceData.name,
-        p_amount: invoiceData.amount,
-        p_month: invoiceData.month,
-        p_year: invoiceData.year,
-        p_payment_method: invoiceData.paymentMethod,
-        p_recipient_number: invoiceData.recipientNumber,
-        p_deliveries: invoiceData.deliveries || [],
-        p_previous_balance: invoiceData.previousBalance || 0
-    });
+    const rpcPayload = {
+      p_user_name: invoiceData.name,
+      p_amount: invoiceData.amount,
+      p_month: invoiceData.month,
+      p_year: invoiceData.year,
+      p_payment_method: invoiceData.paymentMethod,
+      p_recipient_number: invoiceData.recipientNumber,
+      p_deliveries: invoiceData.deliveries || [],
+      p_previous_balance: invoiceData.previousBalance || 0
+    };
+    
+    const { data, error } = await supabase.rpc('create_invoice_and_get_details', rpcPayload);
 
     if (error) {
         console.error("RPC Error:", error);
@@ -296,14 +305,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to create invoice: No data returned from function.");
     }
     
-    await fetchAllData();
-    return data as Invoice;
+    const newInvoice = data as Invoice;
+
+    setInvoices(prevInvoices => [newInvoice, ...prevInvoices]);
+    
+    return newInvoice;
   }
   
   const deleteInvoice = async (invoiceId: string) => {
       const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
       if (error) throw error;
-      await fetchAllData();
+      setInvoices(prevInvoices => prevInvoices.filter(inv => inv.id !== invoiceId));
   }
 
   const updateUserDelivery = async (userId: string, deliveryId: string, newDate: string) => {
