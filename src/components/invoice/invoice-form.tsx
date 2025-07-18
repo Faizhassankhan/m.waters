@@ -35,24 +35,24 @@ const formSchema = z.object({
   paymentMethod: z.enum(["EasyPaisa", "JazzCash", "Bank Transfer"]),
   recipientNumber: z.string().regex(/^03\d{9}$/, "Enter a valid Pakistani mobile number (03xxxxxxxxx)."),
   month: z.string().min(1, "Month is required."),
+  year: z.coerce.number(),
 });
 
 type InvoiceFormValues = z.infer<typeof formSchema>;
 
 const DEFAULT_BOTTLE_PRICE = 100;
 
-const months = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date();
-    d.setMonth(i);
-    return format(d, "MMMM");
-});
+const months = Array.from({ length: 12 }, (_, i) => format(new Date(0, i), "MMMM"));
+const years = Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i);
+
+const previousMonth = format(subMonths(new Date(), 1), 'MMMM');
+const previousMonthYear = getYear(subMonths(new Date(), 1));
 
 
 export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: Invoice) => void }) {
   const { addInvoice, userProfiles } = useContext(AppContext);
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string>(format(subMonths(new Date(), 1), 'MMMM'));
   const [deliveriesForInvoice, setDeliveriesForInvoice] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(false);
   
@@ -63,10 +63,14 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       amount: 0,
       paymentMethod: "EasyPaisa",
       recipientNumber: "",
-      month: selectedMonth,
+      month: previousMonth,
+      year: previousMonthYear,
     },
   });
   
+  const selectedMonth = form.watch("month");
+  const selectedYear = form.watch("year");
+
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "name" && value.name) {
@@ -76,21 +80,17 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             form.setValue("name", foundUser.name);
         }
       }
-      if (name === 'month' && value.month) {
-        setSelectedMonth(value.month);
-      }
     });
     return () => subscription.unsubscribe();
   }, [form, userProfiles]);
 
   useEffect(() => {
-    if (selectedUser && selectedMonth) {
+    if (selectedUser && selectedMonth && selectedYear) {
         const monthIndex = months.indexOf(selectedMonth);
-        const currentYear = getYear(new Date());
-
+        
         const userDeliveries = selectedUser.deliveries.filter(d => {
             const deliveryDate = new Date(d.date);
-            return getMonth(deliveryDate) === monthIndex && getYear(deliveryDate) === currentYear;
+            return getMonth(deliveryDate) === monthIndex && getYear(deliveryDate) === selectedYear;
         });
 
         setDeliveriesForInvoice(userDeliveries);
@@ -105,7 +105,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
           form.setValue("amount", 0);
         }
     }
-  }, [selectedUser, selectedMonth, form]);
+  }, [selectedUser, selectedMonth, selectedYear, form]);
 
   async function onSubmit(values: InvoiceFormValues) {
     setLoading(true);
@@ -129,7 +129,8 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
                 amount: 0,
                 paymentMethod: "EasyPaisa",
                 recipientNumber: "",
-                month: format(subMonths(new Date(), 1), 'MMMM'),
+                month: previousMonth,
+                year: previousMonthYear,
             });
             setSelectedUser(null);
             setDeliveriesForInvoice([]);
@@ -173,30 +174,56 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
           )}
         />
         
-        <FormField
-          control={form.control}
-          name="month"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Invoice Month</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a month" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {months.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="month"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Invoice Month</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a month" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {months.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="year"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Invoice Year</FormLabel>
+                  <Select onValueChange={(value) => field.onChange(parseInt(value))} value={String(field.value)}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a year" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {years.map((y) => (
+                        <SelectItem key={y} value={String(y)}>
+                          {y}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+        </div>
 
         <FormField
           control={form.control}

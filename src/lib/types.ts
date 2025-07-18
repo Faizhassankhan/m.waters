@@ -50,7 +50,6 @@ export interface Invoice {
   recipientNumber: string;
   createdAt: string; // timestamp with time zone
   month: string;
+  year: number;
   deliveries?: Delivery[]; // Joined from deliveries table
 }
-
-    
