@@ -187,7 +187,6 @@ function UsersSheetPage() {
                                             key={user.id}
                                             checked={selectedUserIds.has(user.id)}
                                             onCheckedChange={(isSelected) => handleUserSelection(user.id, isSelected)}
-                                            onSelect={(e) => e.preventDefault()} // Prevents menu from closing
                                         >
                                             {user.name}
                                         </DropdownMenuCheckboxItem>
@@ -248,5 +247,3 @@ export default function Home() {
         </AuthGuard>
     );
 }
-
-    
