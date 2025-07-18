@@ -114,10 +114,9 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     try {
         const invoicePayload = {
             ...values,
-            name: selectedUser?.name || values.name, // Ensure correct name casing is used
+            name: selectedUser?.name || values.name,
             deliveries: deliveriesForInvoice,
             bottlePrice: selectedUser?.bottlePrice || DEFAULT_BOTTLE_PRICE,
-            previousBalance: values.previousBalance || 0,
         };
 
         const newInvoice = await addInvoice(invoicePayload);
@@ -302,3 +301,5 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     </Form>
   );
 }
+
+    

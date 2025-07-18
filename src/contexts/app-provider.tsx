@@ -280,9 +280,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         p_user_name: invoiceData.name,
         p_amount: invoiceData.amount,
         p_month: invoiceData.month,
+        p_year: invoiceData.year,
         p_payment_method: invoiceData.paymentMethod,
         p_recipient_number: invoiceData.recipientNumber,
-        p_deliveries: invoiceData.deliveries || []
+        p_deliveries: invoiceData.deliveries || [],
+        p_previous_balance: invoiceData.previousBalance || 0
     });
 
     if (error) {
@@ -424,3 +426,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
