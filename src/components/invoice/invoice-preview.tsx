@@ -106,7 +106,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <CardTitle className="font-headline text-3xl flex items-baseline">
-                       <svg width="150" height="70" viewBox="0 0 170 80" className="text-primary-foreground -ml-4">
+                       <svg width="150" height="70" viewBox="0 0 170 80" className="-ml-4">
                             <circle cx="40" cy="40" r="35" fill="#ECF0F1" stroke="#34495E" strokeWidth="2" />
                             <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="#34495E" textAnchor="middle" dominantBaseline="central">m</text>
                             <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="#ECF0F1"/>

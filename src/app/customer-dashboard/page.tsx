@@ -137,10 +137,10 @@ function CustomerDashboardPage() {
         <header className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2 font-semibold font-headline text-lg">
                 <svg width="150" height="70" viewBox="0 0 170 80" className="text-primary -ml-4">
-                    <circle cx="40" cy="40" r="35" fill="currentColor"/>
+                    <circle cx="40" cy="40" r="35" fill="hsl(var(--primary))"/>
                     <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="hsl(var(--primary-foreground))" textAnchor="middle" dominantBaseline="central">m</text>
-                    <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="currentColor"/>
-                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="currentColor" dy=".3em">waters</text>
+                    <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="hsl(var(--primary))"/>
+                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="hsl(var(--primary))" dy=".3em">waters</text>
                     <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--muted-foreground))" dy=".3em">FIT TO LIVE</text>
                 </svg>
             </div>
@@ -154,9 +154,6 @@ function CustomerDashboardPage() {
     );
 
     if (loading || !customerData) {
-        // AuthGuard already shows a loader, so we can show a minimal one here
-        // or nothing at all, relying on AuthGuard's loader.
-        // Returning null is also an option if AuthGuard's loader is sufficient.
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
@@ -177,12 +174,12 @@ function CustomerDashboardPage() {
                         <CardHeader className="bg-primary text-primary-foreground rounded-t-lg p-6">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="font-headline text-3xl flex items-baseline">
-                                     <svg width="150" height="70" viewBox="0 0 170 80" className="text-primary-foreground -ml-4">
-                                        <circle cx="40" cy="40" r="35" fill="hsl(var(--primary-foreground))" stroke="hsl(var(--primary))" strokeWidth="2" />
-                                        <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="hsl(var(--primary))" textAnchor="middle" dominantBaseline="central">m</text>
-                                        <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="hsl(var(--primary-foreground))"/>
-                                        <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="hsl(var(--primary-foreground))" dy=".3em">waters</text>
-                                        <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--primary-foreground))" dy=".3em">FIT TO LIVE</text>
+                                     <svg width="150" height="70" viewBox="0 0 170 80" className="-ml-4">
+                                        <circle cx="40" cy="40" r="35" fill="#ECF0F1" stroke="#34495E" strokeWidth="2" />
+                                        <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="#34495E" textAnchor="middle" dominantBaseline="central">m</text>
+                                        <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="#ECF0F1"/>
+                                        <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="#ECF0F1" dy=".3em">waters</text>
+                                        <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="#ECF0F1" dy=".3em">FIT TO LIVE</text>
                                     </svg>
                                 </CardTitle>
                                 <div className="text-right">
