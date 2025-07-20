@@ -51,7 +51,7 @@ export interface Invoice {
   createdAt: string; // timestamp with time zone
   month: string;
   year: number;
-  deliveries?: Delivery[]; // Joined from deliveries table
+  deliveries: Delivery[]; // Joined from deliveries table
   previousBalance?: number;
 }
 
@@ -62,5 +62,3 @@ export interface Feedback {
   user_name: string;
   feedback_text: string;
 }
-
-    

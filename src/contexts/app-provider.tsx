@@ -296,7 +296,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       p_recipient_number: invoiceData.recipientNumber,
       p_deliveries: invoiceData.deliveries || [],
       p_previous_balance: invoiceData.previousBalance || 0,
-      p_bottle_price: invoiceData.bottlePrice || 100
     };
     
     const { data, error } = await supabase.rpc('create_invoice_and_get_details', rpcPayload);
@@ -313,6 +312,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newInvoice = data as Invoice;
     
     await fetchAllData();
+    
+    const profile = userProfiles.find(p => p.id === newInvoice.userId);
+    if (profile && newInvoice) {
+        return {
+            ...newInvoice,
+            deliveries: profile.deliveries.filter(d => {
+                const deliveryDate = new Date(d.date);
+                const deliveryMonth = format(deliveryDate, 'MMMM');
+                const deliveryYear = deliveryDate.getFullYear();
+                return deliveryMonth === newInvoice.month && deliveryYear === newInvoice.year;
+            })
+        };
+    }
     
     return newInvoice;
   }
