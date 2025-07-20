@@ -5,7 +5,7 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Share2, LogOut, MessageCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -133,18 +133,28 @@ function CustomerDashboardPage() {
         router.push("/login");
     }
 
+    const handleWhatsAppRedirect = () => {
+        const phoneNumber = "923122070966";
+        const url = `https://wa.me/${phoneNumber}`;
+        window.open(url, '_blank');
+    }
+
     const renderHeader = () => (
         <header className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2 font-semibold font-headline text-lg">
                 <svg width="150" height="70" viewBox="0 0 170 80" className="text-primary -ml-4">
-                    <circle cx="40" cy="40" r="35" fill="hsl(var(--primary))"/>
+                    <circle cx="40" cy="40" r="35" fill="#34495E"/>
                     <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="#FFFFFF" textAnchor="middle" dominantBaseline="central">m</text>
-                    <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="hsl(var(--primary))"/>
-                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="hsl(var(--primary))" dy=".3em">waters</text>
+                    <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="#34495E"/>
+                    <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="#34495E" dy=".3em">waters</text>
                     <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--muted-foreground))" dy=".3em">FIT TO LIVE</text>
                 </svg>
             </div>
              <div className="flex items-center gap-2">
+                <Button onClick={handleWhatsAppRedirect} variant="outline" size="icon" className="rounded-full bg-green-500 text-white hover:bg-green-600 hover:text-white">
+                    <MessageCircle className="h-5 w-5" />
+                    <span className="sr-only">Contact on WhatsApp</span>
+                </Button>
                 <Button onClick={handleLogout} variant="outline" size="sm">
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
