@@ -16,17 +16,21 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { AddUserDataPayload } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
 
 const formSchema = z.object({
   name: z.string().min(1, "Please select a data profile."),
@@ -38,6 +42,7 @@ export function AddDataForm({ initialName }: { initialName?: string }) {
   const { addUserData, userProfiles } = useContext(AppContext);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -78,6 +83,8 @@ export function AddDataForm({ initialName }: { initialName?: string }) {
     }
   }
 
+  const sortedUserProfiles = userProfiles.sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -86,22 +93,61 @@ export function AddDataForm({ initialName }: { initialName?: string }) {
               control={form.control}
               name="name"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Profile Name</FormLabel>
-                   <Select onValueChange={field.onChange} value={field.value} disabled={!!initialName}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a data profile" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {userProfiles.map(profile => (
-                        <SelectItem key={profile.id} value={profile.name}>
-                          {profile.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                   <Popover open={open} onOpenChange={setOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                            disabled={!!initialName}
+                          >
+                            {field.value
+                              ? sortedUserProfiles.find(
+                                  (profile) => profile.name === field.value
+                                )?.name
+                              : "Select a data profile"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search profile..." />
+                           <CommandList>
+                            <CommandEmpty>No profile found.</CommandEmpty>
+                            <CommandGroup>
+                              {sortedUserProfiles.map((profile) => (
+                                <CommandItem
+                                  value={profile.name}
+                                  key={profile.id}
+                                  onSelect={() => {
+                                    form.setValue("name", profile.name);
+                                    setOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      profile.name === field.value
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                  {profile.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   <FormMessage />
                 </FormItem>
               )}
