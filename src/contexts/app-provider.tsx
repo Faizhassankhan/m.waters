@@ -104,6 +104,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const processedUserProfiles = (data.userProfiles || []).map((profile: UserProfile) => ({
               ...profile,
+              email: profile.email || '',
               deliveries: profile.deliveries || [],
               monthlyStatuses: profile.monthlyStatuses || [],
               billingRecords: profile.billingRecords || [],
@@ -462,5 +463,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    
