@@ -5,7 +5,7 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, MessageCircle } from "lucide-react";
+import { Loader2, Share2, LogOut, MessageCircle, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { BillingRecord } from "@/lib/types";
+import { Textarea } from "@/components/ui/textarea";
 
 
 const months = Array.from({ length: 12 }, (_, i) => ({
@@ -31,9 +32,11 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 
 
 function CustomerDashboardPage() {
-    const { customerData, logout, loading } = useContext(AppContext);
+    const { customerData, logout, loading, addFeedback } = useContext(AppContext);
     const dataCardRef = useRef<HTMLDivElement>(null);
     const [isSharing, setIsSharing] = useState(false);
+    const [feedbackText, setFeedbackText] = useState("");
+    const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -134,10 +137,38 @@ function CustomerDashboardPage() {
     }
 
     const handleWhatsAppRedirect = () => {
-        const phoneNumber = "923122070966";
+        const phoneNumber = "923116523470";
         const url = `https://wa.me/${phoneNumber}`;
         window.open(url, '_blank');
     }
+
+    const handleFeedbackSubmit = async () => {
+        if (!feedbackText.trim() || !customerData) {
+            toast({
+                variant: 'destructive',
+                title: 'Feedback cannot be empty.',
+            });
+            return;
+        }
+        setIsSubmittingFeedback(true);
+        try {
+            await addFeedback(feedbackText);
+            toast({
+                title: 'Feedback Submitted',
+                description: 'Thank you for your valuable feedback!',
+            });
+            setFeedbackText('');
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Submission Failed',
+                description: error.message || 'Could not submit feedback. Please try again.',
+            });
+        } finally {
+            setIsSubmittingFeedback(false);
+        }
+    };
+
 
     const renderHeader = () => (
         <header className="flex justify-between items-center mb-6">
@@ -309,7 +340,7 @@ function CustomerDashboardPage() {
                              </div>
                          )}
                     </CardContent>
-                    <CardFooter className="p-6 pt-0">
+                    <CardFooter className="flex-col gap-4 p-6 pt-0">
                          {customerData.canShareReport && (
                             <Button onClick={handleShare} className="w-full" disabled={isSharing}>
                                 {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
@@ -317,6 +348,25 @@ function CustomerDashboardPage() {
                             </Button>
                          )}
                     </CardFooter>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline">Feedback</CardTitle>
+                        <CardDescription>We value your feedback. Please let us know how we can improve.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid w-full gap-2">
+                            <Textarea 
+                                placeholder="Type your message here..." 
+                                value={feedbackText}
+                                onChange={(e) => setFeedbackText(e.target.value)}
+                            />
+                            <Button onClick={handleFeedbackSubmit} disabled={isSubmittingFeedback || !feedbackText.trim()}>
+                                {isSubmittingFeedback ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                Submit Feedback
+                            </Button>
+                        </div>
+                    </CardContent>
                 </Card>
             </main>
         </div>
@@ -330,3 +380,5 @@ export default function Home() {
         </AuthGuard>
     )
 }
+
+    

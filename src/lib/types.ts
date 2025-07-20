@@ -54,3 +54,13 @@ export interface Invoice {
   deliveries?: Delivery[]; // Joined from deliveries table
   previousBalance?: number;
 }
+
+export interface Feedback {
+  id: string;
+  created_at: string;
+  user_id: string;
+  user_name: string;
+  feedback_text: string;
+}
+
+    

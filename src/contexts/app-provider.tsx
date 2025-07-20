@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus, BillingRecord } from "@/lib/types";
+import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus, BillingRecord, Feedback } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { format } from "date-fns";
@@ -15,6 +15,7 @@ interface AppContextType {
   
   userProfiles: UserProfile[];
   invoices: Invoice[];
+  feedbacks: Feedback[];
   
   loading: boolean;
   
@@ -32,6 +33,8 @@ interface AppContextType {
   deleteMonthlyStatus: (userId: string, month: number, year: number) => Promise<void>;
   saveBillingRecord: (record: { userId: string, month: number, year: number, amountPaid: number, totalBill: number }) => Promise<void>;
   deleteBillingRecord: (recordId: string) => Promise<void>;
+  addFeedback: (feedbackText: string) => Promise<void>;
+  deleteFeedback: (feedbackId: string) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -42,6 +45,7 @@ export const AppContext = createContext<AppContextType>({
   logout: async () => {},
   userProfiles: [],
   invoices: [],
+  feedbacks: [],
   loading: true,
   addUserData: async () => {},
   addUserProfile: async () => {},
@@ -57,6 +61,8 @@ export const AppContext = createContext<AppContextType>({
   deleteMonthlyStatus: async () => {},
   saveBillingRecord: async () => {},
   deleteBillingRecord: async () => {},
+  addFeedback: async () => {},
+  deleteFeedback: async () => {},
   refreshData: async () => {},
 });
 
@@ -69,6 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [customerData, setCustomerData] = useState<UserProfile | null>(null);
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAllData = useCallback(async () => {
@@ -104,6 +111,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             
             setUserProfiles(processedUserProfiles);
             setInvoices(allInvoices);
+            setFeedbacks(data.feedbacks || []);
 
             const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === user?.id);
             if (currentUserProfile) {
@@ -115,6 +123,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } else {
              setUserProfiles([]);
              setInvoices([]);
+             setFeedbacks([]);
              setCustomerData(null);
              console.error("Error fetching application data: RPC returned invalid data. This may be a permission issue or the function may have failed silently.", data);
         }
@@ -123,6 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Error fetching application data:", e.message || e);
         setUserProfiles([]);
         setInvoices([]);
+        setFeedbacks([]);
         setCustomerData(null);
     } finally {
         setLoading(false);
@@ -141,6 +151,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCustomerData(null);
         setUserProfiles([]);
         setInvoices([]);
+        setFeedbacks([]);
         setLoading(false);
     }
   }, [fetchAllData]);
@@ -398,6 +409,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await fetchAllData();
   }
 
+  const addFeedback = async (feedbackText: string) => {
+    if (!user) throw new Error("You must be logged in to submit feedback.");
+    const { error } = await supabase.from('feedbacks').insert({
+        user_id: user.id,
+        feedback_text: feedbackText,
+        user_name: customerData?.name || user.email, // Fallback to email if name is not available
+    });
+    if (error) throw error;
+    await fetchAllData();
+  };
+
+  const deleteFeedback = async (feedbackId: string) => {
+      const { error } = await supabase.from('feedbacks').delete().eq('id', feedbackId);
+      if (error) throw error;
+      await fetchAllData();
+  };
+
 
   const refreshData = async () => {
     setLoading(true);
@@ -411,6 +439,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     logout,
     userProfiles,
     invoices,
+    feedbacks,
     loading,
     addUserData,
     addUserProfile,
@@ -426,6 +455,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteMonthlyStatus,
     saveBillingRecord,
     deleteBillingRecord,
+    addFeedback,
+    deleteFeedback,
     refreshData,
   };
 
