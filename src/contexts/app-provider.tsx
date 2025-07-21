@@ -27,7 +27,7 @@ interface AppContextType {
   removeDuplicateDeliveries: (userId: string) => Promise<void>;
   updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
   updateUserName: (userId: string, newName: string) => Promise<void>;
-  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries">, deliveries: Delivery[]) => Promise<Invoice | undefined>;
+  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries" | "bottlePrice">, deliveries: Delivery[]) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   saveMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
   deleteMonthlyStatus: (userId: string, month: number, year: number) => Promise<void>;
@@ -294,7 +294,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshData();
   };
 
-  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries">, deliveries: Delivery[]): Promise<Invoice | undefined> => {
+  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries" | "bottlePrice">, deliveries: Delivery[]): Promise<Invoice | undefined> => {
     const rpcPayload = {
       p_user_name: invoiceData.name,
       p_amount: invoiceData.amount,
@@ -318,12 +318,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     const newInvoice = data as Invoice;
     
-    await fetchAllData();
-    
-    return {
+    const fullInvoice = {
         ...newInvoice,
         deliveries,
     };
+
+    setInvoices(prevInvoices => [fullInvoice, ...prevInvoices].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    
+    return fullInvoice;
   }
   
   const deleteInvoice = async (invoiceId: string) => {
@@ -472,3 +474,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
