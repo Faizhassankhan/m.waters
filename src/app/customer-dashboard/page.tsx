@@ -358,6 +358,9 @@ function CustomerDashboardPage() {
                         </div>
                     </CardContent>
                 </Card>
+                <p className="text-center text-xs text-muted-foreground pb-4">
+                    If the data does not appear, please refresh the page.
+                </p>
             </main>
         </div>
     );

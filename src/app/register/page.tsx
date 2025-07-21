@@ -107,7 +107,7 @@ export default function RegisterPage() {
               />
             </div>
             <Button type="submit" className="w-full font-bold" disabled={loading}>
-              Register
+              {loading ? 'Registering...' : 'Register'}
             </Button>
           </form>
         </CardContent>

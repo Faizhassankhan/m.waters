@@ -107,7 +107,7 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full font-bold" disabled={loading}>
-              Log In
+              {loading ? 'Logging In...' : 'Log In'}
             </Button>
           </form>
         </CardContent>
