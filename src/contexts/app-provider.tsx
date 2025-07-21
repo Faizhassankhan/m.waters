@@ -5,7 +5,7 @@ import React, { createContext, useState, useEffect, ReactNode, useCallback } fro
 import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus, BillingRecord, Feedback } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { format } from "date-fns";
+import { format, getMonth, getYear } from "date-fns";
 
 interface AppContextType {
   user: User | null;
@@ -27,7 +27,7 @@ interface AppContextType {
   removeDuplicateDeliveries: (userId: string) => Promise<void>;
   updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
   updateUserName: (userId: string, newName: string) => Promise<void>;
-  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries">) => Promise<Invoice | undefined>;
+  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries">, deliveries: Delivery[]) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   saveMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
   deleteMonthlyStatus: (userId: string, month: number, year: number) => Promise<void>;
@@ -100,7 +100,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         
         if (data && typeof data === 'object' && 'userProfiles' in data) {
-            const allInvoices = (data.invoices || []).sort((a: Invoice, b: Invoice) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            const allInvoices = (data.invoices || []).map((inv: any) => {
+                const profile = (data.userProfiles || []).find((p: UserProfile) => p.id === inv.userId);
+                const deliveriesForInvoice = profile?.deliveries.filter((d: Delivery) => {
+                    const deliveryDate = new Date(d.date);
+                    return getMonth(deliveryDate) === new Date(`${inv.month} 1, ${inv.year}`).getMonth() && getYear(deliveryDate) === inv.year;
+                }) || [];
+                return { ...inv, deliveries: deliveriesForInvoice };
+            }).sort((a: Invoice, b: Invoice) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
             const processedUserProfiles = (data.userProfiles || []).map((profile: UserProfile) => ({
               ...profile,
@@ -200,7 +207,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (!data.user) throw new Error("Could not authenticate admin user.");
           
           if (data.user.user_metadata.user_type !== 'admin') {
-            await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
+            const { error: adminUpdateError } = await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
+            if(adminUpdateError) console.error("Error setting user as admin:", adminUpdateError.message);
           }
           
           return { success: true, error: null, userType: 'admin' };
@@ -286,7 +294,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshData();
   };
 
-  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries">): Promise<Invoice | undefined> => {
+  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries">, deliveries: Delivery[]): Promise<Invoice | undefined> => {
     const rpcPayload = {
       p_user_name: invoiceData.name,
       p_amount: invoiceData.amount,
@@ -312,18 +320,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     await fetchAllData();
     
-    // After creating, we need to find the full details to return for the preview
-    const profile = userProfiles.find(p => p.name === newInvoice.name);
-    const deliveriesForInvoice = profile?.deliveries.filter(d => {
-            const deliveryDate = new Date(d.date);
-            const deliveryMonth = format(deliveryDate, 'MMMM');
-            const deliveryYear = deliveryDate.getFullYear();
-            return deliveryMonth === newInvoice.month && deliveryYear === newInvoice.year;
-        }) || [];
-
     return {
         ...newInvoice,
-        deliveries: deliveriesForInvoice,
+        deliveries,
     };
   }
   

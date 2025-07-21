@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -73,6 +73,15 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   const selectedMonth = form.watch("month");
   const selectedYear = form.watch("year");
 
+  const deliveriesForInvoice = useMemo(() => {
+    if (!selectedUser) return [];
+    const monthIndex = months.indexOf(selectedMonth);
+    return selectedUser.deliveries.filter(d => {
+        const deliveryDate = new Date(d.date);
+        return getMonth(deliveryDate) === monthIndex && getYear(deliveryDate) === selectedYear;
+    });
+  }, [selectedUser, selectedMonth, selectedYear]);
+
   useEffect(() => {
     if (selectedName) {
       const foundUser = userProfiles.find(u => u.name.toLowerCase() === selectedName.toLowerCase());
@@ -84,34 +93,27 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
 
   useEffect(() => {
     if (selectedUser) {
-        const monthIndex = months.indexOf(selectedMonth);
-        
-        const userDeliveries = selectedUser.deliveries.filter(d => {
-            const deliveryDate = new Date(d.date);
-            return getMonth(deliveryDate) === monthIndex && getYear(deliveryDate) === selectedYear;
-        });
-
-        const totalBottles = userDeliveries.reduce((sum, d) => sum + d.bottles, 0);
+        const totalBottles = deliveriesForInvoice.reduce((sum, d) => sum + d.bottles, 0);
         const bottlePrice = selectedUser.bottlePrice || DEFAULT_BOTTLE_PRICE;
         const totalAmount = totalBottles * bottlePrice;
         form.setValue("amount", totalAmount, { shouldValidate: true });
     } else {
+        // Only reset amount if user didn't change it manually for a non-profile user
         if (!form.formState.dirtyFields.amount) {
           form.setValue("amount", 0);
         }
     }
-  }, [selectedUser, selectedMonth, selectedYear, form]);
+  }, [selectedUser, deliveriesForInvoice, form]);
 
   async function onSubmit(values: InvoiceFormValues) {
     setLoading(true);
     try {
         const invoicePayload = {
             ...values,
-            name: values.name,
             previousBalance: values.previousBalance || 0,
         };
 
-        const newInvoice = await addInvoice(invoicePayload);
+        const newInvoice = await addInvoice(invoicePayload, deliveriesForInvoice);
         if (newInvoice) {
             onInvoiceCreated(newInvoice);
             toast({

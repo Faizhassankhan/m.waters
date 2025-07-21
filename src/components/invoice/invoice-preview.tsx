@@ -2,14 +2,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import * as htmlToImage from 'html-to-image';
+import jsPDF from "jspdf";
+import autoTable from 'jspdf-autotable';
 import { Invoice } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Share2, Loader2 } from "lucide-react";
+import { Share2, Loader2, FileText } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 
@@ -24,37 +24,111 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
   const { toast } = useToast();
 
   const handleShare = async () => {
-    if (!invoiceRef.current || !invoice) return;
+    if (!invoice) return;
 
     setIsSharing(true);
     try {
-      const dataUrl = await htmlToImage.toPng(invoiceRef.current, { 
-        quality: 0.95,
-        // The background of the parent div will be the image background
-        backgroundColor: 'hsl(var(--background))', 
-      });
+      const doc = new jsPDF();
+
+      // Add Header
+      doc.setFontSize(22);
+      doc.setFont("helvetica", "bold");
+      doc.text("m.waters", 14, 22);
       
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `invoice-${invoice.id}.png`, { type: blob.type });
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("FIT TO LIVE", 16, 28);
+      
+      doc.setFontSize(16);
+      doc.text("BILL / INVOICE", 205, 22, { align: "right" });
+      doc.setFontSize(10);
+      doc.text(invoice.id, 205, 28, { align: "right" });
 
-      const shareData = {
-        files: [file],
-        title: `Invoice for ${invoice.name}`,
-        text: `Here is the invoice for ${invoice.name} for the month of ${invoice.month}.`,
-      };
+      // Add Billed to and Date section
+      doc.setLineWidth(0.5);
+      doc.line(14, 35, 205, 35);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text("BILLED TO", 14, 42);
+      doc.text("DATE", 205, 42, { align: "right" });
 
-      if (navigator.canShare && navigator.canShare(shareData)) {
-        await navigator.share(shareData);
-      } else {
-        // Fallback for browsers that don't support sharing files
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = `invoice-${invoice.id}.png`;
-        link.click();
-        toast({
-          title: "Image downloaded",
-          description: "Your browser doesn't support direct sharing. The invoice image has been downloaded for you to share manually.",
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      doc.setFont("helvetica", "bold");
+      doc.text(invoice.name, 14, 48);
+      doc.setFont("helvetica", "normal");
+      doc.text(format(getSafeDate(invoice.createdAt), "MMMM dd, yyyy"), 205, 48, { align: "right" });
+      
+      doc.line(14, 55, 205, 55);
+
+      // Add Delivery Details Table
+      if (sortedDeliveries.length > 0) {
+        autoTable(doc, {
+          startY: 62,
+          head: [['Date', 'Bottles']],
+          body: sortedDeliveries.map(d => [format(new Date(d.date), 'MMMM dd, yyyy'), d.bottles]),
+          theme: 'striped',
+          headStyles: { fillColor: [41, 128, 185] },
+          didDrawPage: (data) => {
+            // Footer for table
+            const tableBottom = data.cursor?.y ?? 0;
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.text(`Total Bottles: ${totalBottles}`, 14, tableBottom + 10);
+            doc.text(`Rate: ${invoice.bottlePrice || '100'} PKR`, 205, tableBottom + 10, { align: "right" });
+          }
         });
+      }
+
+      const finalY = (doc as any).lastAutoTable.finalY || 80;
+
+      // Payment Details
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Payment Details", 14, finalY + 20);
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Method: ${invoice.paymentMethod}`, 14, finalY + 27);
+      doc.text(`Account / Number: ${invoice.recipientNumber}`, 14, finalY + 34);
+
+
+      // Summary
+      const summaryX = 150;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("Current Bill:", summaryX, finalY + 20, {align: "right"});
+      doc.text(`PKR ${currentMonthBill.toLocaleString()}`, 205, finalY + 20, { align: "right" });
+      
+      doc.text("Previous Balance:", summaryX, finalY + 27, {align: "right"});
+      doc.text(`PKR ${previousBalance.toLocaleString()}`, 205, finalY + 27, { align: "right" });
+      
+      doc.setLineWidth(0.2);
+      doc.line(summaryX - 10, finalY + 31, 205, finalY + 31);
+      
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Grand Total:", summaryX, finalY + 38, {align: "right"});
+      doc.setFontSize(18);
+      doc.text(`PKR ${grandTotal.toLocaleString()}`, 205, finalY + 38, { align: "right" });
+
+      const pdfBlob = doc.output('blob');
+      const fileName = `invoice-${invoice.id}.pdf`;
+      const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Invoice for ${invoice.name}`,
+          text: `Here is the invoice for ${invoice.name} for the month of ${invoice.month}.`,
+        });
+      } else {
+        doc.save(fileName);
+        toast({
+            title: "PDF Downloaded",
+            description: "Your browser doesn't support direct sharing. The PDF has been downloaded."
+        })
       }
 
     } catch (error) {
@@ -62,7 +136,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
       toast({
         variant: "destructive",
         title: "Sharing Failed",
-        description: "Could not generate invoice image. Please try again.",
+        description: "Could not generate invoice PDF. Please try again.",
       });
     } finally {
       setIsSharing(false);
@@ -133,7 +207,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
               </div>
             </div>
             
-            {sortedDeliveries.length > 0 && (
+            {sortedDeliveries.length > 0 ? (
                 <>
                     <p className="text-sm text-muted-foreground mb-2">DELIVERY DETAILS FOR {invoice.month.toUpperCase()}</p>
                     <div className="rounded-md border">
@@ -161,6 +235,10 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                         </div>
                     </div>
                 </>
+            ) : (
+                 <div className="text-center text-muted-foreground py-8">
+                    No delivery details found for this month.
+                </div>
             )}
             
             <Separator className="my-6" />
@@ -201,8 +279,8 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
        {/* The footer and button are now outside the captured ref */}
       <CardFooter className="p-6 pt-4 bg-background rounded-b-lg">
           <Button onClick={handleShare} className="w-full" disabled={isSharing}>
-              {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4"/>}
-              {isSharing ? 'Generating Image...' : 'Share Bill as Image'}
+              {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4"/>}
+              {isSharing ? 'Generating PDF...' : 'Share Bill as PDF'}
           </Button>
       </CardFooter>
     </div>
