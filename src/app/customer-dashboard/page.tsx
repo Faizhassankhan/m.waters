@@ -32,7 +32,7 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 
 
 function CustomerDashboardPage() {
-    const { customerData, logout, loading, addFeedback } = useContext(AppContext);
+    const { customerData, logout, addFeedback } = useContext(AppContext);
     const dataCardRef = useRef<HTMLDivElement>(null);
     const [isSharing, setIsSharing] = useState(false);
     const [feedbackText, setFeedbackText] = useState("");
@@ -194,16 +194,6 @@ function CustomerDashboardPage() {
         </header>
     );
 
-    if (loading || !customerData) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            </div>
-        );
-    }
-    
     const reportTitle = `DELIVERY REPORT - ${months[selectedMonth]?.label.toUpperCase() || ''} ${selectedYear}`;
     
     return (
@@ -232,7 +222,7 @@ function CustomerDashboardPage() {
                         <CardContent className="p-6">
                             <div className="mb-6">
                                 <p className="text-sm text-muted-foreground">REPORT FOR</p>
-                                <p className="font-semibold text-xl">{customerData.name}</p>
+                                <p className="font-semibold text-xl">{customerData?.name || '...'}</p>
                             </div>
                             <ScrollArea className="h-[250px] pr-4">
                                 {filteredDeliveries.length > 0 ? (
@@ -341,7 +331,7 @@ function CustomerDashboardPage() {
                          )}
                     </CardContent>
                     <CardFooter className="flex-col gap-4 p-6 pt-0">
-                         {customerData.canShareReport && (
+                         {customerData?.canShareReport && (
                             <Button onClick={handleShare} className="w-full" disabled={isSharing}>
                                 {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4" />}
                                 {isSharing ? 'Generating...' : 'Share Report as Image'}
