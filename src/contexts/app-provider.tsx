@@ -299,7 +299,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const foundUser = userProfiles.find(p => p.name === invoiceData.name);
         
         const invoiceToInsert = {
-          user_id: foundUser?.id || null, // Allow null if user not found
+          user_id: foundUser?.id || null,
           amount: invoiceData.amount,
           month: invoiceData.month,
           year: invoiceData.year,
@@ -315,18 +315,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
             .single();
 
         if (error) {
-            console.error("Direct Insert Error:", error);
-            throw new Error(`Failed to create invoice directly: ${error.message}`);
+            console.error("Error inserting invoice:", error);
+            throw new Error(`Failed to create invoice: ${error.message}`);
         }
 
         if (!data) {
             throw new Error(`Failed to create invoice: No data returned from insert operation.`);
         }
         
+        await fetchAllData();
+        
         const newInvoice: Invoice = {
             id: data.id,
             userId: data.user_id,
-            name: invoiceData.name, // Use the name from the form
+            name: invoiceData.name,
             amount: data.amount,
             bottlePrice: foundUser?.bottlePrice,
             paymentMethod: data.payment_method,
@@ -342,8 +344,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     } catch (error: any) {
         throw new Error(error.message || "An unknown error occurred while creating the invoice.");
-    } finally {
-        await fetchAllData();
     }
   }
   
