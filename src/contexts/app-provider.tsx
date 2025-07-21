@@ -27,7 +27,7 @@ interface AppContextType {
   removeDuplicateDeliveries: (userId: string) => Promise<void>;
   updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
   updateUserName: (userId: string, newName: string) => Promise<void>;
-  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId">) => Promise<Invoice | undefined>;
+  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries">) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   saveMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
   deleteMonthlyStatus: (userId: string, month: number, year: number) => Promise<void>;
@@ -286,7 +286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshData();
   };
 
-  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId">): Promise<Invoice | undefined> => {
+  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries">): Promise<Invoice | undefined> => {
     const rpcPayload = {
       p_user_name: invoiceData.name,
       p_amount: invoiceData.amount,
@@ -294,7 +294,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       p_year: invoiceData.year,
       p_payment_method: invoiceData.paymentMethod,
       p_recipient_number: invoiceData.recipientNumber,
-      p_deliveries: invoiceData.deliveries || [],
       p_previous_balance: invoiceData.previousBalance || 0,
     };
     
@@ -313,20 +312,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     await fetchAllData();
     
-    const profile = userProfiles.find(p => p.id === newInvoice.userId);
-    if (profile && newInvoice) {
-        return {
-            ...newInvoice,
-            deliveries: profile.deliveries.filter(d => {
-                const deliveryDate = new Date(d.date);
-                const deliveryMonth = format(deliveryDate, 'MMMM');
-                const deliveryYear = deliveryDate.getFullYear();
-                return deliveryMonth === newInvoice.month && deliveryYear === newInvoice.year;
-            })
-        };
-    }
-    
-    return newInvoice;
+    // After creating, we need to find the full details to return for the preview
+    const profile = userProfiles.find(p => p.name === newInvoice.name);
+    const deliveriesForInvoice = profile?.deliveries.filter(d => {
+            const deliveryDate = new Date(d.date);
+            const deliveryMonth = format(deliveryDate, 'MMMM');
+            const deliveryYear = deliveryDate.getFullYear();
+            return deliveryMonth === newInvoice.month && deliveryYear === newInvoice.year;
+        }) || [];
+
+    return {
+        ...newInvoice,
+        deliveries: deliveriesForInvoice,
+    };
   }
   
   const deleteInvoice = async (invoiceId: string) => {

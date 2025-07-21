@@ -54,7 +54,6 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   const { addInvoice, userProfiles } = useContext(AppContext);
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [deliveriesForInvoice, setDeliveriesForInvoice] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(false);
   
   const form = useForm<InvoiceFormValues>({
@@ -92,14 +91,11 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             return getMonth(deliveryDate) === monthIndex && getYear(deliveryDate) === selectedYear;
         });
 
-        setDeliveriesForInvoice(userDeliveries);
-
         const totalBottles = userDeliveries.reduce((sum, d) => sum + d.bottles, 0);
         const bottlePrice = selectedUser.bottlePrice || DEFAULT_BOTTLE_PRICE;
         const totalAmount = totalBottles * bottlePrice;
         form.setValue("amount", totalAmount, { shouldValidate: true });
     } else {
-        setDeliveriesForInvoice([]);
         if (!form.formState.dirtyFields.amount) {
           form.setValue("amount", 0);
         }
@@ -111,9 +107,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     try {
         const invoicePayload = {
             ...values,
-            name: selectedUser?.name || values.name,
-            deliveries: deliveriesForInvoice,
-            bottlePrice: selectedUser?.bottlePrice || DEFAULT_BOTTLE_PRICE,
+            name: values.name,
             previousBalance: values.previousBalance || 0,
         };
 
@@ -226,9 +220,9 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             <FormItem>
               <FormLabel>Amount (PKR)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g., 5000" {...field} readOnly={deliveriesForInvoice.length > 0} />
+                <Input type="number" placeholder="e.g., 5000" {...field} readOnly={!!selectedUser} />
               </FormControl>
-              {deliveriesForInvoice.length > 0 && <FormDescription>Amount auto-calculated from deliveries ({selectedUser?.bottlePrice || DEFAULT_BOTTLE_PRICE} PKR/bottle).</FormDescription>}
+              {selectedUser && <FormDescription>Amount auto-calculated from deliveries ({selectedUser?.bottlePrice || DEFAULT_BOTTLE_PRICE} PKR/bottle).</FormDescription>}
               <FormMessage />
             </FormItem>
           )}
