@@ -295,37 +295,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries" | "bottlePrice">, deliveries: Delivery[]): Promise<Invoice | undefined> => {
-    const rpcPayload = {
-      p_user_name: invoiceData.name,
-      p_amount: invoiceData.amount,
-      p_month: invoiceData.month,
-      p_year: invoiceData.year,
-      p_payment_method: invoiceData.paymentMethod,
-      p_recipient_number: invoiceData.recipientNumber,
-      p_previous_balance: invoiceData.previousBalance || 0,
-    };
-    
-    const { data, error } = await supabase.rpc('create_invoice_and_get_details', rpcPayload);
+    try {
+        const rpcPayload = {
+          p_user_name: invoiceData.name,
+          p_amount: invoiceData.amount,
+          p_month: invoiceData.month,
+          p_year: invoiceData.year,
+          p_payment_method: invoiceData.paymentMethod,
+          p_recipient_number: invoiceData.recipientNumber,
+          p_previous_balance: invoiceData.previousBalance || 0,
+        };
+        
+        const { data, error } = await supabase.rpc('create_invoice_and_get_details', rpcPayload);
 
-    if (error) {
-        console.error("RPC Error:", error);
-        throw new Error(`Failed to create invoice: ${error.message}`);
+        if (error) {
+            console.error("RPC Error:", error);
+            throw new Error(`Failed to create invoice: ${error.message}`);
+        }
+
+        if (!data) {
+            throw new Error(`Failed to create invoice: No data returned from function.`);
+        }
+        
+        const newInvoice = data as Invoice;
+        
+        const fullInvoice = {
+            ...newInvoice,
+            deliveries,
+        };
+        
+        return fullInvoice;
+    } catch (error: any) {
+        // Re-throw the error to be caught by the form's submit handler
+        throw new Error(error.message || "An unknown error occurred while creating the invoice.");
+    } finally {
+        // Always refresh data from the database to ensure UI consistency
+        await fetchAllData();
     }
-
-    if (!data || (data as any).error) {
-        throw new Error(`Failed to create invoice: ${(data as any).error || 'No data returned from function.'}`);
-    }
-    
-    const newInvoice = data as Invoice;
-    
-    const fullInvoice = {
-        ...newInvoice,
-        deliveries,
-    };
-
-    setInvoices(prevInvoices => [fullInvoice, ...prevInvoices].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    
-    return fullInvoice;
   }
   
   const deleteInvoice = async (invoiceId: string) => {
@@ -474,5 +480,4 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    
+ 
