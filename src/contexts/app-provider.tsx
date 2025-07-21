@@ -296,40 +296,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries" | "bottlePrice">, deliveries: Delivery[]): Promise<Invoice | undefined> => {
     try {
-        const rpcPayload = {
-          p_user_name: invoiceData.name,
-          p_amount: invoiceData.amount,
-          p_month: invoiceData.month,
-          p_year: invoiceData.year,
-          p_payment_method: invoiceData.paymentMethod,
-          p_recipient_number: invoiceData.recipientNumber,
-          p_previous_balance: invoiceData.previousBalance || 0,
-        };
+        const foundUser = userProfiles.find(p => p.name === invoiceData.name);
         
-        const { data, error } = await supabase.rpc('create_invoice_and_get_details', rpcPayload);
+        const invoiceToInsert = {
+          user_id: foundUser?.id || null, // Allow null if user not found
+          amount: invoiceData.amount,
+          month: invoiceData.month,
+          year: invoiceData.year,
+          payment_method: invoiceData.paymentMethod,
+          recipient_number: invoiceData.recipientNumber,
+          previous_balance: invoiceData.previousBalance || 0,
+        };
+
+        const { data, error } = await supabase
+            .from('invoices')
+            .insert(invoiceToInsert)
+            .select()
+            .single();
 
         if (error) {
-            console.error("RPC Error:", error);
-            throw new Error(`Failed to create invoice: ${error.message}`);
+            console.error("Direct Insert Error:", error);
+            throw new Error(`Failed to create invoice directly: ${error.message}`);
         }
 
         if (!data) {
-            throw new Error(`Failed to create invoice: No data returned from function.`);
+            throw new Error(`Failed to create invoice: No data returned from insert operation.`);
         }
         
-        const newInvoice = data as Invoice;
-        
-        const fullInvoice = {
-            ...newInvoice,
-            deliveries,
+        const newInvoice: Invoice = {
+            id: data.id,
+            userId: data.user_id,
+            name: invoiceData.name, // Use the name from the form
+            amount: data.amount,
+            bottlePrice: foundUser?.bottlePrice,
+            paymentMethod: data.payment_method,
+            recipientNumber: data.recipient_number,
+            createdAt: data.created_at,
+            month: data.month,
+            year: data.year,
+            previousBalance: data.previous_balance,
+            deliveries: deliveries,
         };
         
-        return fullInvoice;
+        return newInvoice;
+
     } catch (error: any) {
-        // Re-throw the error to be caught by the form's submit handler
         throw new Error(error.message || "An unknown error occurred while creating the invoice.");
     } finally {
-        // Always refresh data from the database to ensure UI consistency
         await fetchAllData();
     }
   }
@@ -337,7 +350,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteInvoice = async (invoiceId: string) => {
       const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
       if (error) throw error;
-      setInvoices(prevInvoices => prevInvoices.filter(inv => inv.id !== invoiceId));
+      await fetchAllData();
   }
 
   const updateUserDelivery = async (userId: string, deliveryId: string, newDate: string) => {
@@ -480,4 +493,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
- 
+
+    
