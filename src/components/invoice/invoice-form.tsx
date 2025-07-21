@@ -31,6 +31,7 @@ import { format, subMonths, getYear, getMonth } from 'date-fns';
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
+  userId: z.string().nullable(), // Can be null for non-profile users
   amount: z.coerce.number().positive("Amount must be positive."),
   previousBalance: z.coerce.number().optional(),
   paymentMethod: z.enum(["EasyPaisa", "JazzCash", "Bank Transfer"]),
@@ -60,6 +61,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      userId: null,
       amount: 0,
       previousBalance: 0,
       paymentMethod: "EasyPaisa",
@@ -85,11 +87,18 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   useEffect(() => {
     if (selectedName) {
       const foundUser = userProfiles.find(u => u.name.toLowerCase() === selectedName.toLowerCase());
-      setSelectedUser(foundUser || null);
+      if (foundUser) {
+        setSelectedUser(foundUser);
+        form.setValue("userId", foundUser.id);
+      } else {
+        setSelectedUser(null);
+        form.setValue("userId", null);
+      }
     } else {
       setSelectedUser(null);
+      form.setValue("userId", null);
     }
-  }, [selectedName, userProfiles]);
+  }, [selectedName, userProfiles, form]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -108,8 +117,9 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   async function onSubmit(values: InvoiceFormValues) {
     setLoading(true);
     try {
-        const invoicePayload = {
+        const invoicePayload: Omit<Invoice, "id" | "createdAt" | "deliveries" | "bottlePrice"> = {
             ...values,
+            userId: values.userId,
             previousBalance: values.previousBalance || 0,
         };
 
@@ -122,6 +132,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
             });
             form.reset({
                 name: "",
+                userId: null,
                 amount: 0,
                 previousBalance: 0,
                 paymentMethod: "EasyPaisa",
@@ -288,3 +299,5 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     </Form>
   );
 }
+
+    

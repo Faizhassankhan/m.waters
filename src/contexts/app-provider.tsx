@@ -27,7 +27,7 @@ interface AppContextType {
   removeDuplicateDeliveries: (userId: string) => Promise<void>;
   updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
   updateUserName: (userId: string, newName: string) => Promise<void>;
-  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries" | "bottlePrice">, deliveries: Delivery[]) => Promise<Invoice | undefined>;
+  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "deliveries" | "bottlePrice">, deliveries: Delivery[]) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   saveMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
   deleteMonthlyStatus: (userId: string, month: number, year: number) => Promise<void>;
@@ -294,12 +294,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await refreshData();
   };
 
-  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "userId" | "deliveries" | "bottlePrice">, deliveries: Delivery[]): Promise<Invoice | undefined> => {
+  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "deliveries" | "bottlePrice">, deliveries: Delivery[]): Promise<Invoice | undefined> => {
     try {
-        const foundUser = userProfiles.find(p => p.name === invoiceData.name);
-        
+        const foundUser = userProfiles.find(p => p.id === invoiceData.userId);
+
         const invoiceToInsert = {
-          user_id: foundUser?.id || null,
+          user_id: invoiceData.userId, // Use the provided userId
+          name: invoiceData.name,
           amount: invoiceData.amount,
           month: invoiceData.month,
           year: invoiceData.year,
@@ -328,7 +329,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const newInvoice: Invoice = {
             id: data.id,
             userId: data.user_id,
-            name: invoiceData.name,
+            name: data.name,
             amount: data.amount,
             bottlePrice: foundUser?.bottlePrice,
             paymentMethod: data.payment_method,
