@@ -4,15 +4,21 @@
 import { useRef, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
+import * as htmlToImage from 'html-to-image';
 import { Invoice } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Share2, Loader2, FileText } from "lucide-react";
+import { Share2, Loader2, FileText, ImageIcon } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface InvoicePreviewProps {
   invoice: Invoice | null;
@@ -23,7 +29,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
   const [isSharing, setIsSharing] = useState(false);
   const { toast } = useToast();
 
-  const handleShare = async () => {
+  const handleSharePdf = async () => {
     if (!invoice) return;
 
     setIsSharing(true);
@@ -143,6 +149,49 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
     }
   };
 
+  const handleShareImage = async () => {
+    if (!invoiceRef.current || !invoice) return;
+
+    setIsSharing(true);
+    try {
+        const dataUrl = await htmlToImage.toPng(invoiceRef.current, { quality: 0.95, backgroundColor: 'hsl(var(--background))' });
+        
+        const blob = await (await fetch(dataUrl)).blob();
+        const fileName = `invoice-${invoice.id}.png`;
+        const file = new File([blob], fileName, { type: blob.type });
+
+        const shareData = {
+            files: [file],
+            title: `Invoice for ${invoice.name}`,
+            text: `Here is the invoice for ${invoice.name}.`,
+        };
+
+        if (navigator.canShare && navigator.canShare(shareData)) {
+            await navigator.share(shareData);
+        } else {
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = fileName;
+            link.click();
+            toast({
+                title: "Image downloaded",
+                description: "Your browser doesn't support direct sharing. The invoice image has been downloaded for you to share manually.",
+            });
+        }
+
+    } catch (error) {
+        console.error('Oops, something went wrong!', error);
+        toast({
+            variant: "destructive",
+            title: "Sharing Failed",
+            description: "Could not generate invoice image. Please try again.",
+        });
+    } finally {
+        setIsSharing(false);
+    }
+  };
+
+
   if (!invoice) {
     return (
       <Card className="h-full flex items-center justify-center border-dashed">
@@ -173,7 +222,6 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* This div is what will be converted to an image */}
       <div ref={invoiceRef} className="bg-background p-4 flex-grow">
         <Card style={{ boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.25)' }} className="animate-in fade-in-50 bg-white text-card-foreground">
           <CardHeader className="bg-primary text-primary-foreground rounded-t-lg p-6">
@@ -276,12 +324,25 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
           </CardContent>
         </Card>
       </div>
-       {/* The footer and button are now outside the captured ref */}
-      <CardFooter className="p-6 pt-4 bg-background rounded-b-lg">
-          <Button onClick={handleShare} className="w-full" disabled={isSharing}>
-              {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4"/>}
-              {isSharing ? 'Generating PDF...' : 'Share Bill as PDF'}
-          </Button>
+       <CardFooter className="p-6 pt-4 bg-background rounded-b-lg">
+           <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="w-full" disabled={isSharing}>
+                  {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4"/>}
+                  {isSharing ? 'Generating...' : 'Share Bill'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                <DropdownMenuItem onClick={handleSharePdf}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>Share as PDF</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareImage}>
+                  <ImageIcon className="mr-2 h-4 w-4" />
+                  <span>Share as Image</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
       </CardFooter>
     </div>
   );

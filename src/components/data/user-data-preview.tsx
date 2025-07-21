@@ -3,12 +3,14 @@
 
 import { useRef, useState, useContext, useEffect, useMemo } from "react";
 import * as htmlToImage from 'html-to-image';
+import jsPDF from "jspdf";
+import autoTable from 'jspdf-autotable';
 import { UserProfile, Delivery } from "@/lib/types";
 import { AppContext } from "@/contexts/app-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Share2, Loader2, Save, X, Pencil, Trash2, RefreshCw, ClipboardX } from "lucide-react";
+import { Share2, Loader2, Save, X, Pencil, Trash2, RefreshCw, ClipboardX, FileText, ImageIcon } from "lucide-react";
 import { format, parse, getYear, getMonth } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -32,6 +34,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 
 interface UserDataPreviewProps {
@@ -84,14 +92,14 @@ export function UserDataPreview({ profile: initialProfile, onRefresh }: UserData
 
   const filteredDeliveries = useMemo(() => {
     if (!profile) return [];
-    if (selectedYear === null || selectedMonth === null) return profile.deliveries;
+    if (selectedYear === null || selectedMonth === null) return profile.deliveries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return profile.deliveries.filter(d => {
         const deliveryDate = new Date(d.date);
         return getYear(deliveryDate) === selectedYear && getMonth(deliveryDate) === selectedMonth;
-    });
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [profile, selectedMonth, selectedYear]);
 
-  const handleShare = async () => {
+  const handleShareImage = async () => {
     if (!dataCardRef.current || !profile || isEditing) return;
 
     setIsSharing(true);
@@ -135,6 +143,86 @@ export function UserDataPreview({ profile: initialProfile, onRefresh }: UserData
       });
     } finally {
       setIsSharing(false);
+    }
+  };
+
+  const handleSharePdf = async () => {
+    if (!profile) return;
+    setIsSharing(true);
+
+    try {
+        const doc = new jsPDF();
+        
+        // Header
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.text("m.waters", 14, 22);
+        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text("FIT TO LIVE", 16, 28);
+        
+        doc.setFontSize(16);
+        doc.text("DELIVERY REPORT", 205, 22, { align: "right" });
+        
+        // Sub-header
+        doc.setLineWidth(0.5);
+        doc.line(14, 35, 205, 35);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text("REPORT FOR", 14, 42);
+        doc.text("PERIOD", 205, 42, { align: "right" });
+        
+        doc.setFontSize(12);
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "bold");
+        doc.text(profile.name, 14, 48);
+        doc.setFont("helvetica", "normal");
+        const period = selectedMonth !== null && selectedYear !== null 
+            ? `${months[selectedMonth]}, ${selectedYear}`
+            : "All Time";
+        doc.text(period, 205, 48, { align: "right" });
+        
+        doc.line(14, 55, 205, 55);
+
+        // Table
+        if (filteredDeliveries.length > 0) {
+            autoTable(doc, {
+                startY: 62,
+                head: [['Date', 'Bottles']],
+                body: filteredDeliveries.map(d => [format(new Date(d.date), 'EEEE, MMMM dd, yyyy'), d.bottles]),
+                theme: 'striped',
+                headStyles: { fillColor: [41, 128, 185] },
+            });
+        } else {
+             doc.text("No deliveries found for the selected period.", 14, 70);
+        }
+
+        const finalY = (doc as any).lastAutoTable.finalY || 70;
+        
+        // Summary
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        const totalBottles = filteredDeliveries.reduce((sum, d) => sum + d.bottles, 0);
+        doc.text(`Total Bottles Delivered: ${totalBottles}`, 205, finalY + 15, { align: "right" });
+
+        const pdfBlob = doc.output('blob');
+        const fileName = `report-${profile.name}-${period}.pdf`;
+        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: `Delivery Report for ${profile.name}`, text: `Here is the delivery report for ${profile.name}.` });
+        } else {
+            doc.save(fileName);
+            toast({ title: "PDF Downloaded", description: "The report PDF has been downloaded." });
+        }
+
+    } catch (error) {
+        console.error('PDF generation failed', error);
+        toast({ variant: "destructive", title: "PDF Failed", description: "Could not generate report PDF." });
+    } finally {
+        setIsSharing(false);
     }
   };
 
@@ -233,15 +321,13 @@ export function UserDataPreview({ profile: initialProfile, onRefresh }: UserData
               <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                       <CardTitle className="font-headline text-3xl flex items-baseline">
-                          m
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="h-2 w-2 mx-px inline-block align-baseline"
-                            style={{ fill: 'hsl(var(--primary-foreground))', transform: 'rotate(180deg)' }}
-                          >
-                            <path d="M12 2c5.523 0 10 4.477 10 10 0 5.523-10 12-10 12s-10-6.477-10-12c0-5.523 4.477-10 10-10z" />
-                          </svg>
-                          waters
+                         <svg width="150" height="70" viewBox="0 0 170 80" className="-ml-4">
+                            <circle cx="40" cy="40" r="35" fill="#ECF0F1" stroke="#34495E" strokeWidth="2" />
+                            <text x="40" y="20" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="100" fill="#34495E" textAnchor="middle" dominantBaseline="central">m</text>
+                            <path d="M 80 45 C 80 55, 90 55, 90 45 C 90 35, 85 25, 80 45 Z" fill="#ECF0F1"/>
+                            <text x="95" y="50" fontFamily="cursive, 'Brush Script MT', 'Apple Chancery'" fontSize="30" fill="#ECF0F1" dy=".3em">waters</text>
+                            <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="#ECF0F1" dy=".3em">FIT TO LIVE</text>
+                        </svg>
                       </CardTitle>
                   </div>
                   <div className="text-right">
@@ -370,10 +456,24 @@ export function UserDataPreview({ profile: initialProfile, onRefresh }: UserData
                     </Button>
                 </div>
             ) : (
-                <Button onClick={handleShare} className="w-full" disabled={isSharing}>
-                    {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4"/>}
-                    {isSharing ? 'Generating Image...' : 'Share Report as Image'}
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button className="w-full" disabled={isSharing}>
+                      {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Share2 className="mr-2 h-4 w-4"/>}
+                      {isSharing ? 'Generating...' : 'Share Report'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56">
+                    <DropdownMenuItem onClick={handleSharePdf}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      <span>Share as PDF</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleShareImage}>
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      <span>Share as Image</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
             )}
 
         </CardFooter>
