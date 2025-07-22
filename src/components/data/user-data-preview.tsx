@@ -342,7 +342,7 @@ export function UserDataPreview({ profile: initialProfile, onRefresh }: UserData
                 <p className="font-semibold text-xl">{profile.name}</p>
               </div>
               
-              <ScrollArea className="max-h-[40vh] pr-4">
+              <ScrollArea className="h-[40vh] pr-4">
                   {filteredDeliveries.length > 0 ? (
                       <div className="space-y-6">
                           <div className="rounded-md border">
