@@ -299,8 +299,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const foundUser = userProfiles.find(p => p.id === invoiceData.userId);
 
         const invoiceToInsert = {
-          user_id: invoiceData.userId, // Use the provided userId
-          name: invoiceData.name,
+          user_id: invoiceData.userId,
           amount: invoiceData.amount,
           month: invoiceData.month,
           year: invoiceData.year,
@@ -329,7 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const newInvoice: Invoice = {
             id: data.id,
             userId: data.user_id,
-            name: data.name,
+            name: invoiceData.name,
             amount: data.amount,
             bottlePrice: foundUser?.bottlePrice,
             paymentMethod: data.payment_method,
