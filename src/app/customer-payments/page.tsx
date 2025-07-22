@@ -10,12 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, DollarSign, User, Calendar, Save, Trash2 } from "lucide-react";
+import { Loader2, DollarSign, User, Calendar, Save, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { getYear, getMonth, format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BillingRecord } from "@/lib/types";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+
 
 const months = Array.from({ length: 12 }, (_, i) => ({
     value: i,
@@ -35,6 +39,7 @@ function CustomerPaymentsPage() {
     const [totalBill, setTotalBill] = useState<string>("");
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
+    const [open, setOpen] = useState(false);
 
     const sortedUsers = useMemo(() => {
         return [...userProfiles].sort((a, b) => a.name.localeCompare(b.name));
@@ -124,20 +129,51 @@ function CustomerPaymentsPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="space-y-2">
+                             <div className="space-y-2">
                                 <Label className="flex items-center gap-2"><User className="w-4 h-4 text-muted-foreground" /> Select User</Label>
-                                <Select onValueChange={setSelectedUserId} value={selectedUserId}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Choose a user..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {sortedUsers.map(user => (
-                                            <SelectItem key={user.id} value={user.id}>
-                                                {user.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Popover open={open} onOpenChange={setOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={open}
+                                            className="w-full justify-between"
+                                        >
+                                            {selectedUserId
+                                                ? sortedUsers.find((user) => user.id === selectedUserId)?.name
+                                                : "Choose a user..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search user..." />
+                                            <CommandList>
+                                                <CommandEmpty>No user found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {sortedUsers.map((user) => (
+                                                        <CommandItem
+                                                            key={user.id}
+                                                            value={user.name}
+                                                            onSelect={() => {
+                                                                setSelectedUserId(user.id);
+                                                                setOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    selectedUserId === user.id ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {user.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
 
                              <div className="space-y-2">
