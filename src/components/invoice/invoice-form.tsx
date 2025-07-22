@@ -24,10 +24,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { Invoice, UserProfile, Delivery } from "@/lib/types";
-import { UserCheck, Loader2 } from "lucide-react";
+import { UserCheck, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { format, subMonths, getYear, getMonth } from 'date-fns';
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -56,6 +70,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
+  const [openCombobox, setOpenCombobox] = useState(false);
   
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(formSchema),
@@ -117,13 +132,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
   async function onSubmit(values: InvoiceFormValues) {
     setLoading(true);
     try {
-        const invoicePayload: Omit<Invoice, "id" | "createdAt" | "deliveries" | "bottlePrice"> = {
-            ...values,
-            userId: values.userId,
-            previousBalance: values.previousBalance || 0,
-        };
-
-        const newInvoice = await addInvoice(invoicePayload, deliveriesForInvoice);
+        const newInvoice = await addInvoice(values, deliveriesForInvoice);
         if (newInvoice) {
             onInvoiceCreated(newInvoice);
             toast({
@@ -153,6 +162,8 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     }
   }
 
+  const sortedUserProfiles = [...userProfiles].sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -167,9 +178,69 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
                     {selectedUser && <UserCheck className="h-4 w-4 text-green-500" title="User data found" />}
                 </div>
               </FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., John Doe" {...field} />
-              </FormControl>
+                <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className={cn(
+                          "w-full justify-between",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value
+                          ? sortedUserProfiles.find(
+                              (profile) => profile.name === field.value
+                            )?.name
+                          : "Select or type a name..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                      <CommandInput 
+                        placeholder="Search or type name..." 
+                        onValueChange={(search) => {
+                            if (!sortedUserProfiles.some(p => p.name.toLowerCase() === search.toLowerCase())) {
+                                field.onChange(search);
+                            }
+                        }}
+                      />
+                       <CommandList>
+                        <CommandEmpty>
+                            <div className="p-4 text-sm">
+                                No profile found.
+                                <p className="text-xs text-muted-foreground">You can continue typing to create an invoice for a new name.</p>
+                            </div>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {sortedUserProfiles.map((profile) => (
+                            <CommandItem
+                              value={profile.name}
+                              key={profile.id}
+                              onSelect={() => {
+                                form.setValue("name", profile.name);
+                                setOpenCombobox(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  profile.name === field.value
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {profile.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               <FormMessage />
             </FormItem>
           )}
@@ -299,5 +370,3 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
     </Form>
   );
 }
-
-    
