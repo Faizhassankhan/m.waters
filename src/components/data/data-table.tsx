@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { UserProfile } from "@/lib/types";
@@ -30,12 +30,13 @@ export function DataTable({ data }: { data: UserProfile[] }) {
   const processedData = useMemo(() => {
     const groupedByMonth: Record<string, UserProfile[]> = {};
     data.forEach(profile => {
-      profile.deliveries.forEach(delivery => {
+      (profile.deliveries || []).forEach(delivery => {
         const monthYear = format(new Date(delivery.date), "MMMM yyyy");
         if (!groupedByMonth[monthYear]) {
           groupedByMonth[monthYear] = [];
         }
-        if (!groupedByMonth[monthYear].some(p => p.name === profile.name)) {
+        // Ensure a user is only added once per month group
+        if (!groupedByMonth[monthYear].some(p => p.id === profile.id)) {
             const monthDeliveries = profile.deliveries.filter(d => format(new Date(d.date), "MMMM yyyy") === monthYear) || [];
             groupedByMonth[monthYear].push({ ...profile, deliveries: monthDeliveries });
         }
@@ -44,14 +45,8 @@ export function DataTable({ data }: { data: UserProfile[] }) {
 
     const sortedMonths = Object.keys(groupedByMonth).sort((a,b) => new Date(b).getTime() - new Date(a).getTime());
 
-    const initialExpandedState: Record<string, boolean> = {};
-    sortedMonths.forEach((month, index) => {
-      initialExpandedState[month] = index === 0;
-    });
-    setExpandedMonths(initialExpandedState);
-
     return sortedMonths.flatMap(month => {
-        const profilesInMonth = groupedByMonth[month];
+        const profilesInMonth = groupedByMonth[month].sort((a, b) => a.name.localeCompare(b.name));
         const rows: ProcessedRow[] = [
             { type: "month-header", content: month }
         ];
@@ -65,12 +60,22 @@ export function DataTable({ data }: { data: UserProfile[] }) {
                 month: month,
             });
         });
-
         return rows;
     });
-
   }, [data]);
   
+  // Initialize all months to be collapsed
+  useEffect(() => {
+    const initialExpandedState: Record<string, boolean> = {};
+    processedData.forEach(row => {
+        if (row.type === 'month-header') {
+            initialExpandedState[row.content as string] = false;
+        }
+    });
+    setExpandedMonths(initialExpandedState);
+  }, [data]); // Re-run when data changes
+
+
   const toggleMonth = (month: string) => {
     setExpandedMonths(prev => ({...prev, [month]: !prev[month]}));
   }
