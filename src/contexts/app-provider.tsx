@@ -84,18 +84,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.rpc('get_all_user_data');
 
         if (error) {
-            if (error.message.includes('function get_all_user_data() does not exist')) {
-                 console.warn(
-                    '%cDATABASE FUNCTION NOT DETECTED',
-                    'color: #f87171; font-weight: bold; font-size: 14px;',
-                    "The database function is not set up correctly. Please run the provided SQL script in your Supabase SQL Editor."
-                );
-                setUserProfiles([]);
-                setInvoices([]);
-                setCustomerData(null);
-                setLoading(false);
-                return;
-            }
             throw error;
         }
         
@@ -494,4 +482,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-    
