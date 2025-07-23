@@ -79,7 +79,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchAllData = useCallback(async () => {
-    // No need to set loading here to avoid screen flicker on minor updates
     try {
         const { data, error } = await supabase.rpc('get_all_user_data');
 
@@ -87,50 +86,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
             throw error;
         }
         
-        if (data && typeof data === 'object' && 'userProfiles' in data) {
-            const allInvoices = (data.invoices || []).map((inv: any) => {
-                const profile = (data.userProfiles || []).find((p: UserProfile) => p.id === inv.userId);
-                const deliveriesForInvoice = profile?.deliveries.filter((d: Delivery) => {
-                    const deliveryDate = new Date(d.date);
-                    return getMonth(deliveryDate) === new Date(`${inv.month} 1, ${inv.year}`).getMonth() && getYear(deliveryDate) === inv.year;
-                }) || [];
-                return { ...inv, deliveries: deliveriesForInvoice };
-            }).sort((a: Invoice, b: Invoice) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const allInvoices = (data.invoices || []).map((inv: any) => {
+            const profile = (data.userProfiles || []).find((p: UserProfile) => p.id === inv.userId);
+            const deliveriesForInvoice = profile?.deliveries.filter((d: Delivery) => {
+                const deliveryDate = new Date(d.date);
+                return getMonth(deliveryDate) === new Date(`${inv.month} 1, ${inv.year}`).getMonth() && getYear(deliveryDate) === inv.year;
+            }) || [];
+            return { ...inv, deliveries: deliveriesForInvoice };
+        }).sort((a: Invoice, b: Invoice) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-            const processedUserProfiles = (data.userProfiles || []).map((profile: UserProfile) => ({
-              ...profile,
-              email: profile.email || '',
-              deliveries: profile.deliveries || [],
-              monthlyStatuses: profile.monthlyStatuses || [],
-              billingRecords: profile.billingRecords || [],
-            }));
-            
-            setUserProfiles(processedUserProfiles);
-            setInvoices(allInvoices);
-            setFeedbacks(data.feedbacks || []);
+        const processedUserProfiles = (data.userProfiles || []).map((profile: UserProfile) => ({
+          ...profile,
+          email: profile.email || '',
+          deliveries: profile.deliveries || [],
+          monthlyStatuses: profile.monthlyStatuses || [],
+          billingRecords: profile.billingRecords || [],
+        }));
+        
+        setUserProfiles(processedUserProfiles);
+        setInvoices(allInvoices);
+        setFeedbacks(data.feedbacks || []);
 
-            const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === user?.id);
-            if (currentUserProfile) {
-                setCustomerData(currentUserProfile);
-            } else {
-                setCustomerData(null);
-            }
-
+        const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === user?.id);
+        if (currentUserProfile) {
+            setCustomerData(currentUserProfile);
         } else {
-             setUserProfiles([]);
-             setInvoices([]);
-             setFeedbacks([]);
-             setCustomerData(null);
-             console.error("Error fetching application data: RPC returned invalid data. This may be a permission issue or the function may have failed silently.", data);
+            setCustomerData(null);
         }
-
     } catch (e: any) {
         console.error("Error fetching application data:", e.message || e);
+        // Ensure state is reset on error to avoid inconsistent UI
         setUserProfiles([]);
         setInvoices([]);
         setFeedbacks([]);
         setCustomerData(null);
     } finally {
+        // Crucially, always set loading to false after the attempt.
         setLoading(false);
     }
   }, [user?.id]);
@@ -481,4 +472,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
