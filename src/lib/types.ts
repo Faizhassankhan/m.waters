@@ -42,7 +42,7 @@ export interface AddUserDataPayload {
 
 export interface Invoice {
   id: string; // uuid from supabase
-  userId: string; // uuid from supabase, references users table
+  userId: string | null; // uuid from supabase, references users table
   name: string; // Name of the user
   amount: number;
   bottlePrice?: number;
@@ -61,4 +61,11 @@ export interface Feedback {
   user_id: string;
   user_name: string;
   feedback_text: string;
+}
+
+export interface LoginHistory {
+  id: string;
+  user_id: string;
+  user_name: string;
+  login_at: string;
 }

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus, BillingRecord, Feedback } from "@/lib/types";
+import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus, BillingRecord, Feedback, LoginHistory } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { format, getMonth, getYear } from "date-fns";
@@ -16,6 +16,7 @@ interface AppContextType {
   userProfiles: UserProfile[];
   invoices: Invoice[];
   feedbacks: Feedback[];
+  loginHistory: LoginHistory[];
   
   loading: boolean;
   
@@ -35,6 +36,7 @@ interface AppContextType {
   deleteBillingRecord: (recordId: string) => Promise<void>;
   addFeedback: (feedbackText: string) => Promise<void>;
   deleteFeedback: (feedbackId: string) => Promise<void>;
+  deleteLoginHistory: (historyId: string) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -46,6 +48,7 @@ export const AppContext = createContext<AppContextType>({
   userProfiles: [],
   invoices: [],
   feedbacks: [],
+  loginHistory: [],
   loading: true,
   addUserData: async () => {},
   addUserProfile: async () => {},
@@ -63,6 +66,7 @@ export const AppContext = createContext<AppContextType>({
   deleteBillingRecord: async () => {},
   addFeedback: async () => {},
   deleteFeedback: async () => {},
+  deleteLoginHistory: async () => {},
   refreshData: async () => {},
 });
 
@@ -76,55 +80,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [loginHistory, setLoginHistory] = useState<LoginHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchAllData = useCallback(async () => {
+  const fetchAllData = useCallback(async (loggedInUser: User | null) => {
     try {
-        const { data, error } = await supabase.rpc('get_all_user_data');
+        const { data: profilesData, error: profilesError } = await supabase.from('users').select('*, deliveries(*), monthly_statuses(*), billing_records(*)');
+        if (profilesError) throw profilesError;
 
-        if (error) {
-            throw error;
-        }
+        const { data: invoicesData, error: invoicesError } = await supabase.from('invoices').select('*');
+        if (invoicesError) throw invoicesError;
+
+        const { data: feedbacksData, error: feedbacksError } = await supabase.from('feedbacks').select('*');
+        if (feedbacksError) throw feedbacksError;
         
-        const allInvoices = (data.invoices || []).map((inv: any) => {
-            const profile = (data.userProfiles || []).find((p: UserProfile) => p.id === inv.userId);
+        const { data: loginHistoryData, error: loginHistoryError } = await supabase.from('login_history').select('*');
+        if (loginHistoryError) throw loginHistoryError;
+
+        const allInvoices = (invoicesData || []).map((inv: any) => {
+            const profile = (profilesData || []).find((p: UserProfile) => p.id === inv.user_id);
             const deliveriesForInvoice = profile?.deliveries.filter((d: Delivery) => {
                 const deliveryDate = new Date(d.date);
                 return getMonth(deliveryDate) === new Date(`${inv.month} 1, ${inv.year}`).getMonth() && getYear(deliveryDate) === inv.year;
             }) || [];
-            return { ...inv, deliveries: deliveriesForInvoice };
+            return { ...inv, userId: inv.user_id, name: profile?.name || 'N/A', deliveries: deliveriesForInvoice };
         }).sort((a: Invoice, b: Invoice) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-        const processedUserProfiles = (data.userProfiles || []).map((profile: UserProfile) => ({
+        const processedUserProfiles = (profilesData || []).map((profile: any) => ({
           ...profile,
           email: profile.email || '',
           deliveries: profile.deliveries || [],
-          monthlyStatuses: profile.monthlyStatuses || [],
-          billingRecords: profile.billingRecords || [],
+          monthlyStatuses: profile.monthly_statuses || [],
+          billingRecords: profile.billing_records || [],
         }));
         
         setUserProfiles(processedUserProfiles);
         setInvoices(allInvoices);
-        setFeedbacks(data.feedbacks || []);
+        setFeedbacks(feedbacksData || []);
+        setLoginHistory(loginHistoryData || []);
 
-        const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === user?.id);
-        if (currentUserProfile) {
-            setCustomerData(currentUserProfile);
-        } else {
-            setCustomerData(null);
+        if (loggedInUser) {
+            const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === loggedInUser.id);
+            if (currentUserProfile) {
+                setCustomerData(currentUserProfile);
+            } else {
+                setCustomerData(null);
+            }
         }
     } catch (e: any) {
         console.error("Error fetching application data:", e.message || e);
-        // Ensure state is reset on error to avoid inconsistent UI
         setUserProfiles([]);
         setInvoices([]);
         setFeedbacks([]);
+        setLoginHistory([]);
         setCustomerData(null);
     } finally {
-        // Crucially, always set loading to false after the attempt.
         setLoading(false);
     }
-  }, [user?.id]);
+  }, []);
 
 
   const handleAuthChange = useCallback(async (_event: string, session: any) => {
@@ -133,12 +146,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoading(true);
 
     if (currentUser) {
-        await fetchAllData();
+        await fetchAllData(currentUser);
     } else {
         setCustomerData(null);
         setUserProfiles([]);
         setInvoices([]);
         setFeedbacks([]);
+        setLoginHistory([]);
         setLoading(false);
     }
   }, [fetchAllData]);
@@ -174,11 +188,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
               if (signUpError) throw signUpError;
               
               if (signUpData.user) {
-                  const { error: insertError } = await supabase.from('users').insert({ id: signUpData.user.id, name: 'Admin' });
+                  const { error: insertError } = await supabase.from('users').insert({ id: signUpData.user.id, name: 'Admin', user_type: 'admin' });
                   if (insertError) throw new Error(`Could not create admin profile: ${insertError.message}`);
               }
               
-              data = signUpData;
+              data = { user: signUpData.user, session: signUpData.session };
           } else if (error) {
               throw error;
           }
@@ -199,18 +213,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) throw error;
+      if (!data.user) throw new Error("Login failed, user not found.");
       
       if (data.user?.user_metadata.user_type !== 'customer') {
         await supabase.auth.signOut();
         throw new Error("This email is not registered as a customer account.");
       }
       
-      const { data: userProfile, error: profileError } = await supabase.from('users').select('id').eq('id', data.user.id).single();
+      const { data: userProfile, error: profileError } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
       if (profileError && profileError.code === 'PGRST116') { 
-          const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email?.split('@')[0] || 'New User' });
+          const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email?.split('@')[0] || 'New User', user_type: 'customer' });
           if(insertError) throw insertError;
       } else if (profileError) {
           throw profileError;
+      }
+
+      // Record login history
+      const { error: historyError } = await supabase.from('login_history').insert({
+          user_id: data.user.id,
+          user_name: userProfile?.name || data.user.email?.split('@')[0] || 'New User'
+      });
+      if (historyError) {
+          console.error("Failed to record login history:", historyError.message);
       }
 
       return { success: true, error: null, userType: 'customer' };
@@ -239,7 +263,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error(`Failed to create user: ${error.message}`);
     }
     
-    await fetchAllData();
+    await fetchAllData(user);
   };
 
   const deleteUserProfile = async (userId: string) => {
@@ -248,7 +272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error('RPC Error:', error);
         throw new Error(`Failed to delete user: ${error.message}`);
     }
-    await fetchAllData();
+    await fetchAllData(user);
   };
 
   const addUserData = async (data: AddUserDataPayload) => {
@@ -258,7 +282,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles });
     if (error) throw error;
     
-    await fetchAllData();
+    await fetchAllData(user);
   };
 
   const updateUserBottlePrice = async (userName: string, newPrice: number) => {
@@ -302,7 +326,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             throw new Error(`Failed to create invoice: No data returned from insert operation.`);
         }
         
-        await fetchAllData();
+        await fetchAllData(user);
         
         const newInvoice: Invoice = {
             id: data.id,
@@ -329,7 +353,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteInvoice = async (invoiceId: string) => {
       const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
       if (error) throw error;
-      await fetchAllData();
+      await fetchAllData(user);
   }
 
   const updateUserDelivery = async (userId: string, deliveryId: string, newDate: string) => {
@@ -377,7 +401,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw error;
     }
     
-    await fetchAllData();
+    await fetchAllData(user);
   };
 
   const deleteMonthlyStatus = async (userId: string, month: number, year: number) => {
@@ -390,7 +414,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Error deleting status:", error);
         throw error;
     }
-    await fetchAllData();
+    await fetchAllData(user);
   }
 
   const saveBillingRecord = async (record: { userId: string, month: number, year: number, amountPaid: number, totalBill: number }) => {
@@ -407,7 +431,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             { onConflict: 'user_id,month,year' }
         );
     if (error) throw error;
-    await fetchAllData();
+    await fetchAllData(user);
   };
 
   const deleteBillingRecord = async (recordId: string) => {
@@ -416,7 +440,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .delete()
         .eq('id', recordId);
     if (error) throw error;
-    await fetchAllData();
+    await fetchAllData(user);
   }
 
   const addFeedback = async (feedbackText: string) => {
@@ -427,19 +451,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         user_name: customerData?.name || user.email, // Fallback to email if name is not available
     });
     if (error) throw error;
-    await fetchAllData();
+    await fetchAllData(user);
   };
 
   const deleteFeedback = async (feedbackId: string) => {
       const { error } = await supabase.from('feedbacks').delete().eq('id', feedbackId);
       if (error) throw error;
-      await fetchAllData();
+      await fetchAllData(user);
+  };
+
+  const deleteLoginHistory = async (historyId: string) => {
+    const { error } = await supabase.from('login_history').delete().eq('id', historyId);
+    if (error) throw error;
+    await fetchAllData(user);
   };
 
 
   const refreshData = async () => {
     setLoading(true);
-    await fetchAllData();
+    await fetchAllData(user);
   }
 
   const value = {
@@ -450,6 +480,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     userProfiles,
     invoices,
     feedbacks,
+    loginHistory,
     loading,
     addUserData,
     addUserProfile,
@@ -467,6 +498,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteBillingRecord,
     addFeedback,
     deleteFeedback,
+    deleteLoginHistory,
     refreshData,
   };
 
