@@ -97,15 +97,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data: loginHistoryData, error: loginHistoryError } = await supabase.from('login_history').select('*');
         if (loginHistoryError) throw loginHistoryError;
 
-        const allInvoices = (invoicesData || []).map((inv: any) => {
-            const profile = (profilesData || []).find((p: UserProfile) => p.id === inv.user_id);
-            const deliveriesForInvoice = profile?.deliveries.filter((d: Delivery) => {
-                const deliveryDate = new Date(d.date);
-                return getMonth(deliveryDate) === new Date(`${inv.month} 1, ${inv.year}`).getMonth() && getYear(deliveryDate) === inv.year;
-            }) || [];
-            return { ...inv, userId: inv.user_id, name: profile?.name || 'N/A', deliveries: deliveriesForInvoice };
-        }).sort((a: Invoice, b: Invoice) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
         const processedUserProfiles = (profilesData || []).map((profile: any) => ({
           ...profile,
           email: profile.email || '',
@@ -114,6 +105,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
           monthlyStatuses: profile.monthly_statuses || [],
           billingRecords: profile.billing_records || [],
         }));
+        
+        const allInvoices = (invoicesData || []).map((inv: any): Invoice => {
+            const profile = processedUserProfiles.find((p: UserProfile) => p.id === inv.user_id);
+            const deliveriesForInvoice = profile?.deliveries.filter((d: Delivery) => {
+                const deliveryDate = new Date(d.date);
+                return getMonth(deliveryDate) === new Date(`${inv.month} 1, ${inv.year}`).getMonth() && getYear(deliveryDate) === inv.year;
+            }) || [];
+            return { 
+                id: inv.id,
+                userId: inv.user_id,
+                name: profile?.name || 'N/A',
+                amount: inv.amount,
+                previousBalance: inv.previous_balance,
+                paymentMethod: inv.payment_method,
+                recipientNumber: inv.recipient_number,
+                createdAt: inv.created_at,
+                month: inv.month,
+                year: inv.year,
+                deliveries: deliveriesForInvoice,
+                bottlePrice: profile?.bottlePrice
+            };
+        }).sort((a: Invoice, b: Invoice) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
         setUserProfiles(processedUserProfiles);
         setInvoices(allInvoices);
@@ -482,6 +495,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const refreshData = async () => {
     setLoading(true);
     await fetchAllData(user);
+    setLoading(false);
   }
 
   const value = {
@@ -516,3 +530,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
