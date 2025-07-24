@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus, BillingRecord, Feedback, LoginHistory } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
 import { format, getMonth, getYear } from "date-fns";
 
 interface AppContextType {
@@ -109,6 +109,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const processedUserProfiles = (profilesData || []).map((profile: any) => ({
           ...profile,
           email: profile.email || '',
+          createdAt: profile.created_at, // Ensure createdAt is passed through
           deliveries: profile.deliveries || [],
           monthlyStatuses: profile.monthly_statuses || [],
           billingRecords: profile.billing_records || [],
@@ -139,36 +140,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-
-  const handleAuthChange = useCallback(async (_event: string, session: any) => {
+ const handleAuthChange = useCallback(async (event: string, session: Session | null) => {
     const currentUser = session?.user ?? null;
-    setUser(currentUser);
-    setLoading(true);
+    
+    // This is the key change: only refetch if the user has actually changed.
+    // This prevents re-fetching on events like TOKEN_REFRESHED (e.g., coming back to the tab).
+    if (currentUser?.id !== user?.id) {
+        setUser(currentUser);
+        setLoading(true);
 
-    if (currentUser) {
-        await fetchAllData(currentUser);
-    } else {
-        setCustomerData(null);
-        setUserProfiles([]);
-        setInvoices([]);
-        setFeedbacks([]);
-        setLoginHistory([]);
-        setLoading(false);
+        if (currentUser) {
+            await fetchAllData(currentUser);
+        } else {
+            setCustomerData(null);
+            setUserProfiles([]);
+            setInvoices([]);
+            setFeedbacks([]);
+            setLoginHistory([]);
+            setLoading(false);
+        }
     }
-  }, [fetchAllData]);
+  }, [fetchAllData, user]);
 
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(handleAuthChange);
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-        handleAuthChange("INITIAL_SESSION", session);
+    // Check the initial session once on app startup
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        if (currentUser) {
+            await fetchAllData(currentUser);
+        }
+        setLoading(false); // Initial load is done
     });
+
+    // Listen for subsequent auth changes (login/logout)
+    const { data: authListener } = supabase.auth.onAuthStateChange(handleAuthChange);
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [handleAuthChange]);
+  }, [handleAuthChange, fetchAllData]);
 
 
   const login = async (emailOrName: string, password: string): Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }> => {
@@ -246,10 +258,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setCustomerData(null);
-    setUserProfiles([]);
-    setInvoices([]);
   };
 
   const addUserProfile = async (name: string, email: string, password: string) => {
