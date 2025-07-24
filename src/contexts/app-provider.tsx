@@ -139,47 +139,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFeedbacks([]);
         setLoginHistory([]);
         setCustomerData(null);
-    } finally {
-        setLoading(false);
     }
   }, []);
 
  const handleAuthChange = useCallback(async (event: string, session: Session | null) => {
+    setLoading(true);
     const currentUser = session?.user ?? null;
-    
-    // This is the key change: only refetch if the user has actually changed.
-    // This prevents re-fetching on events like TOKEN_REFRESHED (e.g., coming back to the tab).
-    if (currentUser?.id !== user?.id) {
-        setUser(currentUser);
-        setLoading(true);
-
-        if (currentUser) {
-            await fetchAllData(currentUser);
-        } else {
-            setCustomerData(null);
-            setUserProfiles([]);
-            setInvoices([]);
-            setFeedbacks([]);
-            setLoginHistory([]);
-            setLoading(false);
-        }
+    setUser(currentUser);
+    if (currentUser) {
+        await fetchAllData(currentUser);
+    } else {
+        setCustomerData(null);
+        setUserProfiles([]);
+        setInvoices([]);
+        setFeedbacks([]);
+        setLoginHistory([]);
     }
-  }, [fetchAllData, user]);
+    setLoading(false);
+  }, [fetchAllData]);
 
 
   useEffect(() => {
     // Check the initial session once on app startup
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
         if (currentUser) {
-            await fetchAllData(currentUser);
+            fetchAllData(currentUser).finally(() => setLoading(false));
+        } else {
+            setLoading(false);
         }
-        setLoading(false); // Initial load is done
     });
 
-    // Listen for subsequent auth changes (login/logout)
-    const { data: authListener } = supabase.auth.onAuthStateChange(handleAuthChange);
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+        // We only care about explicit login/logout events here to avoid re-fetching on token refresh
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+            handleAuthChange(event, session);
+        }
+    });
 
     return () => {
       authListener.subscription.unsubscribe();
@@ -188,6 +185,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 
   const login = async (emailOrName: string, password: string): Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }> => {
+    setLoading(true);
     try {
       if (emailOrName.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
           let { data, error } = await supabase.auth.signInWithPassword({ 
@@ -257,6 +255,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     } catch (error: any) {
         return { success: false, error: error.message || "An unexpected error occurred.", userType: null };
+    } finally {
+        setLoading(false);
     }
   };
 

@@ -19,7 +19,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Don't run auth logic until the initial session check is complete
-    if (loading) return;
+    if (loading && !isPublicRoute) return;
 
     const userType = user?.user_metadata?.user_type;
 
