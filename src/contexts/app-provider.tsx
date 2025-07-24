@@ -109,7 +109,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const processedUserProfiles = (profilesData || []).map((profile: any) => ({
           ...profile,
           email: profile.email || '',
-          createdAt: profile.created_at, // Ensure createdAt is passed through
+          createdAt: profile.created_at,
           deliveries: profile.deliveries || [],
           monthlyStatuses: profile.monthly_statuses || [],
           billingRecords: profile.billing_records || [],
@@ -129,7 +129,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         }
     } catch (e: any) {
-        console.error("Error fetching application data:", e.message || e);
+        if (e.message.includes("Failed to fetch")) {
+            console.error("Error fetching application data: Failed to fetch. This is likely a network error or incorrect Supabase credentials. Please check your internet connection and the NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env file.");
+        } else {
+            console.error("Error fetching application data:", e.message || e);
+        }
         setUserProfiles([]);
         setInvoices([]);
         setFeedbacks([]);
