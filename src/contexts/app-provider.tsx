@@ -215,7 +215,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               if (signUpError) throw signUpError;
               
               if (signUpData.user) {
-                  const { error: insertError } = await supabase.from('users').insert({ id: signUpData.user.id, name: 'Admin', user_type: 'admin' });
+                  const { error: insertError } = await supabase.from('users').insert({ id: signUpData.user.id, name: 'Admin' });
                   if (insertError) throw new Error(`Could not create admin profile: ${insertError.message}`);
               }
               
@@ -249,7 +249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       const { data: userProfile, error: profileError } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
       if (profileError && profileError.code === 'PGRST116') { 
-          const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email?.split('@')[0] || 'New User', user_type: 'customer' });
+          const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email?.split('@')[0] || 'New User' });
           if(insertError) throw insertError;
       } else if (profileError) {
           throw profileError;
@@ -530,5 +530,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    
