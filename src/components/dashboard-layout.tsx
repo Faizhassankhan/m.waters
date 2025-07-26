@@ -33,8 +33,7 @@ import { LayoutDashboard, FileText, LogOut, PanelLeft, Search, Users, Tags, File
 const navItems = [
   { href: "/", label: "Data", icon: LayoutDashboard },
   { href: "/search-data", label: "Search Data", icon: Search },
-  { href: "/add-user", label: "Add User", icon: UserPlus },
-  { href: "/manage-users", label: "Manage Users", icon: Users },
+  { href: "/add-user", label: "Manage Customers", icon: Users },
   { href: "/invoice", label: "Create Invoice", icon: FileText },
   { href: "/invoices", label: "Search Invoices", icon: FileText },
   { href: "/manage-rates", label: "Manage Rates", icon: Tags },
@@ -143,3 +142,5 @@ export default function DashboardLayout({
     </div>
   );
 }
+
+    
