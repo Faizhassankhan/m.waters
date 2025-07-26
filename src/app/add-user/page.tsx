@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, UserPlus, Trash2, Users, Pencil, Save, X } from "lucide-react";
+import { Loader2, UserPlus, Trash2, Users, Pencil, Save, X, Search } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AlertDialog,
@@ -47,6 +47,7 @@ function AddUserPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<UserProfile | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -61,9 +62,15 @@ function AddUserPage() {
     },
   });
 
-  const sortedUserProfiles = useMemo(() => {
-    return [...userProfiles].sort((a,b) => a.name.localeCompare(b.name));
-  }, [userProfiles]);
+  const filteredUserProfiles = useMemo(() => {
+    const sorted = [...userProfiles].sort((a,b) => a.name.localeCompare(b.name));
+    if (!searchTerm) {
+      return sorted;
+    }
+    return sorted.filter(profile => 
+      profile.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [userProfiles, searchTerm]);
 
   async function onAddUserSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
@@ -218,6 +225,15 @@ function AddUserPage() {
                     <CardHeader>
                         <CardTitle className="font-headline flex items-center gap-2"><Users /> Existing Customers</CardTitle>
                         <CardDescription>View, edit, and delete existing customer profiles.</CardDescription>
+                         <div className="relative pt-2">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Search by name..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-8 w-full max-w-sm"
+                            />
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <ScrollArea className="h-[60vh] rounded-md border">
@@ -236,8 +252,8 @@ function AddUserPage() {
                                             <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
                                         </TableCell>
                                     </TableRow>
-                                ): sortedUserProfiles.length > 0 ? (
-                                    sortedUserProfiles.map((profile) => (
+                                ): filteredUserProfiles.length > 0 ? (
+                                    filteredUserProfiles.map((profile) => (
                                         <TableRow key={profile.id}>
                                             <TableCell className="font-medium">
                                                 {editingUserId === profile.id ? (
@@ -277,7 +293,7 @@ function AddUserPage() {
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={3} className="h-24 text-center">
-                                            No customers found. Create one to get started.
+                                            {searchTerm ? `No customers found for "${searchTerm}".` : "No customers found. Create one to get started."}
                                         </TableCell>
                                     </TableRow>
                                 )}
