@@ -14,7 +14,7 @@ import { Save, Loader2 } from "lucide-react";
 
 
 function ManageRatesPage() {
-    const { userProfiles, updateUserBottlePrice, refreshData } = useContext(AppContext);
+    const { userProfiles, updateUserBottlePrice } = useContext(AppContext);
     const [rates, setRates] = useState<Record<string, number | string>>({});
     const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
 
@@ -45,9 +45,6 @@ function ManageRatesPage() {
                     title: "Rate Updated",
                     description: `The per-bottle rate for ${userName} has been set to ${newRate} PKR.`,
                 });
-                // Manually update the local state to reflect the change immediately
-                // This prevents the UI from reverting to the old value before the context refresh completes
-                setRates(prev => ({ ...prev, [userId]: newRate }));
             } catch (error: any) {
                 toast({
                     variant: "destructive",
