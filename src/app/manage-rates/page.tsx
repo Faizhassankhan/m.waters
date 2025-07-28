@@ -14,9 +14,9 @@ import { Save, Loader2 } from "lucide-react";
 
 
 function ManageRatesPage() {
-    const { userProfiles, updateUserBottlePrice } = useContext(AppContext);
+    const { userProfiles, updateUserBottlePrice, refreshData } = useContext(AppContext);
     const [rates, setRates] = useState<Record<string, number | string>>({});
-    const [loading, setLoading] = useState<Record<string, boolean>>({});
+    const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
 
     const { toast } = useToast();
     
@@ -38,13 +38,16 @@ function ManageRatesPage() {
     const handleSaveRate = async (userId: string, userName: string) => {
         const newRate = Number(rates[userId]);
         if (newRate > 0) {
-            setLoading(prev => ({ ...prev, [userId]: true }));
+            setLoadingStates(prev => ({ ...prev, [userId]: true }));
             try {
                 await updateUserBottlePrice(userId, newRate);
                 toast({
                     title: "Rate Updated",
                     description: `The per-bottle rate for ${userName} has been set to ${newRate} PKR.`,
                 });
+                // Manually update the local state to reflect the change immediately
+                // This prevents the UI from reverting to the old value before the context refresh completes
+                setRates(prev => ({ ...prev, [userId]: newRate }));
             } catch (error: any) {
                 toast({
                     variant: "destructive",
@@ -52,7 +55,7 @@ function ManageRatesPage() {
                     description: error.message || "Could not update the rate.",
                 });
             } finally {
-                setLoading(prev => ({ ...prev, [userId]: false }));
+                setLoadingStates(prev => ({ ...prev, [userId]: false }));
             }
         } else {
             toast({
@@ -102,8 +105,8 @@ function ManageRatesPage() {
                                                 />
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button size="sm" onClick={() => handleSaveRate(user.id, user.name)} disabled={loading[user.id]}>
-                                                    {loading[user.id] 
+                                                <Button size="sm" onClick={() => handleSaveRate(user.id, user.name)} disabled={loadingStates[user.id]}>
+                                                    {loadingStates[user.id] 
                                                         ? <Loader2 className="h-4 w-4 animate-spin" />
                                                         : <><Save className="mr-2 h-4 w-4" /> Save</>
                                                     }
