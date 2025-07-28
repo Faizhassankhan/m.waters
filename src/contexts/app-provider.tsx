@@ -156,20 +156,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
  const handleAuthChange = useCallback(async (event: string, session: Session | null) => {
-    setLoading(true);
     const currentUser = session?.user ?? null;
-    setUser(currentUser);
-    if (currentUser) {
-        await fetchAllData(currentUser);
-    } else {
-        setCustomerData(null);
-        setUserProfiles([]);
-        setInvoices([]);
-        setFeedbacks([]);
-        setLoginHistory([]);
+    const previousUser = user;
+    
+    // Only set loading to true if the user identity has actually changed
+    if (currentUser?.id !== previousUser?.id) {
+        setLoading(true);
+        setUser(currentUser);
+        if (currentUser) {
+            await fetchAllData(currentUser);
+        } else {
+            // Clear all data on logout
+            setCustomerData(null);
+            setUserProfiles([]);
+            setInvoices([]);
+            setFeedbacks([]);
+            setLoginHistory([]);
+        }
+        setLoading(false);
     }
-    setLoading(false);
-  }, [fetchAllData]);
+  }, [fetchAllData, user]);
 
 
   useEffect(() => {
@@ -185,7 +191,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-        // We only care about explicit login/logout events here to avoid re-fetching on token refresh
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
             handleAuthChange(event, session);
         }
@@ -198,7 +203,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 
   const login = async (emailOrName: string, password: string): Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }> => {
-    setLoading(true);
     try {
       if (emailOrName.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
           let { data, error } = await supabase.auth.signInWithPassword({ 
@@ -268,8 +272,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     } catch (error: any) {
         return { success: false, error: error.message || "An unexpected error occurred.", userType: null };
-    } finally {
-        setLoading(false);
     }
   };
 
