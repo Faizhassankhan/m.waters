@@ -15,15 +15,9 @@ import { UserProfile } from "@/lib/types";
 
 function ManageRatesPage() {
     const { userProfiles, updateUserBottlePrice, loading: appContextLoading } = useContext(AppContext);
-    // This state now only holds the changes made by the user, not the source of truth.
     const [editingRates, setEditingRates] = useState<Record<string, number | string>>({});
     const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
     const { toast } = useToast();
-
-    // When user profiles are updated from context, we clear the local edits.
-    useEffect(() => {
-        setEditingRates({});
-    }, [userProfiles]);
 
     const handleRateChange = (userId: string, value: string) => {
         const numericValue = value === "" ? "" : Number(value);
@@ -35,7 +29,6 @@ function ManageRatesPage() {
     const handleSaveRate = async (userId: string, userName: string) => {
         const rateToSave = editingRates[userId];
 
-        // Check if there is actually a new rate to save for this user
         if (rateToSave === undefined || rateToSave === '') {
              toast({
                 variant: "destructive",
@@ -49,13 +42,11 @@ function ManageRatesPage() {
         if (newRate > 0) {
             setLoadingStates(prev => ({ ...prev, [userId]: true }));
             try {
-                // The context function handles the DB update and data refresh.
                 await updateUserBottlePrice(userId, newRate);
                 toast({
                     title: "Rate Updated",
                     description: `The per-bottle rate for ${userName} has been set to ${newRate} PKR.`,
                 });
-                // After successful save, clear the editing state for this user.
                 setEditingRates(prev => {
                     const newEditingRates = { ...prev };
                     delete newEditingRates[userId];
@@ -117,7 +108,6 @@ function ManageRatesPage() {
                                             <TableCell>
                                                 <Input
                                                     type="number"
-                                                    // The displayed value is either the one being edited, or the one from the database (user.bottlePrice).
                                                     value={editingRates[user.id] ?? user.bottlePrice ?? ''}
                                                     onChange={(e) => handleRateChange(user.id, e.target.value)}
                                                     placeholder="e.g., 100"
