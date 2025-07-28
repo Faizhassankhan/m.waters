@@ -309,7 +309,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateUserName = async (userId: string, newName: string) => {
     const { error } = await supabase.from('users').update({ name: newName }).eq('id', userId);
     if (error) throw error;
-    await refreshData();
+    await fetchAllData(user);
   };
 
   const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "deliveries" | "bottlePrice">, deliveries: Delivery[]): Promise<Invoice | undefined> => {
@@ -374,13 +374,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateUserDelivery = async (userId: string, deliveryId: string, newDate: string) => {
     const { error } = await supabase.from('deliveries').update({ date: newDate }).eq('id', deliveryId).eq('user_id', userId);
     if (error) throw error;
-    await refreshData();
+    await fetchAllData(user);
   };
 
   const deleteUserDelivery = async (userId: string, deliveryId: string) => {
     const { error } = await supabase.from('deliveries').delete().eq('id', deliveryId).eq('user_id', userId);
     if (error) throw error;
-    await refreshData();
+    await fetchAllData(user);
   }
 
   const removeDuplicateDeliveries = async (userId: string) => {
@@ -400,7 +400,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('deliveries').delete().in('id', idsToDelete);
     if (error) throw error;
     
-    await refreshData();
+    await fetchAllData(user);
   }
   
   const saveMonthlyStatus = async (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => {
