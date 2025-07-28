@@ -14,16 +14,13 @@ import { Save, Loader2 } from "lucide-react";
 import { UserProfile } from "@/lib/types";
 
 function ManageRatesPage() {
-    const { userProfiles, updateUserBottlePrice, loading: appContextLoading } = useContext(AppContext);
-    const [editingRates, setEditingRates] = useState<Record<string, number | string>>({});
+    const { userProfiles, updateUserBottlePrice, loading: appContextLoading, fetchAllData, user } = useContext(AppContext);
+    const [editingRates, setEditingRates] = useState<Record<string, string>>({});
     const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
     const { toast } = useToast();
 
     const handleRateChange = (userId: string, value: string) => {
-        const numericValue = value === "" ? "" : Number(value);
-         if (!isNaN(numericValue as number)) {
-            setEditingRates(prev => ({ ...prev, [userId]: numericValue }));
-        }
+        setEditingRates(prev => ({ ...prev, [userId]: value }));
     };
 
     const handleSaveRate = async (userId: string, userName: string) => {

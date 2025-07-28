@@ -45,7 +45,7 @@ export interface Invoice {
   userId: string | null; // uuid from supabase, references users table
   name: string; // Name of the user
   amount: number;
-  bottlePrice?: number;
+  bottlePrice: number;
   paymentMethod: 'EasyPaisa' | 'JazzCash' | 'Bank Transfer';
   recipientNumber: string;
   createdAt: string; // timestamp with time zone

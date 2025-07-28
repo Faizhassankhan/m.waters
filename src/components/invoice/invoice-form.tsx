@@ -47,6 +47,7 @@ const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   userId: z.string().nullable(), // Can be null for non-profile users
   amount: z.coerce.number().positive("Amount must be positive."),
+  bottlePrice: z.coerce.number().optional(),
   previousBalance: z.coerce.number().optional(),
   paymentMethod: z.enum(["EasyPaisa", "JazzCash", "Bank Transfer"]),
   recipientNumber: z.string().regex(/^03\d{9}$/, "Enter a valid Pakistani mobile number (03xxxxxxxxx)."),
@@ -78,6 +79,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       name: "",
       userId: null,
       amount: 0,
+      bottlePrice: DEFAULT_BOTTLE_PRICE,
       previousBalance: 0,
       paymentMethod: "EasyPaisa",
       recipientNumber: "",
@@ -105,13 +107,16 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       if (foundUser) {
         setSelectedUser(foundUser);
         form.setValue("userId", foundUser.id);
+        form.setValue("bottlePrice", foundUser.bottlePrice || DEFAULT_BOTTLE_PRICE);
       } else {
         setSelectedUser(null);
         form.setValue("userId", null);
+        form.setValue("bottlePrice", DEFAULT_BOTTLE_PRICE);
       }
     } else {
       setSelectedUser(null);
       form.setValue("userId", null);
+      form.setValue("bottlePrice", DEFAULT_BOTTLE_PRICE);
     }
   }, [selectedName, userProfiles, form]);
 
@@ -143,6 +148,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
                 name: "",
                 userId: null,
                 amount: 0,
+                bottlePrice: DEFAULT_BOTTLE_PRICE,
                 previousBalance: 0,
                 paymentMethod: "EasyPaisa",
                 recipientNumber: "",

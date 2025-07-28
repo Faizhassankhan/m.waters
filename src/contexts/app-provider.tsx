@@ -28,7 +28,7 @@ interface AppContextType {
   removeDuplicateDeliveries: (userId: string) => Promise<void>;
   updateUserBottlePrice: (userId: string, newPrice: number) => Promise<void>;
   updateUserName: (userId: string, newName: string) => Promise<void>;
-  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "deliveries" | "bottlePrice">, deliveries: Delivery[]) => Promise<Invoice | undefined>;
+  addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "deliveries">, deliveries: Delivery[]) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   saveMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
   deleteMonthlyStatus: (userId: string, month: number, year: number) => Promise<void>;
@@ -38,6 +38,7 @@ interface AppContextType {
   deleteFeedback: (feedbackId: string) => Promise<void>;
   deleteLoginHistory: (historyId: string) => Promise<void>;
   refreshData: () => Promise<void>;
+  fetchAllData: (loggedInUser: User | null) => Promise<void>;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -68,6 +69,7 @@ export const AppContext = createContext<AppContextType>({
   deleteFeedback: async () => {},
   deleteLoginHistory: async () => {},
   refreshData: async () => {},
+  fetchAllData: async () => {},
 });
 
 const ADMIN_EMAIL = "admin@gmail.com";
@@ -104,6 +106,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           deliveries: profile.deliveries || [],
           monthlyStatuses: profile.monthly_statuses || [],
           billingRecords: profile.billing_records || [],
+          bottlePrice: profile.bottle_price || 100, // Ensure default
         }));
         
         const allInvoices = (invoicesData || []).map((inv: any): Invoice => {
@@ -115,7 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             return { 
                 id: inv.id,
                 userId: inv.user_id,
-                name: profile?.name || 'N/A',
+                name: profile?.name || inv.name || 'N/A',
                 amount: inv.amount,
                 previousBalance: inv.previous_balance,
                 paymentMethod: inv.payment_method,
@@ -124,7 +127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 month: inv.month,
                 year: inv.year,
                 deliveries: deliveriesForInvoice,
-                bottlePrice: profile?.bottlePrice
+                bottlePrice: inv.bottle_price || profile?.bottlePrice || 100,
             };
         }).sort((a: Invoice, b: Invoice) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
@@ -207,7 +210,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               if (signUpError) throw signUpError;
               
               if (signUpData.user) {
-                  const { error: insertError } = await supabase.from('users').insert({ id: signUpData.user.id, name: 'Admin' });
+                  const { error: insertError } = await supabase.from('users').insert({ id: signUpData.user.id, name: 'Admin', bottle_price: 100 });
                   if (insertError) throw new Error(`Could not create admin profile: ${insertError.message}`);
               }
               
@@ -241,7 +244,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       const { data: userProfile, error: profileError } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
       if (profileError && profileError.code === 'PGRST116') { 
-          const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email?.split('@')[0] || 'New User' });
+          const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email?.split('@')[0] || 'New User', bottle_price: 100 });
           if(insertError) throw insertError;
       } else if (profileError) {
           throw profileError;
@@ -312,18 +315,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await fetchAllData(user);
   };
 
-  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "deliveries" | "bottlePrice">, deliveries: Delivery[]): Promise<Invoice | undefined> => {
+  const addInvoice = async (invoiceData: Omit<Invoice, "id" | "createdAt" | "deliveries">, deliveries: Delivery[]): Promise<Invoice | undefined> => {
     try {
         const foundUser = userProfiles.find(p => p.id === invoiceData.userId);
 
         const invoiceToInsert = {
           user_id: invoiceData.userId,
+          name: invoiceData.name,
           amount: invoiceData.amount,
           month: invoiceData.month,
           year: invoiceData.year,
           payment_method: invoiceData.paymentMethod,
           recipient_number: invoiceData.recipientNumber,
           previous_balance: invoiceData.previousBalance || 0,
+          bottle_price: foundUser?.bottlePrice || 100,
         };
 
         const { data, error } = await supabase
@@ -348,7 +353,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             userId: data.user_id,
             name: invoiceData.name,
             amount: data.amount,
-            bottlePrice: foundUser?.bottlePrice,
+            bottlePrice: data.bottle_price,
             paymentMethod: data.payment_method,
             recipientNumber: data.recipient_number,
             createdAt: data.created_at,
@@ -516,6 +521,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteFeedback,
     deleteLoginHistory,
     refreshData,
+    fetchAllData,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
