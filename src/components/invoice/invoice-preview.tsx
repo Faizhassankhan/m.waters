@@ -9,7 +9,7 @@ import { Invoice } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Share2, Loader2, FileText, ImageIcon } from "lucide-react";
+import { Share2, Loader2, FileText, ImageIcon, FileImage } from "lucide-react";
 import { format, isValid, parseISO } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,64 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
   const { toast } = useToast();
+  
+  const getSafeDate = (dateString: string | undefined) => {
+    if (!dateString) return new Date();
+    const date = parseISO(dateString);
+    return isValid(date) ? date : new Date();
+  }
+
+  const shareFile = async (file: File, title: string, text: string) => {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title, text });
+    } else {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(file);
+        link.download = file.name;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        toast({
+            title: "File Downloaded",
+            description: "Your browser doesn't support direct sharing. The file has been downloaded."
+        });
+    }
+  };
+
+  const handleShareStyledPdf = async () => {
+    if (!invoiceRef.current || !invoice) return;
+
+    setIsSharing(true);
+    try {
+        const dataUrl = await htmlToImage.toPng(invoiceRef.current, { 
+            quality: 1, 
+            pixelRatio: 2, // Increase pixel ratio for better quality
+            backgroundColor: 'hsl(var(--background))' 
+        });
+
+        const img = new Image();
+        img.src = dataUrl;
+        img.onload = async () => {
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'px',
+                format: [img.width, img.height]
+            });
+            pdf.addImage(dataUrl, 'PNG', 0, 0, img.width, img.height);
+            
+            const pdfBlob = pdf.output('blob');
+            const fileName = `invoice-styled-${invoice.id}.pdf`;
+            const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+            
+            await shareFile(file, `Invoice for ${invoice.name}`, `Here is the styled invoice for ${invoice.name}.`);
+            setIsSharing(false);
+        };
+    } catch (error) {
+        console.error('Styled PDF generation failed', error);
+        toast({ variant: "destructive", title: "PDF Failed", description: "Could not generate styled PDF." });
+        setIsSharing(false);
+    }
+  };
+
 
   const handleSharePdf = async () => {
     if (!invoice) return;
@@ -122,20 +180,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
       const pdfBlob = doc.output('blob');
       const fileName = `invoice-${invoice.id}.pdf`;
       const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Invoice for ${invoice.name}`,
-          text: `Here is the invoice for ${invoice.name} for the month of ${invoice.month}.`,
-        });
-      } else {
-        doc.save(fileName);
-        toast({
-            title: "PDF Downloaded",
-            description: "Your browser doesn't support direct sharing. The PDF has been downloaded."
-        })
-      }
+      await shareFile(file, `Invoice for ${invoice.name}`, `Here is the invoice for ${invoice.name} for the month of ${invoice.month}.`);
 
     } catch (error) {
       console.error('oops, something went wrong!', error);
@@ -160,24 +205,7 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
         const fileName = `invoice-${invoice.id}.png`;
         const file = new File([blob], fileName, { type: blob.type });
 
-        const shareData = {
-            files: [file],
-            title: `Invoice for ${invoice.name}`,
-            text: `Here is the invoice for ${invoice.name}.`,
-        };
-
-        if (navigator.canShare && navigator.canShare(shareData)) {
-            await navigator.share(shareData);
-        } else {
-            const link = document.createElement('a');
-            link.href = dataUrl;
-            link.download = fileName;
-            link.click();
-            toast({
-                title: "Image downloaded",
-                description: "Your browser doesn't support direct sharing. The invoice image has been downloaded for you to share manually.",
-            });
-        }
+        await shareFile(file, `Invoice for ${invoice.name}`, `Here is the invoice for ${invoice.name}.`);
 
     } catch (error) {
         console.error('Oops, something went wrong!', error);
@@ -201,12 +229,6 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
         </div>
       </Card>
     );
-  }
-  
-  const getSafeDate = (dateString: string | undefined) => {
-    if (!dateString) return new Date();
-    const date = parseISO(dateString);
-    return isValid(date) ? date : new Date();
   }
 
   const sortedDeliveries = invoice.deliveries 
@@ -335,7 +357,11 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
               <DropdownMenuContent className="w-56">
                 <DropdownMenuItem onClick={handleSharePdf}>
                   <FileText className="mr-2 h-4 w-4" />
-                  <span>Share as PDF</span>
+                  <span>Share as Standard PDF</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShareStyledPdf}>
+                  <FileImage className="mr-2 h-4 w-4" />
+                  <span>Share as Styled PDF</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleShareImage}>
                   <ImageIcon className="mr-2 h-4 w-4" />

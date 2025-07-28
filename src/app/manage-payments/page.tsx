@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useContext } from "react";
+import { useState, useMemo, useContext, useEffect } from "react";
 import AuthGuard from "@/components/auth-guard";
 import DashboardLayout from "@/components/dashboard-layout";
 import { AppContext } from "@/contexts/app-provider";
@@ -9,15 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CreditCard, User, Calendar, Save, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, CreditCard, Save, Trash2 } from "lucide-react";
 import { getYear, getMonth, format } from "date-fns";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const months = Array.from({ length: 12 }, (_, i) => ({
     value: i,
@@ -27,82 +25,88 @@ const months = Array.from({ length: 12 }, (_, i) => ({
 const years = Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i);
 
 function ManagePaymentsPage() {
-    const { userProfiles, saveMonthlyStatus, deleteMonthlyStatus, loading: appContextLoading } = useContext(AppContext);
+    const { userProfiles, saveMonthlyStatus, loading: appContextLoading, fetchAllData } = useContext(AppContext);
     const { toast } = useToast();
 
-    const [selectedUserId, setSelectedUserId] = useState<string>("");
     const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(new Date()));
     const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
     const [statusToSave, setStatusToSave] = useState<'paid' | 'not_paid_yet'>('paid');
     const [isSaving, setIsSaving] = useState(false);
-    const [isDeleting, setIsDeleting] = useState<string | null>(null);
-    const [open, setOpen] = useState(false);
+    const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
 
-    // New states for filtering the list
-    const [filterMonth, setFilterMonth] = useState<number>(getMonth(new Date()));
-    const [filterYear, setFilterYear] = useState<number>(getYear(new Date()));
-
-    const sortedUsers = useMemo(() => {
-        return [...userProfiles].sort((a, b) => a.name.localeCompare(b.name));
-    }, [userProfiles]);
-
-    const filteredStatuses = useMemo(() => {
+    const usersForPeriod = useMemo(() => {
         return userProfiles
-            .flatMap(user =>
-                (user.monthlyStatuses || []).map(status => ({
-                    ...status,
-                    userName: user.name,
-                    user_id: user.id,
-                    statusId: `${user.id}-${status.year}-${status.month}`
-                }))
+            .filter(user => 
+                (user.billingRecords || []).some(br => br.month === selectedMonth && br.year === selectedYear) ||
+                (user.deliveries || []).some(d => {
+                    const deliveryDate = new Date(d.date);
+                    return getMonth(deliveryDate) === selectedMonth && getYear(deliveryDate) === selectedYear;
+                })
             )
-            .filter(status => status.month === filterMonth && status.year === filterYear)
-            .sort((a, b) => a.userName.localeCompare(b.userName));
-    }, [userProfiles, filterMonth, filterYear]);
+            .map(user => {
+                const statusEntry = (user.monthlyStatuses || []).find(s => s.month === selectedMonth && s.year === selectedYear);
+                return {
+                    id: user.id,
+                    name: user.name,
+                    status: statusEntry ? statusEntry.status : 'not_paid_yet',
+                };
+            })
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [userProfiles, selectedMonth, selectedYear]);
+
+    useEffect(() => {
+        // By default, check all users that are displayed for the selected period
+        setSelectedUserIds(new Set(usersForPeriod.map(u => u.id)));
+    }, [usersForPeriod]);
 
     const handleSave = async () => {
-        if (!selectedUserId) {
-            toast({ variant: "destructive", title: "No User Selected", description: "Please select a user first." });
+        if (selectedUserIds.size === 0) {
+            toast({ variant: "destructive", title: "No Users Selected", description: "Please select at least one user." });
             return;
         }
         setIsSaving(true);
         try {
-            await saveMonthlyStatus(selectedUserId, selectedMonth, selectedYear, statusToSave);
-            const userName = userProfiles.find(u => u.id === selectedUserId)?.name || 'the user';
+            const promises = Array.from(selectedUserIds).map(userId => 
+                saveMonthlyStatus(userId, selectedMonth, selectedYear, statusToSave)
+            );
+            
+            await Promise.all(promises);
+
             toast({
-                title: "Status Saved",
-                description: `${userName}'s bill for ${months[selectedMonth].label} ${selectedYear} has been saved as ${statusToSave === 'paid' ? 'Paid' : 'Unpaid'}.`,
+                title: "Statuses Saved",
+                description: `The status for ${selectedUserIds.size} user(s) for ${months[selectedMonth].label} ${selectedYear} has been set to ${statusToSave === 'paid' ? 'Paid' : 'Unpaid'}.`,
             });
+            await fetchAllData(null); // Refresh all data silently
         } catch (error: any) {
             toast({
                 variant: "destructive",
                 title: "Save Failed",
-                description: error.message || "Could not save status.",
+                description: error.message || "Could not save statuses.",
             });
         } finally {
             setIsSaving(false);
         }
     };
     
-    const handleDelete = async (statusId: string, userId: string, month: number, year: number) => {
-        setIsDeleting(statusId);
-        try {
-            await deleteMonthlyStatus(userId, month, year);
-            const userName = userProfiles.find(u => u.id === userId)?.name || 'the user';
-            toast({
-                title: "Status Deleted",
-                description: `The status for ${userName} for ${months[month].label} ${year} has been reset.`,
-            });
-        } catch (error: any) {
-            toast({
-                variant: "destructive",
-                title: "Deletion Failed",
-                description: error.message || "Could not delete the status.",
-            });
-        } finally {
-            setIsDeleting(null);
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedUserIds(new Set(usersForPeriod.map(u => u.id)));
+        } else {
+            setSelectedUserIds(new Set());
         }
-    }
+    };
+
+    const handleUserSelection = (userId: string, checked: boolean) => {
+        const newSet = new Set(selectedUserIds);
+        if (checked) {
+            newSet.add(userId);
+        } else {
+            newSet.delete(userId);
+        }
+        setSelectedUserIds(newSet);
+    };
+
+    const areAllSelected = usersForPeriod.length > 0 && selectedUserIds.size === usersForPeriod.length;
 
     return (
         <DashboardLayout>
@@ -113,90 +117,50 @@ function ManagePaymentsPage() {
                         Manage Customer Payments
                     </h2>
                 </div>
-                <div className="grid gap-8 lg:grid-cols-5">
-                    <Card className="lg:col-span-2">
-                        <CardHeader>
-                            <CardTitle className="font-headline">Set Payment Status</CardTitle>
-                            <CardDescription>
-                                Select a user and billing period to mark their payment status.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="space-y-2">
-                                <Label className="flex items-center gap-2"><User className="w-4 h-4 text-muted-foreground" /> Select User</Label>
-                                <Popover open={open} onOpenChange={setOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={open}
-                                            className="w-full justify-between"
-                                        >
-                                            {selectedUserId
-                                                ? sortedUsers.find((user) => user.id === selectedUserId)?.name
-                                                : "Choose a user..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search user..." />
-                                            <CommandList>
-                                                <CommandEmpty>No user found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {sortedUsers.map((user) => (
-                                                        <CommandItem
-                                                            key={user.id}
-                                                            value={user.name}
-                                                            onSelect={() => {
-                                                                setSelectedUserId(user.id);
-                                                                setOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    selectedUserId === user.id ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {user.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-
-                             <div className="space-y-2">
-                                <Label className="flex items-center gap-2"><Calendar className="w-4 h-4 text-muted-foreground" /> Select Billing Period</Label>
-                                <div className="flex gap-2">
-                                    <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select Month" />
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline">Set Bulk Payment Status</CardTitle>
+                        <CardDescription>
+                            Select a billing period, choose users, and set their payment status all at once.
+                        </CardDescription>
+                        <div className="flex flex-wrap items-end gap-4 pt-4">
+                            <div>
+                                <Label>Billing Period</Label>
+                                <div className="flex items-center space-x-2 pt-1">
+                                    <Select 
+                                        value={String(selectedMonth)} 
+                                        onValueChange={(value) => setSelectedMonth(Number(value))}
+                                    >
+                                        <SelectTrigger className="w-[180px]">
+                                            <SelectValue placeholder="Filter by Month" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {months.map(month => (
-                                                <SelectItem key={month.value} value={String(month.value)}>{month.label}</SelectItem>
+                                                <SelectItem key={month.value} value={String(month.value)}>
+                                                    {month.label}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select Year" />
+                                    <Select 
+                                        value={String(selectedYear)} 
+                                        onValueChange={(value) => setFilterYear(Number(value))}
+                                    >
+                                        <SelectTrigger className="w-[120px]">
+                                            <SelectValue placeholder="Filter by Year" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {years.map(year => (
-                                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                                                <SelectItem key={year} value={String(year)}>
+                                                    {year}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
                             </div>
-                            
-                             <div className="space-y-2">
-                                <Label className="flex items-center gap-2">Set Status</Label>
+                            <div>
+                                <Label>Set Status To</Label>
                                 <RadioGroup defaultValue="paid" value={statusToSave} onValueChange={(value: 'paid' | 'not_paid_yet') => setStatusToSave(value)} className="flex items-center gap-6 pt-2">
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="paid" id="r-paid" />
@@ -208,110 +172,65 @@ function ManagePaymentsPage() {
                                     </div>
                                 </RadioGroup>
                             </div>
-
-                            <Button onClick={handleSave} disabled={isSaving || !selectedUserId} className="w-full">
+                            <Button onClick={handleSave} disabled={isSaving || selectedUserIds.size === 0}>
                                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                Save Status
+                                Save for {selectedUserIds.size} User(s)
                             </Button>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="lg:col-span-3">
-                         <CardHeader>
-                            <CardTitle className="font-headline">Saved Statuses</CardTitle>
-                            <CardDescription>
-                                A list of all payment statuses you have saved for a specific month.
-                            </CardDescription>
-                             <div className="flex items-center space-x-2 pt-4">
-                                <Select 
-                                    value={String(filterMonth)} 
-                                    onValueChange={(value) => setFilterMonth(Number(value))}
-                                >
-                                    <SelectTrigger className="w-[180px]">
-                                        <SelectValue placeholder="Filter by Month" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {months.map(month => (
-                                            <SelectItem key={month.value} value={String(month.value)}>
-                                                {month.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <Select 
-                                    value={String(filterYear)} 
-                                    onValueChange={(value) => setFilterYear(Number(value))}
-                                >
-                                    <SelectTrigger className="w-[120px]">
-                                        <SelectValue placeholder="Filter by Year" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {years.map(year => (
-                                            <SelectItem key={year} value={String(year)}>
-                                                {year}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <ScrollArea className="h-[40vh] rounded-md border">
-                                <Table>
-                                    <TableHeader>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <ScrollArea className="h-[50vh] rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[50px]">
+                                             <Checkbox
+                                                checked={areAllSelected}
+                                                onCheckedChange={handleSelectAll}
+                                                aria-label="Select all"
+                                            />
+                                        </TableHead>
+                                        <TableHead>User</TableHead>
+                                        <TableHead>Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {appContextLoading ? (
                                         <TableRow>
-                                            <TableHead>User</TableHead>
-                                            <TableHead>Period</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                            <TableCell colSpan={3} className="h-24 text-center">
+                                                <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                                            </TableCell>
                                         </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {appContextLoading ? (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className="h-24 text-center">
-                                                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                                    ) : usersForPeriod.length > 0 ? (
+                                        usersForPeriod.map(s => (
+                                            <TableRow key={s.id} data-state={selectedUserIds.has(s.id) && "selected"}>
+                                                <TableCell>
+                                                     <Checkbox
+                                                        checked={selectedUserIds.has(s.id)}
+                                                        onCheckedChange={(checked) => handleUserSelection(s.id, !!checked)}
+                                                        aria-label={`Select ${s.name}`}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="font-medium">{s.name}</TableCell>
+                                                <TableCell>
+                                                    <span className={s.status === 'paid' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                                                        {s.status === 'paid' ? 'Paid' : 'Unpaid'}
+                                                    </span>
                                                 </TableCell>
                                             </TableRow>
-                                        ) : filteredStatuses.length > 0 ? (
-                                            filteredStatuses.map(s => (
-                                                <TableRow key={s.statusId}>
-                                                    <TableCell className="font-medium">{s.userName}</TableCell>
-                                                    <TableCell>{months[s.month].label}, {s.year}</TableCell>
-                                                    <TableCell>
-                                                        <span className={s.status === 'paid' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                                                            {s.status === 'paid' ? 'Paid' : 'Unpaid'}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="text-destructive hover:text-destructive"
-                                                            onClick={() => handleDelete(s.statusId, s.user_id, s.month, s.year)}
-                                                            disabled={isDeleting === s.statusId}
-                                                        >
-                                                            {isDeleting === s.statusId
-                                                                ? <Loader2 className="h-4 w-4 animate-spin" />
-                                                                : <Trash2 className="h-4 w-4" />
-                                                            }
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        ) : (
-                                             <TableRow>
-                                                <TableCell colSpan={4} className="h-24 text-center">
-                                                    No statuses saved for the selected period.
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </ScrollArea>
-                        </CardContent>
-                    </Card>
-                </div>
+                                        ))
+                                    ) : (
+                                         <TableRow>
+                                            <TableCell colSpan={3} className="h-24 text-center">
+                                                No users with deliveries or billing records found for the selected period.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
             </div>
         </DashboardLayout>
     );
