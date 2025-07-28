@@ -303,7 +303,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateUserBottlePrice = async (userId: string, newPrice: number) => {
     const { error } = await supabase.from('users').update({ bottle_price: newPrice }).eq('id', userId);
     if (error) throw error;
-    await refreshData();
+    await fetchAllData(user);
   };
 
   const updateUserName = async (userId: string, newName: string) => {
