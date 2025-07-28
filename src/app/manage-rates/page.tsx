@@ -22,25 +22,25 @@ function ManageRatesPage() {
     
     useEffect(() => {
         const initialRates = userProfiles.reduce((acc, user) => {
-            acc[user.name] = user.bottlePrice || 100;
+            acc[user.id] = user.bottlePrice || 100;
             return acc;
         }, {} as Record<string, number>);
         setRates(initialRates);
     }, [userProfiles]);
 
-    const handleRateChange = (userName: string, value: string) => {
+    const handleRateChange = (userId: string, value: string) => {
         const numericValue = value === "" ? "" : Number(value);
         if (!isNaN(numericValue as number)) {
-            setRates(prev => ({ ...prev, [userName]: numericValue }));
+            setRates(prev => ({ ...prev, [userId]: numericValue }));
         }
     };
 
-    const handleSaveRate = async (userName: string) => {
-        const newRate = Number(rates[userName]);
+    const handleSaveRate = async (userId: string, userName: string) => {
+        const newRate = Number(rates[userId]);
         if (newRate > 0) {
-            setLoading(prev => ({ ...prev, [userName]: true }));
+            setLoading(prev => ({ ...prev, [userId]: true }));
             try {
-                await updateUserBottlePrice(userName, newRate);
+                await updateUserBottlePrice(userId, newRate);
                 toast({
                     title: "Rate Updated",
                     description: `The per-bottle rate for ${userName} has been set to ${newRate} PKR.`,
@@ -52,7 +52,7 @@ function ManageRatesPage() {
                     description: error.message || "Could not update the rate.",
                 });
             } finally {
-                setLoading(prev => ({ ...prev, [userName]: false }));
+                setLoading(prev => ({ ...prev, [userId]: false }));
             }
         } else {
             toast({
@@ -96,14 +96,14 @@ function ManageRatesPage() {
                                             <TableCell>
                                                 <Input
                                                     type="number"
-                                                    value={rates[user.name] ?? ''}
-                                                    onChange={(e) => handleRateChange(user.name, e.target.value)}
+                                                    value={rates[user.id] ?? ''}
+                                                    onChange={(e) => handleRateChange(user.id, e.target.value)}
                                                     placeholder="e.g., 100"
                                                 />
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button size="sm" onClick={() => handleSaveRate(user.name)} disabled={loading[user.name]}>
-                                                    {loading[user.name] 
+                                                <Button size="sm" onClick={() => handleSaveRate(user.id, user.name)} disabled={loading[user.id]}>
+                                                    {loading[user.id] 
                                                         ? <Loader2 className="h-4 w-4 animate-spin" />
                                                         : <><Save className="mr-2 h-4 w-4" /> Save</>
                                                     }

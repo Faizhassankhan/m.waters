@@ -26,7 +26,7 @@ interface AppContextType {
   updateUserDelivery: (userId: string, deliveryId: string, newDate: string) => Promise<void>;
   deleteUserDelivery: (userId: string, deliveryId: string) => Promise<void>;
   removeDuplicateDeliveries: (userId: string) => Promise<void>;
-  updateUserBottlePrice: (userName: string, newPrice: number) => Promise<void>;
+  updateUserBottlePrice: (userId: string, newPrice: number) => Promise<void>;
   updateUserName: (userId: string, newName: string) => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "deliveries" | "bottlePrice">, deliveries: Delivery[]) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
@@ -156,50 +156,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
  const handleAuthChange = useCallback(async (event: string, session: Session | null) => {
+    setLoading(true);
     const currentUser = session?.user ?? null;
-    const previousUser = user;
-    
-    // Only set loading to true if the user identity has actually changed
-    if (currentUser?.id !== previousUser?.id) {
-        setLoading(true);
-        setUser(currentUser);
-        if (currentUser) {
-            await fetchAllData(currentUser);
-        } else {
-            // Clear all data on logout
-            setCustomerData(null);
-            setUserProfiles([]);
-            setInvoices([]);
-            setFeedbacks([]);
-            setLoginHistory([]);
-        }
-        setLoading(false);
+    setUser(currentUser);
+
+    if (currentUser) {
+        await fetchAllData(currentUser);
+    } else {
+        // Clear all data on logout
+        setCustomerData(null);
+        setUserProfiles([]);
+        setInvoices([]);
+        setFeedbacks([]);
+        setLoginHistory([]);
     }
-  }, [fetchAllData, user]);
+    setLoading(false);
+}, [fetchAllData]);
 
 
   useEffect(() => {
-    // Check the initial session once on app startup
-    supabase.auth.getSession().then(({ data: { session } }) => {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        if (currentUser) {
-            fetchAllData(currentUser).finally(() => setLoading(false));
-        } else {
-            setLoading(false);
-        }
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+        handleAuthChange(event, session);
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-            handleAuthChange(event, session);
-        }
+    // Also check session on initial load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        handleAuthChange("INITIAL_SESSION", session);
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
+        authListener.subscription.unsubscribe();
     };
-  }, [handleAuthChange, fetchAllData]);
+}, [handleAuthChange]);
 
 
   const login = async (emailOrName: string, password: string): Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }> => {
@@ -312,8 +300,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await fetchAllData(user);
   };
 
-  const updateUserBottlePrice = async (userName: string, newPrice: number) => {
-    const { error } = await supabase.from('users').update({ bottle_price: newPrice }).eq('name', userName);
+  const updateUserBottlePrice = async (userId: string, newPrice: number) => {
+    const { error } = await supabase.from('users').update({ bottle_price: newPrice }).eq('id', userId);
     if (error) throw error;
     await refreshData();
   };
