@@ -4,7 +4,7 @@
 import { useContext, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { AppContext } from "@/contexts/app-provider";
-import { Loader2 } from "lucide-react";
+import LoadingIndicator from "@/components/loading-indicator";
 
 const ADMIN_ROUTES = ["/", "/add-user", "/invoice", "/invoices", "/manage-rates", "/search-data", "/users-sheet", "/manage-users", "/manage-payments", "/customer-payments", "/customer-feedbacks", "/login-info"];
 const CUSTOMER_ROUTES = ["/customer-dashboard", "/bill-status"];
@@ -52,11 +52,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   // Public routes will render immediately.
   if (loading && !isPublicRoute) {
     return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <LoadingIndicator />
         </div>
     );
   }
