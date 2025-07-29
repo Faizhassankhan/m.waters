@@ -88,11 +88,11 @@ function DataManagementPage() {
                <div className="flex items-center justify-center h-full">
                  <ProfileCard
                     name="Admin"
-                    title="AquaManager"
+                    title="m.waters"
                     handle={user?.email?.split('@')[0] || 'admin'}
                     status="Online"
                     contactText="Contact"
-                    avatarUrl="https://placehold.co/400x400.png"
+                    avatarUrl="https://placehold.co/400x400/png"
                     data-ai-hint="water glass"
                     showUserInfo={true}
                     enableTilt={true}
