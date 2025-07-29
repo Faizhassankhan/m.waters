@@ -92,7 +92,7 @@ function DataManagementPage() {
                     handle={user?.email?.split('@')[0] || 'admin'}
                     status="Online"
                     contactText="Contact"
-                    avatarUrl="https://placehold.co/400x400/png"
+                    avatarUrl="https://placehold.co/600x400.png"
                     data-ai-hint="water glass"
                     showUserInfo={true}
                     enableTilt={true}
