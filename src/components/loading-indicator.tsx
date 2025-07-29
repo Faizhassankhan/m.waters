@@ -2,7 +2,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
+
+// Dynamically import motion components with SSR turned off
+const motion = {
+  div: dynamic(() => import("framer-motion").then((mod) => mod.motion.div), { ssr: false }),
+  circle: dynamic(() => import("framer-motion").then((mod) => mod.motion.circle), { ssr: false }),
+  path: dynamic(() => import("framer-motion").then((mod) => mod.motion.path), { ssr: false }),
+  text: dynamic(() => import("framer-motion").then((mod) => mod.motion.text), { ssr: false }),
+  span: dynamic(() => import("framer-motion").then((mod) => mod.motion.span), { ssr: false }),
+};
+
 
 const LoadingIndicator = ({
   blurAmount = 5,
