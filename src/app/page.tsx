@@ -12,9 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { format } from "date-fns";
+import ProfileCard from "@/components/profile-card";
+import "@/components/profile-card.css";
+
 
 function DataManagementPage() {
-  const { userProfiles } = useContext(AppContext);
+  const { userProfiles, user } = useContext(AppContext);
   const [searchMonth, setSearchMonth] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -44,7 +47,7 @@ function DataManagementPage() {
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-3xl font-bold tracking-tight font-headline">
-            Data Management
+            Dashboard
           </h2>
           <Button onClick={() => setShowAddForm(!showAddForm)}>
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -52,34 +55,52 @@ function DataManagementPage() {
           </Button>
         </div>
 
-        {showAddForm && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-headline">Add New Delivery</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AddDataForm />
-            </CardContent>
-          </Card>
-        )}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+           <Card className="col-span-1 lg:col-span-4">
+              <CardHeader>
+                <CardTitle className="font-headline flex justify-between items-center">
+                  <span>Delivery Records</span>
+                   <div className="w-full max-w-sm">
+                    <Input
+                      placeholder="Filter by month (e.g., January)"
+                      value={searchMonth}
+                      onChange={(e) => setSearchMonth(e.target.value)}
+                    />
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {showAddForm && (
+                  <Card className="mb-6">
+                    <CardHeader>
+                      <CardTitle className="font-headline text-xl">Add New Delivery</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <AddDataForm />
+                    </CardContent>
+                  </Card>
+                )}
+                <DataTable data={filteredDataProfiles} />
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline flex justify-between items-center">
-              <span>Delivery Records</span>
-              <div className="w-full max-w-sm">
-                <Input
-                  placeholder="Filter by month (e.g., January)"
-                  value={searchMonth}
-                  onChange={(e) => setSearchMonth(e.target.value)}
-                />
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DataTable data={filteredDataProfiles} />
-          </CardContent>
-        </Card>
+            <div className="col-span-1 lg:col-span-3">
+               <div className="flex items-center justify-center h-full">
+                 <ProfileCard
+                    name="Admin"
+                    title="AquaManager"
+                    handle={user?.email?.split('@')[0] || 'admin'}
+                    status="Online"
+                    contactText="Contact"
+                    avatarUrl="https://placehold.co/400x400.png"
+                    data-ai-hint="water glass"
+                    showUserInfo={true}
+                    enableTilt={true}
+                  />
+               </div>
+            </div>
+        </div>
+
       </div>
     </DashboardLayout>
   );
