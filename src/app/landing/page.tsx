@@ -60,8 +60,8 @@ export default function LandingPage() {
                <a href="https://ibb.co/7t2t1dxK">
                 <img
                     src="https://i.ibb.co/s9y9Vdpq/2025073123575595.png"
-                    width="550"
-                    height="350"
+                    width="450"
+                    height="250"
                     alt="m.waters"
                     className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
                 />
