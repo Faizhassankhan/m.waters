@@ -167,15 +167,18 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
       
       doc.text("Previous Balance:", summaryX, finalY + 27, {align: "right"});
       doc.text(`PKR ${previousBalance.toLocaleString()}`, 205, finalY + 27, { align: "right" });
+
+      doc.text("Advance Paid:", summaryX, finalY + 34, {align: "right"});
+      doc.text(`- PKR ${advance.toLocaleString()}`, 205, finalY + 34, { align: "right" });
       
       doc.setLineWidth(0.2);
-      doc.line(summaryX - 10, finalY + 31, 205, finalY + 31);
+      doc.line(summaryX - 10, finalY + 38, 205, finalY + 38);
       
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("Grand Total:", summaryX, finalY + 38, {align: "right"});
+      doc.text("Grand Total:", summaryX, finalY + 45, {align: "right"});
       doc.setFontSize(18);
-      doc.text(`PKR ${grandTotal.toLocaleString()}`, 205, finalY + 38, { align: "right" });
+      doc.text(`PKR ${grandTotal.toLocaleString()}`, 205, finalY + 45, { align: "right" });
 
       const pdfBlob = doc.output('blob');
       const fileName = `invoice-${invoice.id}.pdf`;
@@ -239,7 +242,8 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
     
   const currentMonthBill = invoice.amount;
   const previousBalance = invoice.previousBalance || 0;
-  const grandTotal = currentMonthBill + previousBalance;
+  const advance = invoice.advance || 0;
+  const grandTotal = currentMonthBill + previousBalance - advance;
 
 
   return (
@@ -335,6 +339,10 @@ export function InvoicePreview({ invoice }: InvoicePreviewProps) {
                      <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Previous Balance</span>
                         <span className="font-medium">PKR {previousBalance.toLocaleString()}</span>
+                    </div>
+                     <div className="flex justify-between items-center text-destructive">
+                        <span className="text-muted-foreground">Advance Paid</span>
+                        <span className="font-medium">- PKR {advance.toLocaleString()}</span>
                     </div>
                     <Separator className="my-2" />
                     <div className="flex justify-between items-center">

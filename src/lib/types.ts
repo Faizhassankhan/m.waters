@@ -53,6 +53,7 @@ export interface Invoice {
   year: number;
   deliveries: Delivery[]; // Joined from deliveries table
   previousBalance?: number;
+  advance?: number;
 }
 
 export interface Feedback {

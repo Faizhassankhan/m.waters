@@ -121,6 +121,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 name: profile?.name || inv.name || 'N/A',
                 amount: inv.amount,
                 previousBalance: inv.previous_balance,
+                advance: inv.advance,
                 paymentMethod: inv.payment_method,
                 recipientNumber: inv.recipient_number,
                 createdAt: inv.created_at,
@@ -327,6 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           payment_method: invoiceData.paymentMethod,
           recipient_number: invoiceData.recipientNumber,
           previous_balance: invoiceData.previousBalance || 0,
+          advance: invoiceData.advance || 0,
         };
 
         const { data, error } = await supabase
@@ -358,6 +360,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             month: data.month,
             year: data.year,
             previousBalance: data.previous_balance,
+            advance: data.advance,
             deliveries: deliveries,
         };
         

@@ -49,6 +49,7 @@ const formSchema = z.object({
   amount: z.coerce.number().positive("Amount must be positive."),
   bottlePrice: z.coerce.number().optional(),
   previousBalance: z.coerce.number().optional(),
+  advance: z.coerce.number().optional(),
   paymentMethod: z.enum(["EasyPaisa", "JazzCash", "Bank Transfer"]),
   recipientNumber: z.string().regex(/^03\d{9}$/, "Enter a valid Pakistani mobile number (03xxxxxxxxx)."),
   month: z.string().min(1, "Month is required."),
@@ -81,6 +82,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       amount: 0,
       bottlePrice: DEFAULT_BOTTLE_PRICE,
       previousBalance: 0,
+      advance: 0,
       paymentMethod: "EasyPaisa",
       recipientNumber: "",
       month: previousMonth,
@@ -150,6 +152,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
                 amount: 0,
                 bottlePrice: DEFAULT_BOTTLE_PRICE,
                 previousBalance: 0,
+                advance: 0,
                 paymentMethod: "EasyPaisa",
                 recipientNumber: "",
                 month: previousMonth,
@@ -327,6 +330,21 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
               <FormControl>
                 <Input type="number" placeholder="e.g., 500" {...field} value={field.value || 0} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="advance"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Advance (PKR)</FormLabel>
+              <FormControl>
+                <Input type="number" placeholder="e.g., 200" {...field} value={field.value || 0} />
+              </FormControl>
+              <FormDescription>Any advance payment to be deducted from the total bill.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
