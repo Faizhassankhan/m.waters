@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { LayoutDashboard, FileText, LogOut, PanelLeft, Search, Users, Tags, FileSpreadsheet, UserPlus, CreditCard, DollarSign, MessageSquareQuote, History } from "lucide-react";
 
 const navItems = [
-  { href: "/", label: "Data", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/search-data", label: "Search Data", icon: Search },
   { href: "/add-user", label: "Manage Customers", icon: Users },
   { href: "/invoice", label: "Create Invoice", icon: FileText },
@@ -120,7 +120,7 @@ export default function DashboardLayout({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar>
-                  <AvatarImage src="https://placehold.co/100x100" data-ai-hint="profile avatar" />
+                  <AvatarImage src="https://placehold.co/100x100.png" data-ai-hint="water drops" />
                   <AvatarFallback>A</AvatarFallback>
                 </Avatar>
               </Button>
@@ -142,5 +142,3 @@ export default function DashboardLayout({
     </div>
   );
 }
-
-    
