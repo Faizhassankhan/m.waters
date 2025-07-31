@@ -436,7 +436,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   const saveBillingRecord = async (record: { userId: string, month: number, year: number, amountPaid: number, totalBill: number }) => {
-    const { error } = await supabase
+    // Upsert the billing record
+    const { error: billingError } = await supabase
         .from('billing_records')
         .upsert(
             { 
@@ -448,9 +449,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             },
             { onConflict: 'user_id,month,year' }
         );
-    if (error) throw error;
-    await fetchAllData(user);
+    if (billingError) throw billingError;
+
+    // Determine payment status and update it
+    const balance = record.totalBill - record.amountPaid;
+    const paymentStatus: 'paid' | 'not_paid_yet' = balance <= 0 ? 'paid' : 'not_paid_yet';
+    
+    await saveMonthlyStatus(record.userId, record.month, record.year, paymentStatus);
+    
+    // No need to call fetchAllData here because saveMonthlyStatus already does it.
   };
+
 
   const deleteBillingRecord = async (recordId: string) => {
       const { error } = await supabase
