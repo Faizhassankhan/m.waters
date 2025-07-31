@@ -93,7 +93,7 @@ function DataManagementPage() {
                     status="Online"
                     contactText="Contact"
                     avatarUrl="https://placehold.co/600x400.png"
-                    data-ai-hint="water glass"
+                    data-ai-hint="water drops"
                     showUserInfo={true}
                     enableTilt={true}
                   />
