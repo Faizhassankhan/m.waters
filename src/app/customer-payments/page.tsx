@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useContext } from "react";
+import { useState, useMemo, useContext, useEffect } from "react";
 import AuthGuard from "@/components/auth-guard";
 import DashboardLayout from "@/components/dashboard-layout";
 import { AppContext } from "@/contexts/app-provider";
@@ -41,9 +41,51 @@ function CustomerPaymentsPage() {
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [open, setOpen] = useState(false);
 
-    const sortedUsers = useMemo(() => {
-        return [...userProfiles].sort((a, b) => a.name.localeCompare(b.name));
-    }, [userProfiles]);
+    const usersForDropdown = useMemo(() => {
+        return [...userProfiles]
+            .filter(user => {
+                const statusEntry = (user.monthlyStatuses || []).find(s => s.month === selectedMonth && s.year === selectedYear);
+                const isPaid = statusEntry?.status === 'paid';
+                
+                const hasDeliveries = (user.deliveries || []).some(d => {
+                    const deliveryDate = new Date(d.date);
+                    return getMonth(deliveryDate) === selectedMonth && getYear(deliveryDate) === selectedYear;
+                });
+
+                return hasDeliveries && !isPaid;
+            })
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [userProfiles, selectedMonth, selectedYear]);
+
+    useEffect(() => {
+        if (selectedUserId) {
+            const user = userProfiles.find(u => u.id === selectedUserId);
+            if (user) {
+                const deliveriesForPeriod = (user.deliveries || []).filter(d => {
+                    const deliveryDate = new Date(d.date);
+                    return getMonth(deliveryDate) === selectedMonth && getYear(deliveryDate) === selectedYear;
+                });
+
+                const totalBottles = deliveriesForPeriod.reduce((sum, d) => sum + d.bottles, 0);
+                const bottlePrice = user.bottlePrice || 100;
+                const calculatedBill = totalBottles * bottlePrice;
+                
+                setTotalBill(String(calculatedBill));
+            }
+        } else {
+            setTotalBill("");
+        }
+    }, [selectedUserId, selectedMonth, selectedYear, userProfiles]);
+
+    useEffect(() => {
+        // Reset user selection if they become ineligible after changing month/year
+        if (selectedUserId && !usersForDropdown.some(u => u.id === selectedUserId)) {
+            setSelectedUserId("");
+            setAmountPaid("");
+            setTotalBill("");
+        }
+    }, [selectedMonth, selectedYear, usersForDropdown, selectedUserId]);
+
 
     const allBillingRecords = useMemo(() => {
         return userProfiles
@@ -140,7 +182,7 @@ function CustomerPaymentsPage() {
                                             className="w-full justify-between"
                                         >
                                             {selectedUserId
-                                                ? sortedUsers.find((user) => user.id === selectedUserId)?.name
+                                                ? usersForDropdown.find((user) => user.id === selectedUserId)?.name
                                                 : "Choose a user..."}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
@@ -149,9 +191,9 @@ function CustomerPaymentsPage() {
                                         <Command>
                                             <CommandInput placeholder="Search user..." />
                                             <CommandList>
-                                                <CommandEmpty>No user found.</CommandEmpty>
+                                                <CommandEmpty>No unpaid users found for this period.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {sortedUsers.map((user) => (
+                                                    {usersForDropdown.map((user) => (
                                                         <CommandItem
                                                             key={user.id}
                                                             value={user.name}
@@ -296,4 +338,6 @@ export default function Home() {
         </AuthGuard>
     );
 }
+    
+
     
