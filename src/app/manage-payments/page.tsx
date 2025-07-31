@@ -144,7 +144,7 @@ function ManagePaymentsPage() {
                                     </Select>
                                     <Select 
                                         value={String(selectedYear)} 
-                                        onValueChange={(value) => setFilterYear(Number(value))}
+                                        onValueChange={(value) => setSelectedYear(Number(value))}
                                     >
                                         <SelectTrigger className="w-[120px]">
                                             <SelectValue placeholder="Filter by Year" />
