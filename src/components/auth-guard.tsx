@@ -18,6 +18,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
   const isRootRoute = pathname === "/";
+  const isProtectedRoute = ADMIN_ROUTES.includes(pathname) || CUSTOMER_ROUTES.includes(pathname);
+
 
   useEffect(() => {
     // Don't run auth logic until the initial session check is complete
@@ -27,28 +29,18 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // If the user is logged in
     if (user) {
-      // If they are on a public route (like /login) or the root landing page, redirect them to their dashboard
-      if (isPublicRoute || isRootRoute) {
-        if (userType === 'admin') {
-          router.push(ADMIN_DASHBOARD_ROUTE);
-        } else {
-          router.push("/customer-dashboard");
-        }
-        return;
-      }
-
-      // Role-based route protection for private routes
+      // Role-based protection: if a logged-in user tries to access a route not meant for them, redirect.
       if (userType === 'admin' && CUSTOMER_ROUTES.includes(pathname)) {
         router.push(ADMIN_DASHBOARD_ROUTE);
       } else if (userType === 'customer' && (ADMIN_ROUTES.includes(pathname) || pathname === ADMIN_DASHBOARD_ROUTE)) {
         router.push("/customer-dashboard");
       }
     }
-    // If the user is not logged in and is trying to access a private route
-    else if (!isPublicRoute && !isRootRoute) {
+    // If the user is not logged in and is trying to access a protected route
+    else if (isProtectedRoute) {
       router.push("/login");
     }
-  }, [user, loading, router, pathname, isPublicRoute, isRootRoute]);
+  }, [user, loading, router, pathname, isProtectedRoute]);
 
   // Show a loading screen for all routes while the session is being checked.
   if (loading) {
@@ -58,15 +50,22 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+  
+  // If a logged-in user is trying to access a protected route but their role is wrong,
+  // show a loading screen while redirecting.
+  if (loading || (user && isProtectedRoute && !PUBLIC_ROUTES.includes(pathname) && !isRootRoute)) {
+      const userType = user?.user_metadata?.user_type;
+      if (userType === 'admin' && CUSTOMER_ROUTES.includes(pathname)) {
+         return <div className="flex h-screen w-full items-center justify-center bg-background"><LoadingIndicator /></div>;
+      }
+      if (userType === 'customer' && (ADMIN_ROUTES.includes(pathname) || pathname === ADMIN_DASHBOARD_ROUTE)) {
+         return <div className="flex h-screen w-full items-center justify-center bg-background"><LoadingIndicator /></div>;
+      }
+  }
 
-  // If a logged-in user is trying to access the root page, they will be redirected.
-  // We can show a loading indicator or null while that happens.
-  if (user && isRootRoute) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <LoadingIndicator />
-      </div>
-    );
+  // If a user is NOT logged in and trying to access a protected page, show loading while redirecting to /login
+  if (!loading && !user && isProtectedRoute) {
+    return <div className="flex h-screen w-full items-center justify-center bg-background"><LoadingIndicator /></div>;
   }
 
   return <>{children}</>;

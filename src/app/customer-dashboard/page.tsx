@@ -133,7 +133,7 @@ function CustomerDashboardPage() {
 
     const handleLogout = async () => {
         await logout();
-        router.push("/login");
+        router.push("/landing");
     }
 
     const handleWhatsAppRedirect = () => {
