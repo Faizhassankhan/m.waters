@@ -158,7 +158,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
- const handleAuthChange = useCallback(async (event: string, session: Session | null) => {
+  const handleAuthChange = useCallback(async (event: string, session: Session | null) => {
     setLoading(true);
     const currentUser = session?.user ?? null;
     setUser(currentUser);
@@ -321,14 +321,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const invoiceToInsert = {
           user_id: invoiceData.userId,
-          name: invoiceData.name,
           amount: invoiceData.amount,
           month: invoiceData.month,
           year: invoiceData.year,
           payment_method: invoiceData.paymentMethod,
           recipient_number: invoiceData.recipientNumber,
           previous_balance: invoiceData.previousBalance || 0,
-          bottle_price: foundUser?.bottlePrice || 100,
         };
 
         const { data, error } = await supabase
@@ -353,7 +351,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             userId: data.user_id,
             name: invoiceData.name,
             amount: data.amount,
-            bottlePrice: data.bottle_price,
+            bottlePrice: foundUser?.bottlePrice || 100,
             paymentMethod: data.payment_method,
             recipientNumber: data.recipient_number,
             createdAt: data.created_at,
