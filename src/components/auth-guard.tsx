@@ -9,17 +9,14 @@ import LoadingIndicator from "@/components/loading-indicator";
 const ADMIN_DASHBOARD_ROUTE = "/dashboard";
 const ADMIN_ROUTES = ["/dashboard", "/add-user", "/invoice", "/invoices", "/manage-rates", "/search-data", "/users-sheet", "/manage-users", "/manage-payments", "/customer-payments", "/customer-feedbacks", "/login-info"];
 const CUSTOMER_ROUTES = ["/customer-dashboard", "/bill-status"];
-const PUBLIC_ROUTES = ["/login", "/register", "/landing"];
+const PUBLIC_ROUTES = ["/login", "/register", "/landing", "/"]; // Added root "/" to public routes
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useContext(AppContext);
   const router = useRouter();
   const pathname = usePathname();
 
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-  const isRootRoute = pathname === "/";
-  const isProtectedRoute = ADMIN_ROUTES.includes(pathname) || CUSTOMER_ROUTES.includes(pathname);
-
+  const isProtectedRoute = !PUBLIC_ROUTES.includes(pathname);
 
   useEffect(() => {
     // Don't run auth logic until the initial session check is complete
@@ -53,7 +50,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   
   // If a logged-in user is trying to access a protected route but their role is wrong,
   // show a loading screen while redirecting.
-  if (loading || (user && isProtectedRoute && !PUBLIC_ROUTES.includes(pathname) && !isRootRoute)) {
+  if (user && isProtectedRoute) {
       const userType = user?.user_metadata?.user_type;
       if (userType === 'admin' && CUSTOMER_ROUTES.includes(pathname)) {
          return <div className="flex h-screen w-full items-center justify-center bg-background"><LoadingIndicator /></div>;
