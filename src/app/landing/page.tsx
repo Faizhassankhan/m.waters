@@ -57,9 +57,9 @@ export default function LandingPage() {
                   </Button>
                 </div>
               </div>
-               <a href="https://ibb.co/vvx39rzH">
+               <a href="https://ibb.co/7t2t1dxK">
                 <img
-                    src="https://i.ibb.co/prvfqsXx/m-waters.png"
+                    src="https://i.ibb.co/s9y9Vdpq/2025073123575595.png"
                     width="600"
                     height="400"
                     alt="m.waters"
