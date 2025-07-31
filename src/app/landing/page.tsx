@@ -57,14 +57,15 @@ export default function LandingPage() {
                   </Button>
                 </div>
               </div>
-               <img
-                src="https://placehold.co/600x400.png"
-                width="600"
-                height="400"
-                alt="Water Bottle"
-                data-ai-hint="water bottle delivery"
-                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square"
-              />
+               <a href="https://ibb.co/vvx39rzH">
+                <img
+                    src="https://i.ibb.co/prvfqsXx/m-waters.png"
+                    width="600"
+                    height="400"
+                    alt="m.waters"
+                    className="mx-auto aspect-video overflow-hidden rounded-xl object-contain sm:w-full lg:order-last lg:aspect-square"
+                />
+               </a>
             </div>
           </div>
         </section>
