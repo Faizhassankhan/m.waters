@@ -12,8 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { format } from "date-fns";
-import ProfileCard from "@/components/profile-card";
-import "@/components/profile-card.css";
 
 
 function DataManagementPage() {
@@ -55,8 +53,8 @@ function DataManagementPage() {
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-           <Card className="col-span-1 lg:col-span-4">
+        <div className="grid gap-4 md:grid-cols-1">
+           <Card>
               <CardHeader>
                 <CardTitle className="font-headline flex justify-between items-center">
                   <span>Delivery Records</span>
@@ -83,22 +81,6 @@ function DataManagementPage() {
                 <DataTable data={filteredDataProfiles} />
               </CardContent>
             </Card>
-
-            <div className="col-span-1 lg:col-span-3">
-               <div className="flex items-center justify-center h-full">
-                 <ProfileCard
-                    name="Admin"
-                    title="m.waters"
-                    handle={user?.email?.split('@')[0] || 'admin'}
-                    status="Online"
-                    contactText="Contact"
-                    avatarUrl="https://placehold.co/600x400.png"
-                    data-ai-hint="water drops"
-                    showUserInfo={true}
-                    enableTilt={true}
-                  />
-               </div>
-            </div>
         </div>
 
       </div>
