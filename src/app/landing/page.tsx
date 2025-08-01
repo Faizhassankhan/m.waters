@@ -16,14 +16,12 @@ export default function LandingPage() {
                 <text x="115" y="68" fontFamily="sans-serif" fontSize="10" fill="hsl(var(--muted-foreground))" dy=".3em">FIT TO LIVE</text>
             </svg>
         </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
-          <Link
-            href="/login"
-            className="text-sm font-medium hover:underline underline-offset-4"
-            prefetch={false}
-          >
-            Login
-          </Link>
+        <nav className="ml-auto flex items-center gap-2">
+           <Button asChild variant="outline">
+            <Link href="/login" prefetch={false}>
+              Login
+            </Link>
+          </Button>
           <Button asChild>
             <Link href="/register" prefetch={false}>
               Register
