@@ -1,9 +1,25 @@
 
+"use client";
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { ShieldCheck, Zap, Droplets } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
 
 export default function LandingPage() {
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [rotation, setRotation] = useState(0);
+
+  const resetTransform = () => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+    setRotation(0);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="px-4 lg:px-6 h-16 flex items-center shadow-sm">
@@ -32,7 +48,7 @@ export default function LandingPage() {
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-gradient-to-br from-primary/10 to-transparent">
           <div className="container px-4 md:px-6">
-            <div className="grid items-center gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
+            <div className="grid items-center gap-6 lg:grid-cols-[1fr_550px] lg:gap-12 xl:grid-cols-[1fr_600px]">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
                   <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline text-primary">
@@ -55,15 +71,44 @@ export default function LandingPage() {
                   </Button>
                 </div>
               </div>
-               <a href="https://ibb.co/m53QvXM">
-                <img
-                    src="https://i.ibb.co/zVzK870V/M-2.jpg"
-                    width="450"
-                    height="250"
-                    alt="m.waters bottle"
-                    className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
-                />
-               </a>
+               <div className="flex flex-col gap-8">
+                 <div className="w-full h-[400px] flex items-center justify-center overflow-hidden">
+                    <img
+                        src="https://i.ibb.co/zVzK870V/M-2.jpg"
+                        width="450"
+                        height="250"
+                        alt="m.waters bottle"
+                        className="mx-auto overflow-hidden rounded-xl object-contain transition-transform duration-200"
+                        style={{
+                          transform: `translateX(${position.x}px) translateY(${position.y}px) scale(${scale}) rotate(${rotation}deg)`
+                        }}
+                    />
+                 </div>
+                 <Card>
+                    <CardHeader>
+                      <CardTitle className="font-headline">Customize Image</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-6">
+                        <div className="grid gap-2">
+                           <Label htmlFor="zoom">Zoom</Label>
+                           <Slider id="zoom" value={[scale]} onValueChange={([val]) => setScale(val)} max={3} min={0.2} step={0.1} />
+                        </div>
+                         <div className="grid gap-2">
+                           <Label htmlFor="x-pos">Move Horizontal</Label>
+                           <Slider id="x-pos" value={[position.x]} onValueChange={([val]) => setPosition(p => ({ ...p, x: val }))} max={100} min={-100} step={1} />
+                        </div>
+                        <div className="grid gap-2">
+                           <Label htmlFor="y-pos">Move Vertical</Label>
+                           <Slider id="y-pos" value={[position.y]} onValueChange={([val]) => setPosition(p => ({ ...p, y: val }))} max={100} min={-100} step={1} />
+                        </div>
+                        <div className="grid gap-2">
+                           <Label htmlFor="rotate">Rotate</Label>
+                           <Slider id="rotate" value={[rotation]} onValueChange={([val]) => setRotation(val)} max={180} min={-180} step={1} />
+                        </div>
+                        <Button onClick={resetTransform} variant="outline">Reset</Button>
+                    </CardContent>
+                 </Card>
+               </div>
             </div>
           </div>
         </section>
