@@ -1,7 +1,8 @@
 
 import Link from 'next/link';
-import { Droplets, ShieldCheck, Zap } from 'lucide-react';
+import { ShieldCheck, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import MwSvg from '@/components/mw.svg';
 
 export default function LandingPage() {
   return (
@@ -55,12 +56,12 @@ export default function LandingPage() {
                   </Button>
                 </div>
               </div>
-               <a href="https://ibb.co/7t2t1dxK">
+               <a href="https://ibb.co/m53QvXM">
                 <img
-                    src="https://i.ibb.co/s9y9Vdpq/2025073123575595.png"
+                    src="https://i.ibb.co/zVzK870V/M-2.jpg"
                     width="450"
                     height="250"
-                    alt="m.waters"
+                    alt="m.waters bottle"
                     className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
                 />
                </a>
@@ -80,7 +81,7 @@ export default function LandingPage() {
             </div>
             <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
               <div className="flex flex-col justify-center space-y-4 text-center">
-                <Droplets className="mx-auto h-12 w-12 text-primary" />
+                <MwSvg className="mx-auto h-12 w-12 text-primary" />
                 <h3 className="text-xl font-bold font-headline">Pure Drinking Water</h3>
                 <p className="text-muted-foreground">
                   Our water goes through a meticulous purification process to ensure every drop is clean, safe, and tastes great.
