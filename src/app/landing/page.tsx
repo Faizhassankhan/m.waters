@@ -75,10 +75,10 @@ export default function LandingPage() {
                 </div>
               </div>
                <div className="flex flex-col items-center gap-4">
-                 <div className="w-full h-[400px] flex items-center justify-center overflow-hidden touch-none relative bg-muted/20 rounded-lg border">
+                 <div className="w-full h-[400px] flex items-center justify-center overflow-hidden touch-none relative bg-transparent rounded-lg">
                     <div
                       style={{
-                        transform: 'translateX(0px) translateY(-50px)',
+                        transform: 'translateX(0px) translateY(0px)',
                       }}
                       className="relative"
                     >
