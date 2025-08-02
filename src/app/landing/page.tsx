@@ -3,21 +3,24 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { ShieldCheck, Zap, Droplets } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
-import { Label } from "@/components/ui/label";
 
 export default function LandingPage() {
-  const [scale, setScale] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [rotation, setRotation] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // For pan, zoom, and rotation
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const scale = useMotionValue(1);
+  const rotate = useMotionValue(0);
 
   const resetTransform = () => {
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
-    setRotation(0);
+    x.set(0);
+    y.set(0);
+    scale.set(1);
+    rotate.set(0);
   };
 
   return (
@@ -71,43 +74,39 @@ export default function LandingPage() {
                   </Button>
                 </div>
               </div>
-               <div className="flex flex-col gap-8">
-                 <div className="w-full h-[400px] flex items-center justify-center overflow-hidden">
-                    <img
+               <div className="flex flex-col items-center gap-4">
+                 <div className="w-full h-[400px] flex items-center justify-center overflow-hidden touch-none relative bg-muted/20 rounded-lg border">
+                    <motion.div
+                      drag
+                      dragMomentum={false}
+                      onDragStart={() => setIsDragging(true)}
+                      onDragEnd={() => setIsDragging(false)}
+                      style={{ x, y, scale, rotate }}
+                      className={`relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    >
+                      <motion.img
                         src="https://i.ibb.co/rKH1Wfrx/2025080301053749.png"
                         width="450"
                         height="250"
                         alt="m.waters bottle"
-                        className="mx-auto overflow-hidden rounded-xl object-contain transition-transform duration-200"
-                        style={{
-                          transform: `translateX(${position.x}px) translateY(${position.y}px) scale(${scale}) rotate(${rotation}deg)`
+                        className="mx-auto overflow-hidden rounded-xl object-contain pointer-events-none"
+                        onPan={(event, info) => {
+                          x.set(x.get() + info.delta.x);
+                          y.set(y.get() + info.delta.y);
                         }}
-                    />
+                        onPinch={(event, info) => {
+                          scale.set(scale.get() * info.delta.x);
+                        }}
+                        onRotate={(event, info) => {
+                          rotate.set(rotate.get() + info.delta.x);
+                        }}
+                      />
+                    </motion.div>
+                     <div className="absolute top-2 left-2 text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded">
+                      Drag, Pinch & Twist to customize
+                    </div>
                  </div>
-                 <Card>
-                    <CardHeader>
-                      <CardTitle className="font-headline">Customize Image</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-6">
-                        <div className="grid gap-2">
-                           <Label htmlFor="zoom">Zoom</Label>
-                           <Slider id="zoom" value={[scale]} onValueChange={([val]) => setScale(val)} max={3} min={0.2} step={0.1} />
-                        </div>
-                         <div className="grid gap-2">
-                           <Label htmlFor="x-pos">Move Horizontal</Label>
-                           <Slider id="x-pos" value={[position.x]} onValueChange={([val]) => setPosition(p => ({ ...p, x: val }))} max={100} min={-100} step={1} />
-                        </div>
-                        <div className="grid gap-2">
-                           <Label htmlFor="y-pos">Move Vertical</Label>
-                           <Slider id="y-pos" value={[position.y]} onValueChange={([val]) => setPosition(p => ({ ...p, y: val }))} max={100} min={-100} step={1} />
-                        </div>
-                        <div className="grid gap-2">
-                           <Label htmlFor="rotate">Rotate</Label>
-                           <Slider id="rotate" value={[rotation]} onValueChange={([val]) => setRotation(val)} max={180} min={-180} step={1} />
-                        </div>
-                        <Button onClick={resetTransform} variant="outline">Reset</Button>
-                    </CardContent>
-                 </Card>
+                 <Button onClick={resetTransform} variant="outline" size="sm">Reset Position</Button>
                </div>
             </div>
           </div>
