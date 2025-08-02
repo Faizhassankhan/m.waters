@@ -76,37 +76,21 @@ export default function LandingPage() {
               </div>
                <div className="flex flex-col items-center gap-4">
                  <div className="w-full h-[400px] flex items-center justify-center overflow-hidden touch-none relative bg-muted/20 rounded-lg border">
-                    <motion.div
-                      drag
-                      dragMomentum={false}
-                      onDragStart={() => setIsDragging(true)}
-                      onDragEnd={() => setIsDragging(false)}
-                      style={{ x, y, scale, rotate }}
-                      className={`relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    <div
+                      style={{
+                        transform: 'translateX(0px) translateY(-50px)',
+                      }}
+                      className="relative"
                     >
-                      <motion.img
+                      <img
                         src="https://i.ibb.co/rKH1Wfrx/2025080301053749.png"
                         width="450"
                         height="250"
                         alt="m.waters bottle"
                         className="mx-auto overflow-hidden rounded-xl object-contain pointer-events-none"
-                        onPan={(event, info) => {
-                          x.set(x.get() + info.delta.x);
-                          y.set(y.get() + info.delta.y);
-                        }}
-                        onPinch={(event, info) => {
-                          scale.set(scale.get() * info.delta.x);
-                        }}
-                        onRotate={(event, info) => {
-                          rotate.set(rotate.get() + info.delta.x);
-                        }}
                       />
-                    </motion.div>
-                     <div className="absolute top-2 left-2 text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded">
-                      Drag, Pinch & Twist to customize
                     </div>
                  </div>
-                 <Button onClick={resetTransform} variant="outline" size="sm">Reset Position</Button>
                </div>
             </div>
           </div>
