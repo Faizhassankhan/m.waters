@@ -1,8 +1,7 @@
 
 import Link from 'next/link';
-import { ShieldCheck, Zap } from 'lucide-react';
+import { ShieldCheck, Zap, Droplets } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import MwSvg from '@/components/mw.svg';
 
 export default function LandingPage() {
   return (
@@ -81,7 +80,7 @@ export default function LandingPage() {
             </div>
             <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
               <div className="flex flex-col justify-center space-y-4 text-center">
-                <MwSvg className="mx-auto h-12 w-12 text-primary" />
+                <Droplets className="mx-auto h-12 w-12 text-primary" />
                 <h3 className="text-xl font-bold font-headline">Pure Drinking Water</h3>
                 <p className="text-muted-foreground">
                   Our water goes through a meticulous purification process to ensure every drop is clean, safe, and tastes great.
