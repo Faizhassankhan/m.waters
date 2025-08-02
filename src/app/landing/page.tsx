@@ -74,7 +74,7 @@ export default function LandingPage() {
                <div className="flex flex-col gap-8">
                  <div className="w-full h-[400px] flex items-center justify-center overflow-hidden">
                     <img
-                        src="https://i.ibb.co/zVzK870V/M-2.jpg"
+                        src="https://i.ibb.co/rKH1Wfrx/2025080301053749.png"
                         width="450"
                         height="250"
                         alt="m.waters bottle"
