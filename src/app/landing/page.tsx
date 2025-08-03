@@ -35,7 +35,7 @@ export default function LandingPage() {
         </nav>
       </header>
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-br from-primary/10 to-transparent">
+        <section className="w-full pt-12 md:pt-24 lg:pt-32 bg-gradient-to-br from-primary/10 to-transparent">
           <div className="container px-4 md:px-6 flex flex-col items-center text-center">
             <div className="flex flex-col justify-center space-y-4 max-w-2xl">
               <div className="space-y-2">
