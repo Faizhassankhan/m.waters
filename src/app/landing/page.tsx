@@ -1,11 +1,9 @@
 
 "use client";
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { ShieldCheck, Zap, Droplets } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ShieldCheck, Zap, Droplets } from 'lucide-react';
 
 export default function LandingPage() {
 
@@ -35,9 +33,9 @@ export default function LandingPage() {
         </nav>
       </header>
       <main className="flex-1">
-        <section className="w-full pt-12 md:pt-24 lg:pt-32 bg-gradient-to-br from-primary/10 to-transparent">
-          <div className="container px-4 md:px-6 flex flex-col items-center text-center">
-            <div className="flex flex-col justify-center space-y-4 max-w-2xl">
+        <section className="w-full pt-12 md:pt-24 lg:pt-32">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-2">
                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline text-primary">
                   Pure, Refreshing, Reliable.
@@ -59,7 +57,7 @@ export default function LandingPage() {
                 </Button>
               </div>
             </div>
-             <div className="mt-8 flex items-center justify-center">
+            <div className="mt-8 flex items-center justify-center">
                <img
                   src="https://i.ibb.co/8L40RSry/2025080301053749.png"
                   width="450"
@@ -110,7 +108,7 @@ export default function LandingPage() {
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} m.waters. All rights reserved.</p>
         <div className="sm:ml-auto flex flex-col sm:flex-row gap-2 text-xs">
-            <p className="text-muted-foreground">For Delivery: 0300-2109707 / 0321-2109707</p>
+            <p className="text-muted-foreground">For Delivery: 0311-6523470 / 0321-2109707</p>
             <p className="text-muted-foreground hidden sm:block">|</p>
             <p className="text-muted-foreground">Email: m.waterspk@gmail.com</p>
         </div>
