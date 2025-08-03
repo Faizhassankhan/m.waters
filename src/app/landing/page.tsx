@@ -49,19 +49,19 @@ export default function LandingPage() {
         </nav>
       </header>
       <main className="flex-1">
-        <section className="w-full relative pt-12 md:pt-24 lg:pt-32 bg-gradient-to-br from-primary/10 to-transparent">
-          <div className="container px-4 md:px-6 z-10 relative">
-            <div className="grid items-center gap-6">
-              <div className="flex flex-col justify-center space-y-4 text-center">
+        <section className="w-full relative py-12 md:py-24 lg:py-32 bg-gradient-to-br from-primary/10 to-transparent">
+          <div className="container px-4 md:px-6">
+            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
+              <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
                   <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline text-primary">
                     Pure, Refreshing, Reliable.
                   </h1>
-                  <p className="max-w-[600px] mx-auto text-muted-foreground md:text-xl">
+                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
                     Experience the crisp, clean taste of m.waters, delivered right to your doorstep. Our commitment is to your health and hydration. #StayHydrated
                   </p>
                 </div>
-                <div className="flex justify-center gap-2 min-[400px]:flex-row">
+                <div className="flex flex-col gap-2 min-[400px]:flex-row">
                   <Button asChild size="lg">
                     <Link href="/register" prefetch={false}>
                       Get Started
@@ -74,18 +74,16 @@ export default function LandingPage() {
                   </Button>
                 </div>
               </div>
+               <div className="flex items-center justify-center">
+                 <img
+                    src="https://i.ibb.co/rKH1Wfrx/2025080301053749.png"
+                    width="450"
+                    height="450"
+                    alt="m.waters bottle"
+                    className="mx-auto overflow-hidden object-contain"
+                  />
+               </div>
             </div>
-          </div>
-          <div className="w-full mt-16 flex items-center justify-center overflow-hidden touch-none relative bg-transparent">
-              <div className="relative">
-                <img
-                  src="https://i.ibb.co/rKH1Wfrx/2025080301053749.png"
-                  width="450"
-                  height="250"
-                  alt="m.waters bottle"
-                  className="mx-auto overflow-hidden object-contain pointer-events-none"
-                />
-              </div>
           </div>
         </section>
         <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-muted">
@@ -99,25 +97,25 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
-              <div className="flex flex-col justify-center space-y-4 text-center">
+            <div className="mx-auto grid max-w-5xl items-start gap-8 py-12 sm:grid-cols-2 md:gap-12 lg:grid-cols-3">
+              <div className="grid gap-1 text-center">
                 <Droplets className="mx-auto h-12 w-12 text-primary" />
                 <h3 className="text-xl font-bold font-headline">Pure Drinking Water</h3>
-                <p className="text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Our water goes through a meticulous purification process to ensure every drop is clean, safe, and tastes great.
                 </p>
               </div>
-              <div className="flex flex-col justify-center space-y-4 text-center">
+              <div className="grid gap-1 text-center">
                 <ShieldCheck className="mx-auto h-12 w-12 text-primary" />
                 <h3 className="text-xl font-bold font-headline">Clean Guaranteed Service</h3>
-                <p className="text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   We guarantee the cleanliness and hygiene of our bottles and our entire delivery process from start to finish.
                 </p>
               </div>
-              <div className="flex flex-col justify-center space-y-4 text-center">
+              <div className="grid gap-1 text-center">
                 <Zap className="mx-auto h-12 w-12 text-primary" />
                 <h3 className="text-xl font-bold font-headline">Fast & Reliable Delivery</h3>
-                <p className="text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Get your water delivered on time, every time. Manage your deliveries easily through our customer dashboard.
                 </p>
               </div>
