@@ -78,7 +78,7 @@ export default function LandingPage() {
                  <div className="w-full h-[450px] flex items-center justify-center overflow-hidden touch-none relative bg-transparent rounded-lg">
                     <div
                       style={{
-                        transform: 'translateX(0px) translateY(20px)',
+                        transform: 'translateX(0px) translateY(40px)',
                       }}
                       className="relative"
                     >
