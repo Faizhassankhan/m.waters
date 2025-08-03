@@ -36,40 +36,38 @@ export default function LandingPage() {
       </header>
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-br from-primary/10 to-transparent">
-          <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="space-y-2">
-                  <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline text-primary">
-                    Pure, Refreshing, Reliable.
-                  </h1>
-                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                    Experience the crisp, clean taste of m.waters, delivered right to your doorstep. Our commitment is to your health and hydration. #StayHydrated
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button asChild size="lg">
-                    <Link href="/register" prefetch={false}>
-                      Get Started
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="lg">
-                     <Link href="#features" prefetch={false}>
-                        Learn More
-                    </Link>
-                  </Button>
-                </div>
+          <div className="container px-4 md:px-6 flex flex-col items-center text-center">
+            <div className="flex flex-col justify-center space-y-4 max-w-2xl">
+              <div className="space-y-2">
+                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline text-primary">
+                  Pure, Refreshing, Reliable.
+                </h1>
+                <p className="max-w-[600px] mx-auto text-muted-foreground md:text-xl">
+                  Experience the crisp, clean taste of m.waters, delivered right to your doorstep. Our commitment is to your health and hydration. #StayHydrated
+                </p>
               </div>
-               <div className="flex items-center justify-center">
-                 <img
-                    src="https://i.ibb.co/rKH1Wfrx/2025080301053749.png"
-                    width="450"
-                    height="450"
-                    alt="m.waters bottle"
-                    className="mx-auto overflow-hidden object-contain"
-                  />
-               </div>
+              <div className="flex flex-col gap-2 min-[400px]:flex-row justify-center">
+                <Button asChild size="lg">
+                  <Link href="/register" prefetch={false}>
+                    Get Started
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg">
+                   <Link href="#features" prefetch={false}>
+                      Learn More
+                  </Link>
+                </Button>
+              </div>
             </div>
+             <div className="mt-8 flex items-center justify-center">
+               <img
+                  src="https://i.ibb.co/rKH1Wfr/2025080301053749.png"
+                  width="450"
+                  height="450"
+                  alt="m.waters bottle"
+                  className="mx-auto overflow-hidden object-contain"
+                />
+             </div>
           </div>
         </section>
         <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-muted">
@@ -120,3 +118,5 @@ export default function LandingPage() {
     </div>
   )
 }
+
+    
