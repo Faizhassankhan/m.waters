@@ -61,7 +61,7 @@ export default function LandingPage() {
             </div>
              <div className="mt-8 flex items-center justify-center">
                <img
-                  src="https://i.ibb.co/rKH1Wfr/2025080301053749.png"
+                  src="https://i.ibb.co/8L40RSry/2025080301053749.png"
                   width="450"
                   height="450"
                   alt="m.waters bottle"
