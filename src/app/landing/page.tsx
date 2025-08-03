@@ -3,25 +3,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ShieldCheck, Zap, Droplets } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function LandingPage() {
-  const [isDragging, setIsDragging] = useState(false);
-
-  // For pan, zoom, and rotation
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const scale = useMotionValue(1);
-  const rotate = useMotionValue(0);
-
-  const resetTransform = () => {
-    x.set(0);
-    y.set(0);
-    scale.set(1);
-    rotate.set(0);
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -49,7 +35,7 @@ export default function LandingPage() {
         </nav>
       </header>
       <main className="flex-1">
-        <section className="w-full relative py-12 md:py-24 lg:py-32 bg-gradient-to-br from-primary/10 to-transparent">
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-br from-primary/10 to-transparent">
           <div className="container px-4 md:px-6">
             <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
               <div className="flex flex-col justify-center space-y-4">
