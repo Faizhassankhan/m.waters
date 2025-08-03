@@ -76,7 +76,7 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-          <div className="w-full mt-16 flex items-center justify-center overflow-hidden touch-none relative bg-transparent pb-16 md:pb-24 lg:pb-32">
+          <div className="w-full mt-16 flex items-center justify-center overflow-hidden touch-none relative bg-transparent">
               <div className="relative">
                 <img
                   src="https://i.ibb.co/rKH1Wfrx/2025080301053749.png"
