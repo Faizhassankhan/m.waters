@@ -9,7 +9,7 @@ import { Loader2, Share2, LogOut, MessageCircle, Send } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { format, getYear, getMonth } from "date-fns";
+import { format, getYear, getMonth, set, startOfMonth, lastDayOfMonth } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -44,11 +44,28 @@ function CustomerDashboardPage() {
     const [selectedYear, setSelectedYear] = useState<number>(getYear(new Date()));
     
     useEffect(() => {
-        // Set to the current month and year by default
-        const currentDate = new Date();
-        setSelectedMonth(getMonth(currentDate));
-        setSelectedYear(getYear(currentDate));
-    }, []);
+        if (customerData?.deliveries?.length) {
+            const hasDeliveriesThisMonth = customerData.deliveries.some(d => {
+                const deliveryDate = new Date(d.date);
+                return getYear(deliveryDate) === getYear(new Date()) && getMonth(deliveryDate) === getMonth(new Date());
+            });
+
+            if (hasDeliveriesThisMonth) {
+                setSelectedMonth(getMonth(new Date()));
+                setSelectedYear(getYear(new Date()));
+            } else {
+                const lastDeliveryDate = new Date(
+                    Math.max(...customerData.deliveries.map(d => new Date(d.date).getTime()))
+                );
+                setSelectedMonth(getMonth(lastDeliveryDate));
+                setSelectedYear(getYear(lastDeliveryDate));
+            }
+        } else {
+             const currentDate = new Date();
+            setSelectedMonth(getMonth(currentDate));
+            setSelectedYear(getYear(currentDate));
+        }
+    }, [customerData?.deliveries]);
     
     const availableYears = useMemo(() => {
         const years = new Set<number>();

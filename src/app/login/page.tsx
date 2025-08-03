@@ -42,7 +42,7 @@ export default function LoginPage() {
       const { success, error, userType } = await login(emailOrName, password);
       if (success) {
         if (userType === 'admin') {
-          router.push("/");
+          router.push("/dashboard");
         } else {
           router.push("/customer-dashboard");
         }
