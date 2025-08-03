@@ -53,6 +53,9 @@ export default function DashboardLayout({
   const { logout, user } = useContext(AppContext);
   const router = useRouter();
 
+  // Check if the current page should be full-width
+  const isFullWidthPage = pathname === '/users-sheet';
+
   const handleLogout = async () => {
     await logout();
     router.push("/landing");
@@ -135,7 +138,11 @@ export default function DashboardLayout({
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background overflow-auto">
+        <main className={cn(
+          "flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-background overflow-auto",
+           // If it's a full-width page, don't apply max-width and horizontal padding
+          !isFullWidthPage && "container mx-auto"
+        )}>
           {children}
         </main>
       </div>
