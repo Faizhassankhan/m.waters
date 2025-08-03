@@ -24,7 +24,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
         storage: sessionStorageAdapter,
         autoRefreshToken: true,
-        persistSession: true,
+        persistSession: false, // This is set to false to not persist session across tabs/windows
         detectSessionInUrl: true,
     },
 });

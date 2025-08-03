@@ -9,7 +9,7 @@ import LoadingIndicator from "@/components/loading-indicator";
 const ADMIN_DASHBOARD_ROUTE = "/dashboard";
 const ADMIN_ROUTES = ["/dashboard", "/add-user", "/invoice", "/invoices", "/manage-rates", "/search-data", "/users-sheet", "/manage-users", "/manage-payments", "/customer-payments", "/customer-feedbacks", "/login-info"];
 const CUSTOMER_ROUTES = ["/customer-dashboard", "/bill-status"];
-const PUBLIC_ROUTES = ["/login", "/register", "/landing", "/"]; // Added root "/" to public routes
+const PUBLIC_ROUTES = ["/login", "/register", "/landing", "/"];
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useContext(AppContext);
