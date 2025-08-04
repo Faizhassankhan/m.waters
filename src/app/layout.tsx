@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AppProvider } from "@/contexts/app-provider";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
+import InstallPWA from "@/components/install-pwa";
 
 export const metadata: Metadata = {
   title: "m.waters",
@@ -32,6 +33,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AppProvider>
+          <InstallPWA />
           {children}
           <Toaster />
         </AppProvider>

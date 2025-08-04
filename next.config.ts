@@ -4,11 +4,12 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
+  buildExcludes: [/middleware-manifest\.json$/], // Recommended for App Router
 });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  // output: 'export', // PWA with next-pwa doesn't work well with output: 'export'. Removed this line.
   typescript: {
     // !! WARN !!
     // Dangerously allow production builds to successfully complete even if
