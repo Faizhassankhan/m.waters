@@ -6,7 +6,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "m.waters",
   description: "Manage water delivery and invoices efficiently.",
+  manifest: "/manifest.json",
   icons: {
+    apple: "/icons/icon-192x192.png",
     icon: "/favicon.ico",
   },
 };
@@ -20,6 +22,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#34495E" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
