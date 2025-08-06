@@ -23,7 +23,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9655349431153525"
-     crossOrigin="anonymous"></script>
+     crossorigin="anonymous"></script>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#34495E" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
