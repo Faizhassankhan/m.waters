@@ -5,7 +5,7 @@ import React, { createContext, useState, useEffect, ReactNode, useCallback } fro
 import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus, BillingRecord, Feedback, LoginHistory } from "@/lib/types";
 import { supabase } from "@/lib/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
-import { format, getMonth, getYear } from "date-fns";
+import { format, getMonth, getYear, subMonths, startOfMonth, endOfMonth } from "date-fns";
 
 interface AppContextType {
   user: User | null;
@@ -99,15 +99,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data: loginHistoryData, error: loginHistoryError } = await supabase.from('login_history').select('*');
         if (loginHistoryError) throw loginHistoryError;
 
-        const processedUserProfiles = (profilesData || []).map((profile: any) => ({
-          ...profile,
-          email: profile.email || '',
-          createdAt: profile.created_at,
-          deliveries: profile.deliveries || [],
-          monthlyStatuses: profile.monthly_statuses || [],
-          billingRecords: profile.billing_records || [],
-          bottlePrice: profile.bottle_price || 100, // Ensure default
-        }));
+        const processedUserProfiles = (profilesData || []).map((profile: any) => {
+          const prevMonthDate = subMonths(new Date(), 1);
+          const prevMonth = getMonth(prevMonthDate);
+          const prevYear = getYear(prevMonthDate);
+
+          const last_billing_record = (profile.billing_records || []).find(
+              (br: BillingRecord) => br.month === prevMonth && br.year === prevYear
+          ) || null;
+
+          return {
+            ...profile,
+            email: profile.email || '',
+            createdAt: profile.created_at,
+            deliveries: profile.deliveries || [],
+            monthlyStatuses: profile.monthly_statuses || [],
+            billingRecords: profile.billing_records || [],
+            bottlePrice: profile.bottle_price || 100, // Ensure default
+            last_billing_record,
+          };
+        });
         
         const allInvoices = (invoicesData || []).map((inv: any): Invoice => {
             const profile = processedUserProfiles.find((p: UserProfile) => p.id === inv.user_id);
@@ -137,7 +148,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFeedbacks(feedbacksData || []);
         setLoginHistory(loginHistoryData || []);
 
-        if (loggedInUser) {
+        if (loggedInUser && loggedInUser.user_metadata.user_type !== 'admin') {
             const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === loggedInUser.id);
             if (currentUserProfile) {
                 setCustomerData(currentUserProfile);
@@ -146,11 +157,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         }
     } catch (e: any) {
-        if (e.message.includes("Failed to fetch")) {
-            console.error("Error fetching application data: Failed to fetch. This is likely a network error or incorrect Supabase credentials. Please check your internet connection and the NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env file.");
-        } else {
-            console.error("Error fetching application data:", e.message || e);
-        }
+        console.error("Error fetching application data:", e.message || e);
         setUserProfiles([]);
         setInvoices([]);
         setFeedbacks([]);

@@ -38,7 +38,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
-import { Invoice, UserProfile, Delivery } from "@/lib/types";
+import { Invoice, UserProfile, Delivery, BillingRecord } from "@/lib/types";
 import { UserCheck, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { format, subMonths, getYear, getMonth } from 'date-fns';
 import { cn } from "@/lib/utils";
@@ -63,8 +63,9 @@ const DEFAULT_BOTTLE_PRICE = 100;
 const months = Array.from({ length: 12 }, (_, i) => format(new Date(0, i), "MMMM"));
 const years = Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i);
 
-const previousMonth = format(subMonths(new Date(), 1), 'MMMM');
-const previousMonthYear = getYear(subMonths(new Date(), 1));
+const previousMonthDate = subMonths(new Date(), 1);
+const previousMonthName = format(previousMonthDate, 'MMMM');
+const previousMonthYear = getYear(previousMonthDate);
 
 
 export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: Invoice) => void }) {
@@ -85,7 +86,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
       advance: 0,
       paymentMethod: "EasyPaisa",
       recipientNumber: "",
-      month: previousMonth,
+      month: previousMonthName,
       year: previousMonthYear,
     },
   });
@@ -110,10 +111,29 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
         setSelectedUser(foundUser);
         form.setValue("userId", foundUser.id);
         form.setValue("bottlePrice", foundUser.bottlePrice || DEFAULT_BOTTLE_PRICE);
+        
+        // Auto-populate balance/advance from previous month
+        const prevMonthRecord = foundUser.last_billing_record;
+        if (prevMonthRecord) {
+            const balance = prevMonthRecord.total_bill - prevMonthRecord.amount_paid;
+            if (balance > 0) { // Outstanding balance
+                form.setValue("previousBalance", balance);
+                form.setValue("advance", 0);
+            } else { // Advance payment
+                form.setValue("previousBalance", 0);
+                form.setValue("advance", Math.abs(balance));
+            }
+        } else {
+            form.setValue("previousBalance", 0);
+            form.setValue("advance", 0);
+        }
+
       } else {
         setSelectedUser(null);
         form.setValue("userId", null);
         form.setValue("bottlePrice", DEFAULT_BOTTLE_PRICE);
+        form.setValue("previousBalance", 0);
+        form.setValue("advance", 0);
       }
     } else {
       setSelectedUser(null);
@@ -155,7 +175,7 @@ export function InvoiceForm({ onInvoiceCreated }: { onInvoiceCreated: (invoice: 
                 advance: 0,
                 paymentMethod: "EasyPaisa",
                 recipientNumber: "",
-                month: previousMonth,
+                month: previousMonthName,
                 year: previousMonthYear,
             });
             setSelectedUser(null);

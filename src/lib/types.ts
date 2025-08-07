@@ -32,6 +32,7 @@ export interface UserProfile {
   invoices?: Invoice[];
   monthlyStatuses: MonthlyStatus[];
   billingRecords: BillingRecord[];
+  last_billing_record?: BillingRecord | null;
 }
 
 export interface AddUserDataPayload {

@@ -90,13 +90,15 @@ function CustomerDashboardPage() {
         return statusEntry ? statusEntry.status : 'not_paid_yet';
     }, [customerData, selectedMonth, selectedYear]);
     
-    const billingRecordForPeriod = useMemo((): (BillingRecord & { balance: number }) | null => {
+    const billingRecordForPeriod = useMemo((): (BillingRecord & { balance: number, advance: number }) | null => {
         if (!customerData || !customerData.billingRecords) return null;
         const record = customerData.billingRecords.find(r => r.month === selectedMonth && r.year === selectedYear);
         if (!record) return null;
+        const balance = record.total_bill - record.amount_paid;
         return {
             ...record,
-            balance: record.total_bill - record.amount_paid
+            balance: balance > 0 ? balance : 0,
+            advance: balance < 0 ? Math.abs(balance) : 0,
         };
     }, [customerData, selectedMonth, selectedYear]);
 
@@ -330,10 +332,17 @@ function CustomerDashboardPage() {
                                         <p className="text-sm text-muted-foreground">Amount Paid</p>
                                         <p className="font-semibold text-lg text-green-600">{billingRecordForPeriod.amount_paid.toLocaleString()} PKR</p>
                                     </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Balance</p>
-                                        <p className="font-semibold text-lg text-red-600">{billingRecordForPeriod.balance.toLocaleString()} PKR</p>
-                                    </div>
+                                    {billingRecordForPeriod.advance > 0 ? (
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Advance</p>
+                                            <p className="font-semibold text-lg text-green-600">{billingRecordForPeriod.advance.toLocaleString()} PKR</p>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Balance</p>
+                                            <p className="font-semibold text-lg text-red-600">{billingRecordForPeriod.balance.toLocaleString()} PKR</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                          ) : (
@@ -385,5 +394,3 @@ export default function Home() {
         </AuthGuard>
     )
 }
-
-    
