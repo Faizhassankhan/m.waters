@@ -28,6 +28,8 @@ export interface UserProfile {
   email?: string; // This is now optional as it's fetched from auth.users
   bottlePrice: number;
   canShareReport: boolean;
+  depositBottles: number;
+  depositAdvance: number;
   deliveries: Delivery[];
   invoices?: Invoice[];
   monthlyStatuses: MonthlyStatus[];

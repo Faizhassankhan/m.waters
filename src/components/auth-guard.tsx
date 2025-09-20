@@ -7,7 +7,7 @@ import { AppContext } from "@/contexts/app-provider";
 import LoadingIndicator from "@/components/loading-indicator";
 
 const ADMIN_DASHBOARD_ROUTE = "/dashboard";
-const ADMIN_ROUTES = ["/dashboard", "/add-user", "/invoice", "/invoices", "/manage-rates", "/search-data", "/users-sheet", "/manage-users", "/manage-payments", "/customer-payments", "/customer-feedbacks", "/login-info"];
+const ADMIN_ROUTES = ["/dashboard", "/add-user", "/invoice", "/invoices", "/manage-rates", "/manage-deposits", "/search-data", "/users-sheet", "/manage-users", "/manage-payments", "/customer-payments", "/customer-feedbacks", "/login-info"];
 const CUSTOMER_ROUTES = ["/customer-dashboard", "/bill-status"];
 const PUBLIC_ROUTES = ["/login", "/register", "/landing", "/"];
 

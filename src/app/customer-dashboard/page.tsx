@@ -5,7 +5,7 @@ import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import * as htmlToImage from 'html-to-image';
 import { AppContext } from "@/contexts/app-provider";
 import AuthGuard from "@/components/auth-guard";
-import { Loader2, Share2, LogOut, MessageCircle, Send } from "lucide-react";
+import { Loader2, Share2, LogOut, MessageCircle, Send, ShieldCheck, Package } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -272,6 +272,30 @@ function CustomerDashboardPage() {
                         </CardContent>
                     </Card>
                 </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline">My Deposits</CardTitle>
+                        <CardDescription>Your security deposits with m.waters.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+                        <div className="border rounded-lg p-4">
+                            <div className="flex justify-center items-center mb-2">
+                                <Package className="h-6 w-6 text-primary" />
+                            </div>
+                            <p className="text-sm text-muted-foreground">Security Bottles</p>
+                            <p className="font-semibold text-2xl">{customerData?.depositBottles || 0} QTY</p>
+                        </div>
+                        <div className="border rounded-lg p-4">
+                             <div className="flex justify-center items-center mb-2">
+                                <ShieldCheck className="h-6 w-6 text-green-600" />
+                            </div>
+                            <p className="text-sm text-muted-foreground">Advance Deposit Amount</p>
+                            <p className="font-semibold text-2xl">{(customerData?.depositAdvance || 0).toLocaleString()} PKR</p>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <Card>
                     <CardHeader className="p-6 pb-4">
                         <div className="flex w-full gap-2">

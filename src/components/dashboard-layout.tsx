@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, FileText, LogOut, PanelLeft, Search, Users, Tags, FileSpreadsheet, UserPlus, CreditCard, DollarSign, MessageSquareQuote, History } from "lucide-react";
+import { LayoutDashboard, FileText, LogOut, PanelLeft, Search, Users, Tags, FileSpreadsheet, UserPlus, CreditCard, DollarSign, MessageSquareQuote, History, Award } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -37,6 +37,7 @@ const navItems = [
   { href: "/invoice", label: "Create Invoice", icon: FileText },
   { href: "/invoices", label: "Search Invoices", icon: FileText },
   { href: "/manage-rates", label: "Manage Rates", icon: Tags },
+  { href: "/manage-deposits", label: "Manage Deposits", icon: Award },
   { href: "/users-sheet", label: "Users Sheet", icon: FileSpreadsheet },
   { href: "/manage-payments", label: "Manage Payments", icon: CreditCard },
   { href: "/customer-payments", label: "Customer Payments", icon: DollarSign },

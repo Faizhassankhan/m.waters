@@ -28,6 +28,7 @@ interface AppContextType {
   removeDuplicateDeliveries: (userId: string) => Promise<void>;
   updateUserBottlePrice: (userId: string, newPrice: number) => Promise<void>;
   updateUserName: (userId: string, newName: string) => Promise<void>;
+  updateUserDeposits: (userId: string, depositBottles: number, depositAdvance: number) => Promise<void>;
   addInvoice: (invoice: Omit<Invoice, "id" | "createdAt" | "deliveries">, deliveries: Delivery[]) => Promise<Invoice | undefined>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
   saveMonthlyStatus: (userId: string, month: number, year: number, status: 'paid' | 'not_paid_yet') => Promise<void>;
@@ -59,6 +60,7 @@ export const AppContext = createContext<AppContextType>({
   removeDuplicateDeliveries: async () => {},
   updateUserBottlePrice: async () => {},
   updateUserName: async () => {},
+  updateUserDeposits: async () => {},
   addInvoice: async () => undefined,
   deleteInvoice: async () => {},
   saveMonthlyStatus: async () => {},
@@ -86,6 +88,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchAllData = useCallback(async (loggedInUser: User | null) => {
+    if (!loggedInUser) {
+        setLoading(false);
+        return;
+    }
     try {
         const { data: profilesData, error: profilesError } = await supabase.from('users').select('*, deliveries(*), monthly_statuses(*), billing_records(*)');
         if (profilesError) throw profilesError;
@@ -116,6 +122,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             monthlyStatuses: profile.monthly_statuses || [],
             billingRecords: profile.billing_records || [],
             bottlePrice: profile.bottle_price || 100, // Ensure default
+            depositBottles: profile.deposit_bottles || 0,
+            depositAdvance: profile.deposit_advance || 0,
             last_billing_record,
           };
         });
@@ -148,13 +156,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFeedbacks(feedbacksData || []);
         setLoginHistory(loginHistoryData || []);
 
-        if (loggedInUser && loggedInUser.user_metadata.user_type !== 'admin') {
+        if (loggedInUser.user_metadata.user_type !== 'admin') {
             const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === loggedInUser.id);
-            if (currentUserProfile) {
-                setCustomerData(currentUserProfile);
-            } else {
-                setCustomerData(null);
-            }
+            setCustomerData(currentUserProfile || null);
+        } else {
+            setCustomerData(null);
         }
     } catch (e: any) {
         console.error("Error fetching application data:", e.message || e);
@@ -319,6 +325,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateUserName = async (userId: string, newName: string) => {
     const { error } = await supabase.from('users').update({ name: newName }).eq('id', userId);
+    if (error) throw error;
+    await fetchAllData(user);
+  };
+  
+  const updateUserDeposits = async (userId: string, depositBottles: number, depositAdvance: number) => {
+    const { error } = await supabase.from('users').update({ 
+      deposit_bottles: depositBottles,
+      deposit_advance: depositAdvance 
+    }).eq('id', userId);
     if (error) throw error;
     await fetchAllData(user);
   };
@@ -528,6 +543,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     removeDuplicateDeliveries,
     updateUserBottlePrice,
     updateUserName,
+    updateUserDeposits,
     addInvoice,
     deleteInvoice,
     saveMonthlyStatus,
