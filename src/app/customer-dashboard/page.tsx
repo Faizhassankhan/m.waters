@@ -283,7 +283,7 @@ function CustomerDashboardPage() {
                             <div className="flex justify-center items-center mb-2">
                                 <Package className="h-6 w-6 text-primary" />
                             </div>
-                            <p className="text-sm text-muted-foreground">Security Bottles</p>
+                            <p className="text-sm text-muted-foreground">Total Bottles</p>
                             <p className="font-semibold text-2xl">{customerData?.depositBottles || 0} QTY</p>
                         </div>
                         <div className="border rounded-lg p-4">
@@ -418,3 +418,5 @@ export default function Home() {
         </AuthGuard>
     )
 }
+
+    
