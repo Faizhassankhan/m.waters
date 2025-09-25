@@ -1,0 +1,7 @@
+# For a Next.js site with server-side rendering on Netlify
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
