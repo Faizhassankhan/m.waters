@@ -6,6 +6,7 @@ import { UserProfile, Delivery, Invoice, AddUserDataPayload, MonthlyStatus, Bill
 import { supabase } from "@/lib/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 import { format, getMonth, getYear, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { sendNotification } from "@/lib/notifications";
 
 interface AppContextType {
   user: User | null;
@@ -314,6 +315,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles });
     if (error) throw error;
     
+    // After adding data, attempt to send a notification
+    try {
+      const { data: subs, error: subsError } = await supabase
+        .from('push_subscriptions')
+        .select('subscription')
+        .eq('user_id', profile.id);
+
+      if (subsError) throw subsError;
+
+      for (const { subscription } of subs) {
+        await sendNotification(subscription as any, {
+            title: 'm.waters Delivery Update',
+            body: 'New Delivery! Your m.waters delivery has been recorded.'
+        });
+      }
+    } catch (notificationError) {
+        console.error("Failed to send notification:", notificationError);
+        // We don't throw here because the main operation (adding data) was successful.
+    }
+
     await fetchAllData(user);
   };
 

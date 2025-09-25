@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { BillingRecord } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
+import NotificationSubscriber from "@/components/notification-subscriber";
 
 
 const months = Array.from({ length: 12 }, (_, i) => ({
@@ -212,6 +213,7 @@ function CustomerDashboardPage() {
     
     return (
         <div className="min-h-screen bg-muted/40 p-4 sm:p-6 lg:p-8">
+            <NotificationSubscriber />
             {renderHeader()}
             <main className="max-w-2xl mx-auto space-y-6">
                 <div ref={dataCardRef} className="bg-background">
