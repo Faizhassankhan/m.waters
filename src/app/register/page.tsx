@@ -39,18 +39,37 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-        const { error } = await supabase.auth.signUp({
+        // Step 1: Sign up the user in Supabase Auth
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
             email,
             password,
             options: {
                 data: {
-                user_type: "customer",
+                  user_type: "customer",
                 },
             },
         });
 
-        if (error) {
-            throw error;
+        if (signUpError) {
+            throw signUpError;
+        }
+        
+        if (!signUpData.user) {
+            throw new Error("Registration failed: User not created.");
+        }
+
+        // Step 2: Insert the user profile into the public 'users' table
+        const { error: insertError } = await supabase.from('users').insert({
+            id: signUpData.user.id,
+            name: signUpData.user.email?.split('@')[0] || 'New User', // Default name from email
+            email: signUpData.user.email,
+            bottle_price: 100, // Default price
+        });
+
+        if (insertError) {
+            // If profile creation fails, it's better to inform the user.
+            // In a real-world scenario, you might want to delete the auth user here.
+            throw new Error(`Database error saving new user: ${insertError.message}`);
         }
 
         toast({
