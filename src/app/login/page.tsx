@@ -18,6 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
+const ADMIN_EMAIL = "admin@gmail.com";
+const ADMIN_PASSWORD = "admin2007";
+
 export default function LoginPage() {
   const [emailOrName, setEmailOrName] = useState("");
   const [password, setPassword] = useState("");
@@ -39,19 +42,39 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const { success, error, userType } = await login(emailOrName, password);
-      if (success) {
-        if (userType === 'admin') {
+      // Special check for admin credentials directly on the login page
+      if (emailOrName.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+        const { success, error } = await login(emailOrName, password);
+        if (success) {
           router.push("/dashboard");
         } else {
-          router.push("/customer-dashboard");
+           toast({
+              variant: "destructive",
+              title: "Admin Login Failed",
+              description: error || "An unexpected error occurred.",
+            });
         }
       } else {
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: error || "An unexpected error occurred. Please try again.",
-        });
+        // Handle customer login
+        const { success, error, userType } = await login(emailOrName, password);
+        if (success) {
+           if (userType === 'customer') {
+              router.push("/customer-dashboard");
+           } else {
+              // This case should not happen for non-admin users, but as a fallback:
+              toast({
+                variant: "destructive",
+                title: "Login Error",
+                description: "You are not registered as a customer.",
+              });
+           }
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: error || "An unexpected error occurred. Please try again.",
+          });
+        }
       }
     } catch (e: any) {
        toast({

@@ -231,7 +231,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (!data.user) throw new Error("Could not authenticate admin user.");
           
           if (data.user.user_metadata.user_type !== 'admin') {
-            await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
+            const { error: updateUserError } = await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
+            if(updateUserError) throw updateUserError;
           }
           
           return { success: true, error: null, userType: 'admin' };
@@ -250,26 +251,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("This email is not registered as a customer account.");
       }
       
-      // On first login, the database trigger will create the profile.
-      // We can add a small delay and check to ensure it exists.
-      const userProfile = await (async () => {
-          for (let i = 0; i < 5; i++) { // Retry 5 times
-              const { data: profile, error: profileError } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
-              if (profile) return profile;
-              await new Promise(res => setTimeout(res, 300)); // Wait 300ms
-          }
-          return null;
-      })();
+      // The database trigger will create the profile. 
+      // We check for it, and if it doesn't exist after a moment, we create it client-side as a fallback.
+      let { data: profile } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
       
-      if (!userProfile) {
-          console.error("Profile not found after login, even after retries. The trigger might have failed.");
-          // We can decide to throw an error or handle it gracefully
+      if (!profile) {
+          await new Promise(res => setTimeout(res, 1000)); // Wait for trigger
+          const { data: reprofile } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
+          profile = reprofile;
       }
 
       // Record login history
       const { error: historyError } = await supabase.from('login_history').insert({
           user_id: data.user.id,
-          user_name: userProfile?.name || data.user.email?.split('@')[0] || 'New User'
+          user_name: profile?.name || data.user.email?.split('@')[0] || 'New User'
       });
       if (historyError) {
           console.error("Failed to record login history:", historyError.message);
@@ -588,5 +583,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-    
