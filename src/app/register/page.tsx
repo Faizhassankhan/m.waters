@@ -22,17 +22,18 @@ import { useToast } from "@/hooks/use-toast";
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!email || !password || !name) {
       toast({
         variant: "destructive",
         title: "Missing Information",
-        description: "Please enter your email and password.",
+        description: "Please enter your name, email, and password.",
       });
       return;
     }
@@ -40,13 +41,14 @@ export default function RegisterPage() {
     setLoading(true);
     try {
         // Step 1: Only sign up the user in Supabase Auth.
-        // A database trigger will automatically create their profile in the public.users table.
+        // The database trigger will automatically create their profile in the public.users table.
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
                 data: {
                   user_type: "customer",
+                  name: name, // Pass the name here so the trigger can use it
                 },
             },
         });
@@ -91,6 +93,17 @@ export default function RegisterPage() {
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Jane Doe"
+                required
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -129,3 +142,5 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+    

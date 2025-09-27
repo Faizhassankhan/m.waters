@@ -250,18 +250,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("This email is not registered as a customer account.");
       }
       
-      // Check if profile exists, if not, create one.
-      const { data: userProfile, error: profileError } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
+      // On first login, the database trigger will create the profile.
+      // We can add a small delay and check to ensure it exists.
+      const userProfile = await (async () => {
+          for (let i = 0; i < 5; i++) { // Retry 5 times
+              const { data: profile, error: profileError } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
+              if (profile) return profile;
+              await new Promise(res => setTimeout(res, 300)); // Wait 300ms
+          }
+          return null;
+      })();
       
-      if (profileError && profileError.code === 'PGRST116') { // "PGRST116" means no rows found
-          const { error: insertError } = await supabase.from('users').insert({ 
-              id: data.user.id, 
-              name: data.user.email?.split('@')[0] || 'New User', 
-              bottle_price: 100 
-          });
-          if(insertError) throw insertError;
-      } else if (profileError) {
-          throw profileError;
+      if (!userProfile) {
+          console.error("Profile not found after login, even after retries. The trigger might have failed.");
+          // We can decide to throw an error or handle it gracefully
       }
 
       // Record login history
@@ -285,14 +287,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserProfile = async (name: string, email: string, password: string) => {
-    // This function, used by the admin, will now only create an auth user.
-    // A database trigger will handle creating the user profile in the public.users table.
+    // This function now only creates an auth user.
+    // The database trigger will automatically create their profile in the public.users table.
     const { data: { user }, error: signUpError } = await supabase.auth.signUp({
       email: email,
       password: password,
       options: {
         data: {
           user_type: 'customer',
+          name: name, // Pass the name here so the trigger can use it
         },
       },
     });
@@ -305,18 +308,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("User was not created successfully.");
     }
     
-    // After successful sign-up, immediately create their profile in the users table.
-    const { error: profileError } = await supabase
-        .from('users')
-        .insert({ id: user.id, name: name, bottle_price: 100 });
-    
-    if (profileError) {
-        // If profile creation fails, we should probably delete the auth user to avoid orphaned accounts.
-        // This is an advanced step, for now we just throw the error.
-        throw new Error(`Auth user created, but failed to save profile: ${profileError.message}`);
-    }
-
-    await fetchAllData(user);
+    // We don't need to manually insert into 'users' table anymore.
+    // Give a small delay for the trigger to fire, then refresh data.
+    setTimeout(() => fetchAllData(user), 1000);
   };
 
   const deleteUserProfile = async (userId: string) => {
@@ -594,3 +588,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
