@@ -93,6 +93,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
     }
+    setLoading(true);
     try {
         const { data: profilesData, error: profilesError } = await supabase.from('users').select('*, deliveries(*), monthly_statuses(*), billing_records(*)');
         if (profilesError) throw profilesError;
@@ -157,7 +158,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFeedbacks(feedbacksData || []);
         setLoginHistory(loginHistoryData || []);
 
-        if (loggedInUser.user_metadata.user_type !== 'admin') {
+        if (loggedInUser.email !== ADMIN_EMAIL) {
             const currentUserProfile = processedUserProfiles.find((p: UserProfile) => p.id === loggedInUser.id);
             setCustomerData(currentUserProfile || null);
         } else {
@@ -170,6 +171,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFeedbacks([]);
         setLoginHistory([]);
         setCustomerData(null);
+    } finally {
+        setLoading(false);
     }
   }, []);
 
@@ -211,30 +214,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = async (emailOrName: string, password: string): Promise<{ success: boolean; error: string | null; userType: 'admin' | 'customer' | null }> => {
     try {
       if (emailOrName.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-          let { data, error } = await supabase.auth.signInWithPassword({ 
+          let { data: { user }, error } = await supabase.auth.signInWithPassword({ 
               email: ADMIN_EMAIL, 
               password: ADMIN_PASSWORD 
           });
 
-          if (error?.message.includes("Invalid login credentials")) {
+          if (error && error.message.includes("Invalid login credentials")) {
               const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                   email: ADMIN_EMAIL,
                   password: ADMIN_PASSWORD,
                   options: { data: { user_type: 'admin', name: 'Admin' } }
               });
               if (signUpError) throw signUpError;
-              data = { user: signUpData.user, session: signUpData.session };
+              user = signUpData.user;
           } else if (error) {
               throw error;
           }
           
-          if (!data.user) throw new Error("Could not authenticate admin user.");
+          if (!user) throw new Error("Could not authenticate admin user.");
           
-          if (data.user.user_metadata.user_type !== 'admin') {
-            const { error: updateUserError } = await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
-            if(updateUserError) throw updateUserError;
-          }
-          
+          await fetchAllData(user);
           return { success: true, error: null, userType: 'admin' };
       }
       
@@ -246,19 +245,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       if (!data.user) throw new Error("Login failed, user not found.");
       
-      if (data.user?.user_metadata.user_type !== 'customer') {
-        await supabase.auth.signOut();
-        throw new Error("This email is not registered as a customer account.");
+      if (data.user.user_metadata.user_type !== 'customer') {
+          // Check for email too, in case metadata is stale
+          if (data.user.email !== ADMIN_EMAIL) {
+            await supabase.auth.signOut();
+            throw new Error("This email is not registered as a customer account.");
+          }
       }
-      
-      // The database trigger will create the profile. 
-      // We check for it, and if it doesn't exist after a moment, we create it client-side as a fallback.
+
       let { data: profile } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
       
       if (!profile) {
-          await new Promise(res => setTimeout(res, 1000)); // Wait for trigger
+          await new Promise(res => setTimeout(res, 1500)); // Wait a bit longer for trigger
           const { data: reprofile } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
           profile = reprofile;
+
+          if (!profile) {
+            // As a final fallback, create the profile client-side.
+            const { error: createError } = await supabase.from('users').insert({
+                id: data.user.id,
+                name: data.user.user_metadata.name || data.user.email?.split('@')[0] || 'New User',
+                email: data.user.email,
+            });
+            if (createError) throw new Error("Failed to create user profile after login.");
+          }
       }
 
       // Record login history
@@ -270,6 +280,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           console.error("Failed to record login history:", historyError.message);
       }
 
+      await fetchAllData(data.user);
       return { success: true, error: null, userType: 'customer' };
 
     } catch (error: any) {
@@ -282,15 +293,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserProfile = async (name: string, email: string, password: string) => {
-    // This function now only creates an auth user.
-    // The database trigger will automatically create their profile in the public.users table.
     const { data: { user }, error: signUpError } = await supabase.auth.signUp({
       email: email,
       password: password,
       options: {
         data: {
           user_type: 'customer',
-          name: name, // Pass the name here so the trigger can use it
+          name: name,
         },
       },
     });
@@ -303,12 +312,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("User was not created successfully.");
     }
     
-    // We don't need to manually insert into 'users' table anymore.
-    // Give a small delay for the trigger to fire, then refresh data.
-    setTimeout(() => fetchAllData(user), 1000);
+    // The database trigger should handle profile creation.
+    // We give it a moment, then refresh data.
+    setTimeout(async () => {
+        const { data: sessionUser } = await supabase.auth.getUser();
+        if(sessionUser.user) {
+           await fetchAllData(sessionUser.user)
+        }
+    }, 1500);
   };
 
   const deleteUserProfile = async (userId: string) => {
+    // This now relies on a Supabase Edge Function or direct admin SDK call for security.
+    // The provided RPC function is a good approach.
     const { error } = await supabase.rpc('delete_user_by_id', { user_id_to_delete: userId });
     if (error) {
         console.error('RPC Error:', error);
@@ -445,7 +461,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const uniqueDeliveries = new Map<string, Delivery>();
     profile.deliveries.forEach(delivery => {
-        const key = `\${delivery.date}-\${delivery.bottles}`;
+        const key = `${delivery.date}-${delivery.bottles}`;
         if (!uniqueDeliveries.has(key)) uniqueDeliveries.set(key, delivery);
     });
 
