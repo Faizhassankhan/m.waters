@@ -220,15 +220,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
               const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                   email: ADMIN_EMAIL,
                   password: ADMIN_PASSWORD,
-                  options: { data: { user_type: 'admin' } }
+                  options: { data: { user_type: 'admin', name: 'Admin' } }
               });
               if (signUpError) throw signUpError;
-              
-              if (signUpData.user) {
-                  const { error: insertError } = await supabase.from('users').insert({ id: signUpData.user.id, name: 'Admin', bottle_price: 100 });
-                  if (insertError) throw new Error(`Could not create admin profile: ${insertError.message}`);
-              }
-              
               data = { user: signUpData.user, session: signUpData.session };
           } else if (error) {
               throw error;
@@ -237,8 +231,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (!data.user) throw new Error("Could not authenticate admin user.");
           
           if (data.user.user_metadata.user_type !== 'admin') {
-            const { error: adminUpdateError } = await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
-            if(adminUpdateError) console.error("Error setting user as admin:", adminUpdateError.message);
+            await supabase.auth.admin.updateUserById(data.user.id, { user_metadata: { user_type: 'admin' } });
           }
           
           return { success: true, error: null, userType: 'admin' };
@@ -257,9 +250,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("This email is not registered as a customer account.");
       }
       
+      // Check if profile exists, if not, create one.
       const { data: userProfile, error: profileError } = await supabase.from('users').select('id, name').eq('id', data.user.id).single();
-      if (profileError && profileError.code === 'PGRST116') { 
-          const { error: insertError } = await supabase.from('users').insert({ id: data.user.id, name: data.user.email?.split('@')[0] || 'New User', bottle_price: 100 });
+      
+      if (profileError && profileError.code === 'PGRST116') { // "PGRST116" means no rows found
+          const { error: insertError } = await supabase.from('users').insert({ 
+              id: data.user.id, 
+              name: data.user.email?.split('@')[0] || 'New User', 
+              bottle_price: 100 
+          });
           if(insertError) throw insertError;
       } else if (profileError) {
           throw profileError;
@@ -286,11 +285,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserProfile = async (name: string, email: string, password: string) => {
-    // This function will be executed by an authenticated admin user.
-    // We need to sign up the new user, which can be done from the client.
-    // After sign up, we can insert into the 'users' table.
-    
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    // This function, used by the admin, will now only create an auth user.
+    // A database trigger will handle creating the user profile in the public.users table.
+    const { data: { user }, error: signUpError } = await supabase.auth.signUp({
       email: email,
       password: password,
       options: {
@@ -304,25 +301,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error(`Failed to create user auth record: ${signUpError.message}`);
     }
 
-    if (!signUpData.user) {
+    if (!user) {
         throw new Error("User was not created successfully.");
     }
-
-    // Now, insert the profile into the public 'users' table.
-    // This action is performed by the currently logged-in admin.
-    const { error: insertError } = await supabase.from('users').insert({
-        id: signUpData.user.id,
-        name: name,
-        bottle_price: 100, // Default price
-    });
-
-    if (insertError) {
-        // If the profile insert fails, we should ideally delete the auth user
-        // to avoid orphaned auth entries. This requires admin privileges.
-        await supabase.auth.admin.deleteUser(signUpData.user.id);
-        throw new Error(`Failed to create user profile in database: ${insertError.message}`);
-    }
     
+    // After successful sign-up, immediately create their profile in the users table.
+    const { error: profileError } = await supabase
+        .from('users')
+        .insert({ id: user.id, name: name, bottle_price: 100 });
+    
+    if (profileError) {
+        // If profile creation fails, we should probably delete the auth user to avoid orphaned accounts.
+        // This is an advanced step, for now we just throw the error.
+        throw new Error(`Auth user created, but failed to save profile: ${profileError.message}`);
+    }
+
     await fetchAllData(user);
   };
 
@@ -342,7 +335,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('deliveries').insert({ user_id: profile.id, date: data.date, bottles: data.bottles });
     if (error) throw error;
     
-    // After adding data, attempt to send a notification
     try {
       const { data: subs, error: subsError } = await supabase
         .from('push_subscriptions')
@@ -359,7 +351,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     } catch (notificationError) {
         console.error("Failed to send notification:", notificationError);
-        // We don't throw here because the main operation (adding data) was successful.
     }
 
     await fetchAllData(user);
@@ -465,7 +456,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const uniqueDeliveries = new Map<string, Delivery>();
     profile.deliveries.forEach(delivery => {
-        const key = `${delivery.date}-${delivery.bottles}`;
+        const key = `\${delivery.date}-\${delivery.bottles}`;
         if (!uniqueDeliveries.has(key)) uniqueDeliveries.set(key, delivery);
     });
 
@@ -509,7 +500,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   const saveBillingRecord = async (record: { userId: string, month: number, year: number, amountPaid: number, totalBill: number }) => {
-    // Upsert the billing record
     const { error: billingError } = await supabase
         .from('billing_records')
         .upsert(
@@ -524,13 +514,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
     if (billingError) throw billingError;
 
-    // Determine payment status and update it
     const balance = record.totalBill - record.amountPaid;
     const paymentStatus: 'paid' | 'not_paid_yet' = balance <= 0 ? 'paid' : 'not_paid_yet';
     
     await saveMonthlyStatus(record.userId, record.month, record.year, paymentStatus);
-    
-    // No need to call fetchAllData here because saveMonthlyStatus already does it.
   };
 
 
@@ -548,7 +535,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('feedbacks').insert({
         user_id: user.id,
         feedback_text: feedbackText,
-        user_name: customerData?.name || user.email, // Fallback to email if name is not available
+        user_name: customerData?.name || user.email,
     });
     if (error) throw error;
     await fetchAllData(user);

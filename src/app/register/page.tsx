@@ -40,8 +40,8 @@ export default function RegisterPage() {
     setLoading(true);
     try {
         // Step 1: Only sign up the user in Supabase Auth.
-        // The user profile will be created on their first login.
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        // A database trigger will automatically create their profile in the public.users table.
+        const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
@@ -51,11 +51,11 @@ export default function RegisterPage() {
             },
         });
 
-        if (signUpError) {
-            throw signUpError;
+        if (error) {
+            throw error;
         }
         
-        if (!signUpData.user) {
+        if (!data.user) {
             throw new Error("Registration failed: User not created.");
         }
 
