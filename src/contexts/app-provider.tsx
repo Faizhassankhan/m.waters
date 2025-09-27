@@ -286,14 +286,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addUserProfile = async (name: string, email: string, password: string) => {
-    const { data, error } = await supabase.rpc('create_new_user', {
-        user_email: email,
-        user_password: password,
-        user_name: name
+    // This function will be executed by an authenticated admin user.
+    // We need to sign up the new user, which can be done from the client.
+    // After sign up, we can insert into the 'users' table.
+    
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          user_type: 'customer',
+        },
+      },
     });
 
-    if (error) {
-        throw new Error(`Failed to create user: ${error.message}`);
+    if (signUpError) {
+      throw new Error(`Failed to create user auth record: ${signUpError.message}`);
+    }
+
+    if (!signUpData.user) {
+        throw new Error("User was not created successfully.");
+    }
+
+    // Now, insert the profile into the public 'users' table.
+    // This action is performed by the currently logged-in admin.
+    const { error: insertError } = await supabase.from('users').insert({
+        id: signUpData.user.id,
+        name: name,
+        bottle_price: 100, // Default price
+    });
+
+    if (insertError) {
+        // If the profile insert fails, we should ideally delete the auth user
+        // to avoid orphaned auth entries. This requires admin privileges.
+        await supabase.auth.admin.deleteUser(signUpData.user.id);
+        throw new Error(`Failed to create user profile in database: ${insertError.message}`);
     }
     
     await fetchAllData(user);
